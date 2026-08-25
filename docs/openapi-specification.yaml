@@ -1,0 +1,829 @@
+openapi: 3.0.3
+info:
+  title: AutoCAD MCP Server API
+  description: |
+    Model Context Protocol server for AutoCAD 2025 automation.
+    Enables 3D CAD operations, surface unfolding, and layout creation via REST API.
+    Designed for integration with VS Code and Roo Code extension.
+  version: 1.0.0
+  contact:
+    name: AutoCAD MCP Server
+    url: https://github.com/user/autocad-mcp
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+  - url: http://127.0.0.1:5000
+    description: Local development server (alternative)
+
+tags:
+  - name: Health
+    description: Server health and status endpoints
+  - name: Basic CAD
+    description: Basic 2D and 3D drawing operations
+  - name: Advanced 3D
+    description: Advanced 3D modeling and Boolean operations
+  - name: Surface Operations
+    description: Surface unfolding and analysis
+  - name: Layout
+    description: Layout creation and dimensioning
+  - name: Entity Management
+    description: Entity CRUD operations
+  - name: Plugin Framework
+    description: Plugin registration and execution
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Get server health status
+      description: Returns the current health status of the MCP server
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /acad-status:
+    get:
+      tags: [Health]
+      summary: Get AutoCAD connection status
+      description: Check if AutoCAD is running and accessible
+      responses:
+        '200':
+          description: AutoCAD is connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoCADStatusResponse'
+        '503':
+          description: AutoCAD is not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoCADStatusResponse'
+
+  /draw/line:
+    post:
+      tags: [Basic CAD]
+      summary: Create a line in AutoCAD
+      description: Draw a line from start point to end point
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrawLineRequest'
+      responses:
+        '200':
+          description: Line created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /draw/circle:
+    post:
+      tags: [Basic CAD]
+      summary: Create a circle in AutoCAD
+      description: Draw a circle with specified center and radius
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DrawCircleRequest'
+      responses:
+        '200':
+          description: Circle created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityResponse'
+
+  /draw/extrude:
+    post:
+      tags: [Basic CAD]
+      summary: Create an extruded solid
+      description: Extrude a 2D profile to create a 3D solid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtrudeRequest'
+      responses:
+        '200':
+          description: Solid created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolidResponse'
+
+  /3d/revolve:
+    post:
+      tags: [Advanced 3D]
+      summary: Create a revolved solid
+      description: Revolve a 2D profile around an axis to create a 3D solid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevolveRequest'
+      responses:
+        '200':
+          description: Revolved solid created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolidResponse'
+
+  /3d/boolean/union:
+    post:
+      tags: [Advanced 3D]
+      summary: Perform Boolean union
+      description: Combine multiple solids into one using Boolean union
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BooleanRequest'
+      responses:
+        '200':
+          description: Boolean operation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+
+  /3d/boolean/subtract:
+    post:
+      tags: [Advanced 3D]
+      summary: Perform Boolean subtraction
+      description: Subtract one or more solids from a primary solid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BooleanRequest'
+      responses:
+        '200':
+          description: Boolean operation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanResponse'
+
+  /unfold_surface:
+    post:
+      tags: [Surface Operations]
+      summary: Unfold a 3D surface to 2D pattern
+      description: |
+        Unfold a 3D surface into a 2D pattern for manufacturing.
+        Implements advanced algorithms for both developable and non-developable surfaces.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnfoldSurfaceRequest'
+      responses:
+        '200':
+          description: Surface unfolded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnfoldSurfaceResponse'
+        '400':
+          description: Invalid surface or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /create_layout:
+    post:
+      tags: [Layout]
+      summary: Create layout with auto-dimensioning
+      description: |
+        Create a new layout tab with the specified 3D entity,
+        set up viewport, and automatically add dimensions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLayoutRequest'
+      responses:
+        '200':
+          description: Layout created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateLayoutResponse'
+
+  /entities:
+    get:
+      tags: [Entity Management]
+      summary: List all entities
+      description: Get a list of all entities in the current drawing
+      parameters:
+        - name: entity_type
+          in: query
+          description: Filter by entity type
+          required: false
+          schema:
+            type: string
+            enum: [AcDbLine, AcDbCircle, AcDb3dSolid, AcDbSurface]
+        - name: layer
+          in: query
+          description: Filter by layer name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entity list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityListResponse'
+
+  /entities/{entity_id}:
+    get:
+      tags: [Entity Management]
+      summary: Get entity details
+      description: Get detailed information about a specific entity
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          description: AutoCAD entity ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Entity details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityDetailsResponse'
+        '404':
+          description: Entity not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Entity Management]
+      summary: Delete an entity
+      description: Delete the specified entity from the drawing
+      parameters:
+        - name: entity_id
+          in: path
+          required: true
+          description: AutoCAD entity ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Entity deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+
+  /plugins:
+    get:
+      tags: [Plugin Framework]
+      summary: List available plugins
+      description: Get a list of all registered plugins with their parameters
+      responses:
+        '200':
+          description: Plugin list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginListResponse'
+
+  /plugins/{plugin_name}/execute:
+    post:
+      tags: [Plugin Framework]
+      summary: Execute a plugin
+      description: Execute the specified plugin with given parameters
+      parameters:
+        - name: plugin_name
+          in: path
+          required: true
+          description: Name of the plugin to execute
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PluginExecuteRequest'
+      responses:
+        '200':
+          description: Plugin executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginExecuteResponse'
+
+components:
+  schemas:
+    Point3D:
+      type: array
+      description: 3D point coordinates [x, y, z]
+      items:
+        type: number
+        format: float
+      minItems: 3
+      maxItems: 3
+      example: [0, 0, 0]
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+      required: [status]
+
+    AutoCADStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [connected, not_connected]
+        version:
+          type: string
+          description: AutoCAD version (when connected)
+          example: "2025.0"
+      required: [status]
+
+    DrawLineRequest:
+      type: object
+      properties:
+        start_point:
+          $ref: '#/components/schemas/Point3D'
+        end_point:
+          $ref: '#/components/schemas/Point3D'
+        layer:
+          type: string
+          description: Target layer name
+          default: "0"
+      required: [start_point, end_point]
+
+    DrawCircleRequest:
+      type: object
+      properties:
+        center_point:
+          $ref: '#/components/schemas/Point3D'
+        radius:
+          type: number
+          format: float
+          minimum: 0.001
+        layer:
+          type: string
+          default: "0"
+      required: [center_point, radius]
+
+    ExtrudeRequest:
+      type: object
+      properties:
+        profile_id:
+          type: integer
+          description: Entity ID of the profile to extrude
+        height:
+          type: number
+          format: float
+          description: Extrusion height
+        taper_angle:
+          type: number
+          format: float
+          description: Taper angle in degrees
+          default: 0.0
+          minimum: -45.0
+          maximum: 45.0
+      required: [profile_id, height]
+
+    RevolveRequest:
+      type: object
+      properties:
+        profile_id:
+          type: integer
+          description: Entity ID of the profile to revolve
+        axis_start:
+          $ref: '#/components/schemas/Point3D'
+        axis_end:
+          $ref: '#/components/schemas/Point3D'
+        angle:
+          type: number
+          format: float
+          description: Revolution angle in degrees
+          minimum: 0.1
+          maximum: 360.0
+          default: 360.0
+      required: [profile_id, axis_start, axis_end]
+
+    BooleanRequest:
+      type: object
+      properties:
+        primary_id:
+          type: integer
+          description: Entity ID of the primary solid
+        secondary_ids:
+          type: array
+          items:
+            type: integer
+          description: Entity IDs of solids to union/subtract
+          minItems: 1
+      required: [primary_id, secondary_ids]
+
+    UnfoldSurfaceRequest:
+      type: object
+      properties:
+        entity_id:
+          type: integer
+          description: Entity ID of the surface to unfold
+        tolerance:
+          type: number
+          format: float
+          description: Unfolding tolerance
+          default: 0.01
+          minimum: 0.001
+          maximum: 1.0
+        method:
+          type: string
+          enum: [triangulation, conformal, adaptive]
+          description: Unfolding algorithm method
+          default: triangulation
+        include_markings:
+          type: boolean
+          description: Include fold and cut line markings
+          default: true
+        output_layer:
+          type: string
+          description: Layer for unfolded pattern
+          default: "UNFOLD_PATTERN"
+      required: [entity_id]
+
+    CreateLayoutRequest:
+      type: object
+      properties:
+        entity_id:
+          type: integer
+          description: Entity ID to place in layout
+        layout_name:
+          type: string
+          description: Name of the new layout
+        scale:
+          type: number
+          format: float
+          description: Viewport scale
+          default: 1.0
+          minimum: 0.01
+          maximum: 100.0
+        view_type:
+          type: string
+          enum: [isometric, front, top, right, custom]
+          description: 3D view orientation
+          default: isometric
+        dimension_style:
+          type: string
+          description: Dimension style name
+          default: "STANDARD"
+        title_block:
+          type: boolean
+          description: Include title block
+          default: false
+      required: [entity_id, layout_name]
+
+    PluginExecuteRequest:
+      type: object
+      properties:
+        parameters:
+          type: object
+          description: Plugin-specific parameters
+          additionalProperties: true
+      required: [parameters]
+
+    EntityResponse:
+      type: object
+      properties:
+        entity_id:
+          type: integer
+          description: AutoCAD entity ID
+        entity_type:
+          type: string
+          description: AutoCAD entity class name
+        success:
+          type: boolean
+        execution_time:
+          type: number
+          format: float
+          description: Operation execution time in seconds
+      required: [entity_id, entity_type, success]
+
+    SolidResponse:
+      allOf:
+        - $ref: '#/components/schemas/EntityResponse'
+        - type: object
+          properties:
+            volume:
+              type: number
+              format: float
+              description: Calculated solid volume
+            surface_area:
+              type: number
+              format: float
+              description: Total surface area
+
+    BooleanResponse:
+      allOf:
+        - $ref: '#/components/schemas/EntityResponse'
+        - type: object
+          properties:
+            operation:
+              type: string
+              enum: [union, subtract, intersect]
+            original_count:
+              type: integer
+              description: Number of input solids
+
+    UnfoldSurfaceResponse:
+      type: object
+      properties:
+        pattern_id:
+          type: integer
+          description: Entity ID of the 2D pattern
+        entity_type:
+          type: string
+          example: AcDbPolyline
+        deviation:
+          type: number
+          format: float
+          description: Area deviation percentage
+        original_area:
+          type: number
+          format: float
+          description: Original 3D surface area
+        unfolded_area:
+          type: number
+          format: float
+          description: Unfolded 2D pattern area
+        fold_lines:
+          type: array
+          items:
+            type: integer
+          description: Entity IDs of fold line markings
+        cut_lines:
+          type: array
+          items:
+            type: integer
+          description: Entity IDs of cut line markings
+        method_used:
+          type: string
+          description: Algorithm method that was used
+        success:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Non-critical warnings during unfolding
+        execution_time:
+          type: number
+          format: float
+      required: [pattern_id, entity_type, deviation, success]
+
+    CreateLayoutResponse:
+      type: object
+      properties:
+        layout_name:
+          type: string
+        viewport_id:
+          type: integer
+          description: Entity ID of the created viewport
+        dimensions_added:
+          type: integer
+          description: Number of dimensions automatically added
+        dimension_ids:
+          type: array
+          items:
+            type: integer
+          description: Entity IDs of created dimensions
+        title_block_id:
+          type: integer
+          description: Entity ID of title block (if created)
+        success:
+          type: boolean
+        execution_time:
+          type: number
+          format: float
+      required: [layout_name, viewport_id, dimensions_added, success]
+
+    EntityListResponse:
+      type: object
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntitySummary'
+        total_count:
+          type: integer
+        filtered_count:
+          type: integer
+          description: Number of entities after applying filters
+      required: [entities, total_count]
+
+    EntitySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        layer:
+          type: string
+        color:
+          type: integer
+        length:
+          type: number
+          format: float
+          description: Length (for lines)
+        radius:
+          type: number
+          format: float
+          description: Radius (for circles)
+        area:
+          type: number
+          format: float
+          description: Area (for closed entities)
+        volume:
+          type: number
+          format: float
+          description: Volume (for solids)
+      required: [id, type, layer, color]
+
+    EntityDetailsResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        layer:
+          type: string
+        color:
+          type: integer
+        bounding_box:
+          type: object
+          properties:
+            min_point:
+              $ref: '#/components/schemas/Point3D'
+            max_point:
+              $ref: '#/components/schemas/Point3D'
+        center_of_mass:
+          $ref: '#/components/schemas/Point3D'
+        material:
+          type: string
+          description: Assigned material name
+        custom_properties:
+          type: object
+          additionalProperties: true
+        success:
+          type: boolean
+      required: [id, type, layer, color, success]
+
+    PluginListResponse:
+      type: object
+      properties:
+        plugins:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginInfo'
+      required: [plugins]
+
+    PluginInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/PluginParameter'
+        category:
+          type: string
+          description: Plugin category for organization
+      required: [name, description, version, parameters]
+
+    PluginParameter:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, int, float, bool, point3d]
+        required:
+          type: boolean
+        description:
+          type: string
+        default:
+          description: Default value (type varies)
+        min_value:
+          type: number
+          description: Minimum value (for numeric types)
+        max_value:
+          type: number
+          description: Maximum value (for numeric types)
+      required: [name, type, required, description]
+
+    PluginExecuteResponse:
+      type: object
+      properties:
+        plugin_name:
+          type: string
+        entity_ids:
+          type: array
+          items:
+            type: integer
+          description: Entity IDs created by the plugin
+        execution_time:
+          type: number
+          format: float
+        success:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+        output_data:
+          type: object
+          additionalProperties: true
+          description: Plugin-specific output data
+      required: [plugin_name, success, execution_time]
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required: [success, message]
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Human-readable error message
+        error_code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details and suggestions
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Unique request identifier for debugging
+      required: [success, error, error_code]
+
+  securitySchemes: {}
+
+security: []
+
+externalDocs:
+  description: AutoCAD MCP Server Documentation
+  url: https://github.com/user/autocad-mcp/tree/main/docs

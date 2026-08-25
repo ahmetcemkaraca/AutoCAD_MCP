@@ -1,0 +1,126 @@
+{
+  "name": "autocad-mcp",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol server for AutoCAD 2025 with advanced CAD automation, 3D modeling, and manufacturing capabilities",
+  "author": "AutoCAD MCP Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/BarryMcAdams/AutoCAD_MCP",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BarryMcAdams/AutoCAD_MCP.git"
+  },
+  "keywords": [
+    "autocad",
+    "mcp",
+    "3d",
+    "cad",
+    "automation", 
+    "manufacturing",
+    "surface-unfolding",
+    "mesh-processing"
+  ],
+  "mcpServers": {
+    "autocad-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "src/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "src"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "draw_line",
+      "description": "Draw a line in AutoCAD between two 3D points"
+    },
+    {
+      "name": "draw_circle", 
+      "description": "Draw a circle in AutoCAD with center and radius"
+    },
+    {
+      "name": "extrude_profile",
+      "description": "Create a 3D solid by extruding a 2D profile"
+    },
+    {
+      "name": "revolve_profile",
+      "description": "Create a 3D solid by revolving a profile around an axis"
+    },
+    {
+      "name": "unfold_surface",
+      "description": "Unfold 3D surfaces using advanced algorithms (LSCM, ABF, ARAP)"
+    },
+    {
+      "name": "create_3d_mesh",
+      "description": "Create 3D meshes from coordinate arrays"
+    },
+    {
+      "name": "boolean_union",
+      "description": "Combine multiple 3D solids using boolean union"
+    },
+    {
+      "name": "boolean_subtract", 
+      "description": "Subtract solids from a target solid"
+    },
+    {
+      "name": "add_linear_dimension",
+      "description": "Add linear dimensions to AutoCAD drawings"
+    },
+    {
+      "name": "batch_surface_unfold",
+      "description": "Batch process multiple surfaces for unfolding"
+    },
+    {
+      "name": "optimize_pattern_nesting",
+      "description": "Optimize material usage with advanced nesting algorithms"
+    },
+    {
+      "name": "list_entities",
+      "description": "List all entities in the current AutoCAD drawing"
+    },
+    {
+      "name": "get_entity_info",
+      "description": "Get detailed information about a specific entity"
+    },
+    {
+      "name": "server_status",
+      "description": "Check MCP server and AutoCAD connection status"
+    }
+  ],
+  "resources": [
+    {
+      "uri": "autocad://server-status",
+      "description": "Current MCP server status"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "autocad-help",
+      "description": "Get help with AutoCAD MCP tools and usage examples"
+    },
+    {
+      "name": "manufacturing-workflow",
+      "description": "Generate manufacturing workflow automation prompts"
+    }
+  ],
+  "requirements": {
+    "python": ">=3.12",
+    "os": ["windows"],
+    "dependencies": [
+      "AutoCAD 2025 must be installed and running",
+      "Python 3.12+ with Poetry or uv",
+      "Windows COM components for AutoCAD automation"
+    ]
+  },
+  "installation": {
+    "steps": [
+      "Ensure AutoCAD 2025 is installed",
+      "Install Python 3.12+", 
+      "Install dependencies with: uv sync",
+      "Test server with: uv run python src/server.py"
+    ]
+  }
+}

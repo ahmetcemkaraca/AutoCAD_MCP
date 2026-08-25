@@ -1,0 +1,96 @@
+# AutoCAD MCP Server - Docker Compose Configuration
+version: '3.8'
+
+services:
+  autocad-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autocad-mcp:latest
+    container_name: autocad-mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - RATE_LIMITING_ENABLED=true
+      - SECURITY_SCANNING_ENABLED=true
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://autocad_mcp:password@postgres:5432/autocad_mcp
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./cache:/app/cache
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - autocad-mcp-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: autocad-mcp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - autocad-mcp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: autocad-mcp-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=autocad_mcp
+      - POSTGRES_USER=autocad_mcp
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - autocad-mcp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autocad_mcp"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: autocad-mcp-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - autocad-mcp
+    restart: unless-stopped
+    networks:
+      - autocad-mcp-network
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  autocad-mcp-network:
+    driver: bridge

@@ -213,7 +213,7 @@ Use a table with `Targeted`, `Verified`, and `Out of scope` columns. Full AutoCA
 
 - [ ] **Step 7: Validate canonical links and claims**
 
-Use a Python standard-library Markdown-link check for relative links in `README.md`, `AGENTS.md`, and canonical docs. Run `git diff --check` and search for old owner references outside `docs/legacy/`.
+Use a Python standard-library Markdown-link check for relative links in `README.md`, `AGENTS.md`, and canonical docs. Run `git diff --check main...HEAD -- . ':(exclude)docs/legacy/imported-2025/**'` and search for old owner references outside `docs/legacy/`. The archive exclusion preserves historical files byte-for-byte instead of rewriting their original whitespace.
 
 - [ ] **Step 8: Commit canonical documentation**
 
@@ -238,7 +238,7 @@ git commit -m "docs: add canonical project documentation"
 
 ```bash
 python3 -m compileall -q src tests
-git diff --check main...HEAD
+git diff --check main...HEAD -- . ':(exclude)docs/legacy/imported-2025/**'
 git status --short
 ```
 

@@ -67,10 +67,10 @@ Documentation-only changes should at minimum verify:
 ```bash
 python3 -m json.tool mcp.json
 python3 -m compileall -q src tests
-git diff --check main...HEAD
+git diff --check main...HEAD -- . ':(exclude)docs/legacy/imported-2025/**'
 ```
 
-They should also check relative Markdown links, legacy-audit coverage, current repository URLs, and agreement between `mcp.json` and the selected server registrations.
+The whitespace check excludes the imported legacy archive because those files intentionally preserve their original bytes, including historical line endings and trailing whitespace. Documentation changes should also check relative Markdown links, legacy-audit coverage, current repository URLs, and agreement between `mcp.json` and the selected server registrations.
 
 ## Reporting results
 

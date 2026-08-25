@@ -59,6 +59,7 @@ coverage.xml
 
 # Local settings
 .claude/settings.local.json
+.worktrees/
 
 # Project cleanup
 DELETED/

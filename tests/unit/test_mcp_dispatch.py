@@ -6,6 +6,8 @@ import sys
 from collections.abc import Mapping
 
 import pytest
+from autocad_mcp.adapter.provider import WindowsAdapterProvider
+from autocad_mcp.adapter.service import AdapterToolService
 from autocad_mcp.core.models import (
     BasicToolInput,
     ErrorCode,
@@ -163,7 +165,10 @@ def test_unavailable_status_reports_the_running_server_and_capabilities() -> Non
     }
 
 
-def test_runtime_uses_unavailable_service_without_loading_com_modules() -> None:
-    """Eager adapter imports would make the pure local runtime unusable off Windows."""
-    assert isinstance(create_tool_service(), UnavailableToolService)
+def test_runtime_uses_delayed_windows_adapter_service_without_loading_com_modules() -> None:
+    """Eager COM loading would make production runtime composition non-portable."""
+    service = create_tool_service()
+
+    assert isinstance(service, AdapterToolService)
+    assert isinstance(service._provider, WindowsAdapterProvider)
     assert {"pythoncom", "win32com", "win32com.client", "pyautocad"}.isdisjoint(sys.modules)

@@ -63,12 +63,12 @@ def test_active_metadata_agrees_on_the_supported_baseline() -> None:
     assert "tool" not in project or "poetry" not in project["tool"]
 
 
-def test_manifest_uses_the_temporary_module_launch_without_pythonpath() -> None:
+def test_manifest_uses_the_canonical_module_launch_without_pythonpath() -> None:
     """Catch a return to the ambiguous script-path/PYTHONPATH launch path."""
     server = _manifest()["mcpServers"]["autocad-mcp"]
 
     assert server["command"] == "uv"
-    assert server["args"] == ["run", "python", "-m", "src.server"]
+    assert server["args"] == ["run", "python", "-m", "autocad_mcp.server"]
     assert "PYTHONPATH" not in server.get("env", {})
 
 

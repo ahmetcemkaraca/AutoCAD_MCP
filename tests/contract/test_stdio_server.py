@@ -56,6 +56,14 @@ def _server_result(server, request):
     return asyncio.run(server.request_handlers[type(request)](request)).root
 
 
+def _help_tool_names(help_text: str) -> tuple[str, ...]:
+    return tuple(
+        line.removeprefix("- ").split(":", maxsplit=1)[0]
+        for line in help_text.splitlines()
+        if line.startswith("- ")
+    )
+
+
 def test_canonical_and_shim_exports_share_one_com_free_server() -> None:
     """A duplicate or COM-bound shim would break portable stdio compatibility."""
     canonical, shim = _import_servers()
@@ -96,8 +104,8 @@ def test_registered_catalog_resource_prompt_and_errors_share_the_core_contract()
         ),
     )
     help_text = help_result.messages[0].content.text
-    assert all(name in help_text for name in ACTIVE_TOOL_NAMES)
-    assert LEGACY_MUTATING_TOOL_NAMES.isdisjoint(help_text)
+    assert _help_tool_names(help_text) == ACTIVE_TOOL_NAMES
+    assert not any(name in help_text for name in LEGACY_MUTATING_TOOL_NAMES)
 
     status_call = _server_result(
         server,
@@ -164,6 +172,6 @@ def test_stdio_entrypoints_expose_only_the_canonical_protocol_catalog(module_nam
     assert result["status_resource"]["error"]["code"] == "AUTOCAD_UNAVAILABLE"
     assert result["status_call"]["error"]["code"] == "AUTOCAD_UNAVAILABLE"
     assert result["legacy_call"]["error"]["code"] == "UNKNOWN_TOOL"
-    assert all(name in result["help"] for name in ACTIVE_TOOL_NAMES)
-    assert LEGACY_MUTATING_TOOL_NAMES.isdisjoint(result["help"])
+    assert _help_tool_names(result["help"]) == ACTIVE_TOOL_NAMES
+    assert not any(name in result["help"] for name in LEGACY_MUTATING_TOOL_NAMES)
     assert "Starting AutoCAD MCP stdio server" in diagnostics

@@ -18,12 +18,19 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from types import TracebackType
 from typing import BinaryIO, Literal, Self
 
 _KEY_PATTERN = re.compile(r"[0-9a-f]{64}")
 _SYSTEM_SID = "S-1-5-18"
 _METADATA_NAME = "owner.json"
 _LOCK_NAME = "owner.lock"
+_SID_PATTERN = re.compile(r"S-\d+(?:-\d+)+")
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+
+
+class _FileTime(ctypes.Structure):
+    _fields_ = [("dwLowDateTime", ctypes.c_uint32), ("dwHighDateTime", ctypes.c_uint32)]
 
 
 class AutoCADLeaseError(RuntimeError):
@@ -51,7 +58,7 @@ class LeaseOwner:
     computer_name: str
     windows_session_id: int
     acquired_at_utc: str
-    command: str
+    command: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -92,7 +99,22 @@ def assert_current_user_system_only_acl(path: Path) -> None:
     candidate = Path(path)
     if not candidate.exists():
         raise AutoCADLeaseError("protected Windows path does not exist")
+    _assert_not_reparse(candidate)
     _verify_acl(candidate, _current_user_sid())
+
+
+def create_current_user_system_private_directory() -> Path:
+    """Create one exclusive protected directory for a drawing-copy guard root."""
+    _require_windows()
+    user_sid = _current_user_sid()
+    root = _lease_root().parent / "verification-runs"
+    _create_private_directory(root.parent, user_sid)
+    _create_private_directory(root, user_sid)
+    for _ in range(128):
+        candidate = root / f"run-{os.urandom(16).hex()}"
+        if _create_private_directory(candidate, user_sid):
+            return candidate
+    raise AutoCADLeaseError("unable to create an exclusive protected temporary directory")
 
 
 class AutoCADLease:
@@ -142,14 +164,16 @@ class AutoCADLease:
 
         user_sid = _current_user_sid()
         root = _lease_root()
-        _create_and_verify_private_directory(root, user_sid)
+        _create_private_directory(root.parent, user_sid)
+        _create_private_directory(root, user_sid)
         lease_dir = root / lease_key
-        directory_was_new = not lease_dir.exists()
-        _create_and_verify_private_directory(lease_dir, user_sid)
+        directory_was_new = _create_private_directory(lease_dir, user_sid)
         lock_path = lease_dir / _LOCK_NAME
-        _create_and_verify_private_file(lock_path, user_sid)
+        _create_private_file(lock_path, user_sid)
         metadata_path = lease_dir / _METADATA_NAME
         metadata_existed = metadata_path.exists()
+        if metadata_existed:
+            _assert_not_reparse(metadata_path)
 
         lock_file = lock_path.open("a+b")
         try:
@@ -170,6 +194,7 @@ class AutoCADLease:
             stale_owner = _recoverable_prior_owner(
                 metadata_path,
                 user_sid,
+                expected_lease_key=lease_key,
                 missing_metadata_allowed=directory_was_new and not metadata_existed,
             )
             owner = _current_owner(lease_key, user_sid)
@@ -196,7 +221,9 @@ class AutoCADLease:
         if not self._owned:
             raise AutoCADLeaseError("AutoCAD verification lease is not owned")
         assert_current_user_system_only_acl(self._metadata_path)
-        owner, released_at = _read_metadata(self._metadata_path)
+        owner, released_at = _read_metadata(
+            self._metadata_path, expected_lease_key=self._owner.lease_key
+        )
         if released_at is not None or owner != self._owner:
             raise AutoCADLeaseError("AutoCAD verification lease ownership cannot be proven")
 
@@ -216,17 +243,35 @@ class AutoCADLease:
                 released_at_utc=released_at,
                 stale_owner_recovered=self._stale_owner_recovered,
             )
-            return self._evidence
-        finally:
+        except BaseException:
             self._owned = False
-            _unlock_and_close(self._lock_file)
+            try:
+                _unlock_and_close(self._lock_file)
+            except BaseException:  # noqa: S110 - preserve the original release failure
+                pass
+            raise
+        self._owned = False
+        _unlock_and_close(self._lock_file)
+        return self._evidence
 
     def __enter__(self) -> Self:
         self.assert_owned()
         return self
 
-    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        if exc_value is not None:
+            try:
+                self.release()
+            except BaseException:  # noqa: S110 - preserve the context-body failure
+                pass
+            return None
         self.release()
+        return None
 
 
 def _require_windows() -> None:
@@ -313,13 +358,14 @@ def _computer_name() -> str:
 
 
 def _verified_file_version(executable: Path) -> str:
-    version = ctypes.WinDLL("version", use_last_error=True)
+    version = _version_api()
     handle = ctypes.c_uint32()
     size = version.GetFileVersionInfoSizeW(str(executable), ctypes.byref(handle))
     if not size:
         raise AutoCADLeaseError("verified acad.exe version metadata is unavailable")
     buffer = ctypes.create_string_buffer(size)
-    if not version.GetFileVersionInfoW(str(executable), 0, size, buffer):
+    buffer_pointer = ctypes.cast(buffer, ctypes.c_void_p)
+    if not version.GetFileVersionInfoW(str(executable), 0, size, buffer_pointer):
         raise AutoCADLeaseError("verified acad.exe version metadata is unavailable")
 
     class _FixedFileInfo(ctypes.Structure):
@@ -341,7 +387,9 @@ def _verified_file_version(executable: Path) -> str:
 
     value = ctypes.c_void_p()
     value_size = ctypes.c_uint32()
-    if not version.VerQueryValueW(buffer, "\\", ctypes.byref(value), ctypes.byref(value_size)):
+    if not version.VerQueryValueW(
+        buffer_pointer, "\\", ctypes.byref(value), ctypes.byref(value_size)
+    ):
         raise AutoCADLeaseError("verified acad.exe version metadata is unavailable")
     if value_size.value < ctypes.sizeof(_FixedFileInfo):
         raise AutoCADLeaseError("verified acad.exe version metadata is invalid")
@@ -359,36 +407,69 @@ def _verified_file_version(executable: Path) -> str:
     )
 
 
-def _create_and_verify_private_directory(path: Path, user_sid: str) -> None:
+def _create_private_directory(path: Path, user_sid: str) -> bool:
+    """Create a path exclusively, or verify a safe existing directory without repair."""
     try:
-        path.mkdir(parents=True, exist_ok=True)
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        _assert_not_reparse(path)
+        if not path.is_dir():
+            raise AutoCADLeaseError("Windows lease directory is not a directory") from None
+        _verify_acl(path, user_sid)
+        return False
     except OSError as error:
         raise AutoCADLeaseError("unable to create Windows lease directory") from error
+    _assert_not_reparse(path)
     _set_private_acl(path, user_sid)
     _verify_acl(path, user_sid)
+    return True
 
 
-def _create_and_verify_private_file(path: Path, user_sid: str) -> None:
+def _create_private_file(path: Path, user_sid: str) -> bool:
+    """Create a path exclusively, or verify a safe existing file without repair."""
     try:
-        path.touch(exist_ok=True)
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        _assert_not_reparse(path)
+        if not path.is_file():
+            raise AutoCADLeaseError("Windows lease path is not a regular file") from None
+        _verify_acl(path, user_sid)
+        return False
     except OSError as error:
-        raise AutoCADLeaseError("unable to create Windows lease lock") from error
+        raise AutoCADLeaseError("unable to create Windows lease file") from error
+    else:
+        os.close(descriptor)
+    _assert_not_reparse(path)
     _set_private_acl(path, user_sid)
     _verify_acl(path, user_sid)
+    return True
+
+
+def _assert_not_reparse(path: Path) -> None:
+    try:
+        details = path.lstat()
+    except OSError as error:
+        raise AutoCADLeaseError("unable to inspect Windows lease path") from error
+    attributes = getattr(details, "st_file_attributes", 0)
+    if stat.S_ISLNK(details.st_mode) or attributes & _FILE_ATTRIBUTE_REPARSE_POINT:
+        raise AutoCADLeaseError("Windows lease path must not be a reparse point")
 
 
 def _set_private_acl(path: Path, user_sid: str) -> None:
     try:
+        ntsecuritycon = importlib.import_module("ntsecuritycon")
         security = importlib.import_module("win32security")
         dacl = security.ACL()
-        dacl.AddAccessAllowedAce(
+        dacl.AddAccessAllowedAceEx(
             security.ACL_REVISION,
-            security.FILE_ALL_ACCESS,
+            0,
+            ntsecuritycon.FILE_ALL_ACCESS,
             security.ConvertStringSidToSid(user_sid),
         )
-        dacl.AddAccessAllowedAce(
+        dacl.AddAccessAllowedAceEx(
             security.ACL_REVISION,
-            security.FILE_ALL_ACCESS,
+            0,
+            ntsecuritycon.FILE_ALL_ACCESS,
             security.ConvertStringSidToSid(_SYSTEM_SID),
         )
         descriptor = security.SECURITY_DESCRIPTOR()
@@ -402,32 +483,39 @@ def _set_private_acl(path: Path, user_sid: str) -> None:
         raise AutoCADLeaseUnavailableError("Windows lease ACL cannot be established") from error
 
 
-def _verify_acl(path: Path, user_sid: str) -> None:
+def _verify_acl(path: Path, user_sid: str) -> None:  # noqa: C901 - explicit ACL fail-closed checks
     try:
+        ntsecuritycon = importlib.import_module("ntsecuritycon")
         security = importlib.import_module("win32security")
-        security_information = (
-            security.DACL_SECURITY_INFORMATION | security.PROTECTED_DACL_SECURITY_INFORMATION
-        )
-        descriptor = security.GetFileSecurity(str(path), security_information)
+        descriptor = security.GetFileSecurity(str(path), security.DACL_SECURITY_INFORMATION)
         control, _ = descriptor.GetSecurityDescriptorControl()
         if not control & security.SE_DACL_PROTECTED:
             raise AutoCADLeaseError("Windows lease ACL is not protected")
         dacl = descriptor.GetSecurityDescriptorDacl()
         if dacl is None:
             raise AutoCADLeaseError("Windows lease ACL is absent")
-        allowed_sids: set[str] = set()
+        expected_sids = {user_sid, _SYSTEM_SID}
+        seen_sids: set[str] = set()
+        if dacl.GetAceCount() != len(expected_sids):
+            raise AutoCADLeaseError("Windows lease ACL contains unexpected entries")
         for index in range(dacl.GetAceCount()):
             ace = dacl.GetAce(index)
             if ace[0][0] != security.ACCESS_ALLOWED_ACE_TYPE:
                 raise AutoCADLeaseError("Windows lease ACL contains a non-allow entry")
-            if ace[1] != security.FILE_ALL_ACCESS:
+            ace_flags = ace[0][1]
+            if ace_flags & ntsecuritycon.INHERIT_ONLY_ACE or ace_flags != 0:
+                raise AutoCADLeaseError("Windows lease ACL contains an ineffective inherited entry")
+            if ace[1] != ntsecuritycon.FILE_ALL_ACCESS:
                 raise AutoCADLeaseError("Windows lease ACL does not grant full controller access")
-            allowed_sids.add(security.ConvertSidToStringSid(ace[2]))
+            sid = security.ConvertSidToStringSid(ace[2])
+            if sid not in expected_sids or sid in seen_sids:
+                raise AutoCADLeaseError("Windows lease ACL contains a foreign owner entry")
+            seen_sids.add(sid)
     except AutoCADLeaseError:
         raise
     except (ImportError, OSError, AttributeError, IndexError, TypeError) as error:
         raise AutoCADLeaseUnavailableError("Windows lease ACL cannot be verified") from error
-    if allowed_sids != {user_sid, _SYSTEM_SID}:
+    if seen_sids != expected_sids:
         raise AutoCADLeaseError("Windows lease ACL is not current-user/SYSTEM-only")
 
 
@@ -458,21 +546,25 @@ def _read_contended_owner(metadata_path: Path, user_sid: str) -> LeaseOwner | No
         return None
     try:
         _verify_acl(metadata_path, user_sid)
-        owner, _ = _read_metadata(metadata_path)
+        owner, _ = _read_metadata(metadata_path, expected_lease_key=metadata_path.parent.name)
         return owner
     except AutoCADLeaseError:
         return None
 
 
 def _recoverable_prior_owner(
-    metadata_path: Path, user_sid: str, *, missing_metadata_allowed: bool
+    metadata_path: Path,
+    user_sid: str,
+    *,
+    expected_lease_key: str,
+    missing_metadata_allowed: bool,
 ) -> LeaseOwner | None:
     if not metadata_path.exists():
         if missing_metadata_allowed:
             return None
         raise AutoCADLeaseError("lease metadata is unexpectedly missing")
     _verify_acl(metadata_path, user_sid)
-    prior_owner, released_at = _read_metadata(metadata_path)
+    prior_owner, released_at = _read_metadata(metadata_path, expected_lease_key=expected_lease_key)
     if released_at is not None:
         return None
     liveness = _owner_liveness(prior_owner)
@@ -485,36 +577,97 @@ def _recoverable_prior_owner(
     raise AutoCADLeaseError("prior AutoCAD verification lease owner liveness is indeterminate")
 
 
-def _read_metadata(metadata_path: Path) -> tuple[LeaseOwner, str | None]:
+def _read_metadata(  # noqa: C901 - explicit fail-closed owner shape validation
+    metadata_path: Path, *, expected_lease_key: str
+) -> tuple[LeaseOwner, str | None]:
     try:
+        _assert_not_reparse(metadata_path)
+        if (
+            metadata_path.name != _METADATA_NAME
+            or metadata_path.parent.name != expected_lease_key
+            or not _KEY_PATTERN.fullmatch(expected_lease_key)
+        ):
+            raise ValueError("metadata location is invalid")
         payload = json.loads(metadata_path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict) or set(payload) != {"owner", "released_at_utc"}:
             raise ValueError("unexpected metadata shape")
         owner_payload = payload["owner"]
-        if not isinstance(owner_payload, dict):
+        owner_keys = {
+            "lease_key",
+            "pid",
+            "process_created_at_100ns",
+            "user_sid",
+            "computer_name",
+            "windows_session_id",
+            "acquired_at_utc",
+            "command",
+        }
+        if not isinstance(owner_payload, dict) or set(owner_payload) != owner_keys:
             raise ValueError("owner is not an object")
-        owner = LeaseOwner(**owner_payload)
+        if owner_payload["lease_key"] != expected_lease_key or not _KEY_PATTERN.fullmatch(
+            expected_lease_key
+        ):
+            raise ValueError("owner lease key is invalid")
+        if not _positive_int(owner_payload["pid"]):
+            raise ValueError("owner pid is invalid")
+        if not _positive_int(owner_payload["process_created_at_100ns"]):
+            raise ValueError("owner creation time is invalid")
+        if not _valid_sid(owner_payload["user_sid"]):
+            raise ValueError("owner SID is invalid")
+        if not _valid_computer_name(owner_payload["computer_name"]):
+            raise ValueError("owner computer name is invalid")
+        if not _nonnegative_int(owner_payload["windows_session_id"]):
+            raise ValueError("owner session is invalid")
+        _parse_utc_timestamp(owner_payload["acquired_at_utc"])
+        command = owner_payload["command"]
+        if not isinstance(command, list) or not all(isinstance(item, str) for item in command):
+            raise ValueError("owner command is invalid")
+        owner = LeaseOwner(
+            lease_key=owner_payload["lease_key"],
+            pid=owner_payload["pid"],
+            process_created_at_100ns=owner_payload["process_created_at_100ns"],
+            user_sid=owner_payload["user_sid"],
+            computer_name=owner_payload["computer_name"],
+            windows_session_id=owner_payload["windows_session_id"],
+            acquired_at_utc=owner_payload["acquired_at_utc"],
+            command=tuple(command),
+        )
         released_at = payload["released_at_utc"]
-        if released_at is not None and not isinstance(released_at, str):
-            raise ValueError("release timestamp is invalid")
+        if released_at is not None:
+            _parse_utc_timestamp(released_at)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as error:
         raise AutoCADLeaseError("lease metadata is corrupt") from error
-    if (
-        not _KEY_PATTERN.fullmatch(owner.lease_key)
-        or owner.pid <= 0
-        or owner.process_created_at_100ns <= 0
-    ):
-        raise AutoCADLeaseError("lease metadata is corrupt")
     return owner, released_at
+
+
+def _positive_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _nonnegative_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _valid_sid(value: object) -> bool:
+    return isinstance(value, str) and bool(_SID_PATTERN.fullmatch(value))
+
+
+def _valid_computer_name(value: object) -> bool:
+    return isinstance(value, str) and bool(value) and "\0" not in value and len(value) <= 255
+
+
+def _parse_utc_timestamp(value: object) -> None:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ValueError("timestamp is invalid")
+    parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
+    if parsed.tzinfo is None or parsed.utcoffset() != UTC.utcoffset(parsed):
+        raise ValueError("timestamp is not UTC")
 
 
 def _write_metadata(
     metadata_path: Path, owner: LeaseOwner, released_at_utc: str | None, user_sid: str
 ) -> None:
-    if metadata_path.exists():
-        _verify_acl(metadata_path, user_sid)
-    else:
-        _create_and_verify_private_file(metadata_path, user_sid)
+    _create_private_file(metadata_path, user_sid)
     payload = json.dumps(
         {"owner": asdict(owner), "released_at_utc": released_at_utc},
         sort_keys=True,
@@ -539,7 +692,7 @@ def _current_owner(lease_key: str, user_sid: str) -> LeaseOwner:
         computer_name=_computer_name(),
         windows_session_id=_current_windows_session_id(),
         acquired_at_utc=_utc_now(),
-        command=" ".join(sys.argv),
+        command=tuple(sys.argv),
     )
 
 
@@ -549,10 +702,10 @@ def _process_created_at_100ns(pid: int) -> int:
     if not process:
         raise AutoCADLeaseUnavailableError("Windows process creation time is unavailable")
     try:
-        created = _filetime()
-        exited = _filetime()
-        kernel = _filetime()
-        user = _filetime()
+        created = _FileTime()
+        exited = _FileTime()
+        kernel = _FileTime()
+        user = _FileTime()
         if not kernel32.GetProcessTimes(
             process,
             ctypes.byref(created),
@@ -572,10 +725,10 @@ def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate
     if not process:
         return "dead" if ctypes.get_last_error() == 87 else "indeterminate"
     try:
-        created = _filetime()
-        exited = _filetime()
-        kernel = _filetime()
-        user = _filetime()
+        created = _FileTime()
+        exited = _FileTime()
+        kernel = _FileTime()
+        user = _FileTime()
         if not kernel32.GetProcessTimes(
             process,
             ctypes.byref(created),
@@ -590,20 +743,46 @@ def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate
         kernel32.CloseHandle(process)
 
 
-def _filetime() -> ctypes.Structure:
-    class _FileTime(ctypes.Structure):
-        _fields_ = [("dwLowDateTime", ctypes.c_uint32), ("dwHighDateTime", ctypes.c_uint32)]
-
-    return _FileTime()
-
-
 def _kernel32() -> ctypes.WinDLL:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.OpenProcess.argtypes = (ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32)
     kernel32.OpenProcess.restype = ctypes.c_void_p
     kernel32.CloseHandle.argtypes = (ctypes.c_void_p,)
     kernel32.CloseHandle.restype = ctypes.c_int
+    kernel32.ProcessIdToSessionId.argtypes = (ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32))
+    kernel32.ProcessIdToSessionId.restype = ctypes.c_int
+    kernel32.GetComputerNameW.argtypes = (ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint32))
+    kernel32.GetComputerNameW.restype = ctypes.c_int
+    kernel32.GetProcessTimes.argtypes = (
+        ctypes.c_void_p,
+        ctypes.POINTER(_FileTime),
+        ctypes.POINTER(_FileTime),
+        ctypes.POINTER(_FileTime),
+        ctypes.POINTER(_FileTime),
+    )
+    kernel32.GetProcessTimes.restype = ctypes.c_int
     return kernel32
+
+
+def _version_api() -> ctypes.WinDLL:
+    version = ctypes.WinDLL("version", use_last_error=True)
+    version.GetFileVersionInfoSizeW.argtypes = (ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint32))
+    version.GetFileVersionInfoSizeW.restype = ctypes.c_uint32
+    version.GetFileVersionInfoW.argtypes = (
+        ctypes.c_wchar_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+    )
+    version.GetFileVersionInfoW.restype = ctypes.c_int
+    version.VerQueryValueW.argtypes = (
+        ctypes.c_void_p,
+        ctypes.c_wchar_p,
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_uint32),
+    )
+    version.VerQueryValueW.restype = ctypes.c_int
+    return version
 
 
 def _utc_now() -> str:

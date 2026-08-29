@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from autocad_mcp.adapter.protocol import AutoCADAdapter
+from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode, AutoCADAdapter
 
 
 class AdapterProvider(Protocol):
@@ -31,6 +31,15 @@ class WindowsAdapterProvider:
     def get(self) -> AutoCADAdapter:
         if self._factory is not None:
             return self._factory()
-        from autocad_mcp.adapter.windows import WindowsAutoCADAdapter
+        try:
+            from autocad_mcp.adapter.windows import WindowsAutoCADAdapter
+        except ModuleNotFoundError as error:
+            if error.name != "autocad_mcp.adapter.windows":
+                raise
+            raise AdapterError(
+                AdapterErrorCode.AUTOCAD_UNAVAILABLE,
+                "Windows AutoCAD adapter is unavailable",
+                retryable=True,
+            ) from error
 
         return WindowsAutoCADAdapter()

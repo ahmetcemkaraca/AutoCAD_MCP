@@ -49,6 +49,14 @@ def test_fake_reports_disconnected_state_and_rejects_document_operations() -> No
     assert raised.value.retryable is True
 
 
+def test_fake_reconnects_from_disconnected_state_and_recovers_entity_operations() -> None:
+    adapter = FakeAutoCADAdapter(connected=False)
+
+    assert adapter.reconnect().connected is True
+    assert adapter.list_entities()[0].handle == "10"
+    assert adapter.get_entity_info(1001).object_name == "AcDbLine"
+
+
 def test_fake_reports_no_document_state_and_rejects_entity_operations() -> None:
     adapter = FakeAutoCADAdapter(document_name=None)
 
@@ -88,11 +96,14 @@ def test_fake_has_no_creation_or_editing_surface() -> None:
     }
 
     assert not forbidden & set(dir(adapter))
-    assert set(adapter.__class__.__dict__) >= {
+    public_surface = {name for name in adapter.__class__.__dict__ if not name.startswith("_")}
+    assert public_surface == {
         "status",
         "reconnect",
         "list_entities",
         "get_entity_info",
+        "fail_next",
+        "calls",
     }
 
 

@@ -37,12 +37,7 @@ class FakeAutoCADAdapter:
         """Return the immutable record of adapter operations."""
         return self._calls
 
-    def status(self) -> ConnectionInfo:
-        self._calls += (("status", None),)
-        error = self._next_error
-        self._next_error = None
-        if error is not None:
-            raise error
+    def _connection_info(self) -> ConnectionInfo:
         if not self._connected:
             return ConnectionInfo(False, None, None, None, None, None, AdapterCapabilityReport())
         if self._document_name is None:
@@ -65,33 +60,22 @@ class FakeAutoCADAdapter:
             AdapterCapabilityReport(frozenset(AdapterCapability)),
         )
 
+    def status(self) -> ConnectionInfo:
+        self._calls += (("status", None),)
+        error = self._next_error
+        self._next_error = None
+        if error is not None:
+            raise error
+        return self._connection_info()
+
     def reconnect(self) -> ConnectionInfo:
         self._calls += (("reconnect", None),)
         error = self._next_error
         self._next_error = None
         if error is not None:
             raise error
-        if not self._connected:
-            return ConnectionInfo(False, None, None, None, None, None, AdapterCapabilityReport())
-        if self._document_name is None:
-            return ConnectionInfo(
-                True,
-                "AutoCAD",
-                "contract",
-                "contract",
-                None,
-                None,
-                AdapterCapabilityReport(frozenset({AdapterCapability.CONNECTION})),
-            )
-        return ConnectionInfo(
-            True,
-            "AutoCAD",
-            "contract",
-            "contract",
-            self._document_name,
-            True,
-            AdapterCapabilityReport(frozenset(AdapterCapability)),
-        )
+        self._connected = True
+        return self._connection_info()
 
     def list_entities(self) -> tuple[EntitySummary, ...]:
         self._calls += (("list_entities", None),)

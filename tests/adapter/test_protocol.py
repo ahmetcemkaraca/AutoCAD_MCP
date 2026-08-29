@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError
-from types import MappingProxyType
 
 import pytest
 from autocad_mcp.adapter.capabilities import AdapterCapability, AdapterCapabilityReport
@@ -59,8 +59,9 @@ def test_protocol_values_and_error_are_immutable() -> None:
     capabilities = AdapterCapabilityReport(frozenset({AdapterCapability.CONNECTION}))
     connection = ConnectionInfo(True, "AutoCAD", "2026", "2026", "contract.dwg", True, capabilities)
     summary = EntitySummary(1001, "10", "AcDbLine", "0")
-    details = EntityDetails(1001, "10", "AcDbLine", "0", {"color": 256})
-    error = AdapterError(AdapterErrorCode.COM_BUSY, "AutoCAD is busy", details={"attempt": 1})
+    properties = {"metadata": {"tags": ["original"]}}
+    details = EntityDetails(1001, "10", "AcDbLine", "0", properties)
+    error = AdapterError(AdapterErrorCode.COM_BUSY, "AutoCAD is busy", details=properties)
 
     for value, field, replacement in (
         (connection, "connected", False),
@@ -69,14 +70,28 @@ def test_protocol_values_and_error_are_immutable() -> None:
     ):
         with pytest.raises(FrozenInstanceError):
             setattr(value, field, replacement)
-    assert isinstance(details.properties, MappingProxyType)
     with pytest.raises(TypeError):
-        details.properties["color"] = 7  # type: ignore[index]
+        details.properties["metadata"] = {}  # type: ignore[index]
     with pytest.raises(AttributeError):
         error.code = AdapterErrorCode.AUTOCAD_UNAVAILABLE
-    assert isinstance(error.details, MappingProxyType)
     with pytest.raises(TypeError):
-        error.details["attempt"] = 2  # type: ignore[index]
+        error.details["metadata"] = {}  # type: ignore[index]
+
+    properties["metadata"]["source"] = "source mutation"
+    properties["metadata"]["tags"].append("source mutation")
+
+    assert details.properties == {"metadata": {"tags": ["original"]}}
+    assert error.details == {"metadata": {"tags": ["original"]}}
+    with pytest.raises(TypeError):
+        details.properties["metadata"]["source"] = "exposed mutation"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        error.details["metadata"]["source"] = "exposed mutation"  # type: ignore[index]
+    with pytest.raises(TypeError):
+        details.properties["metadata"]["tags"].append("exposed mutation")  # type: ignore[index]
+    with pytest.raises(TypeError):
+        error.details["metadata"]["tags"].append("exposed mutation")  # type: ignore[index]
+    assert json.dumps(details.properties, sort_keys=True) == '{"metadata": {"tags": ["original"]}}'
+    assert json.dumps(error.details, sort_keys=True) == '{"metadata": {"tags": ["original"]}}'
 
 
 def test_public_protocol_exposes_only_read_only_adapter_methods() -> None:

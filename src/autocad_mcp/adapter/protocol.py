@@ -3,11 +3,100 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from types import MappingProxyType
-from typing import Protocol
+from typing import NoReturn, Protocol
 
 from autocad_mcp.adapter.capabilities import AdapterCapabilityReport
 from autocad_mcp.core.models import JsonValue
+
+
+class _FrozenJsonDict(dict[str, JsonValue]):
+    """A JSON-serializable mapping that rejects all mutation."""
+
+    def __init__(self, values: Mapping[str, JsonValue]) -> None:
+        super().__init__((key, _freeze_json_value(value)) for key, value in values.items())
+
+    @staticmethod
+    def _immutable() -> NoReturn:
+        raise TypeError("JSON value is immutable")
+
+    def __setitem__(self, key: str, value: JsonValue) -> None:
+        self._immutable()
+
+    def __delitem__(self, key: str) -> None:
+        self._immutable()
+
+    def __ior__(self, value: object) -> NoReturn:
+        self._immutable()
+
+    def clear(self) -> NoReturn:
+        self._immutable()
+
+    def pop(self, key: str, default: object = None) -> NoReturn:
+        self._immutable()
+
+    def popitem(self) -> NoReturn:
+        self._immutable()
+
+    def setdefault(self, key: str, default: JsonValue = None) -> NoReturn:
+        self._immutable()
+
+    def update(self, *args: object, **kwargs: JsonValue) -> NoReturn:
+        self._immutable()
+
+
+class _FrozenJsonList(list[JsonValue]):
+    """A JSON-serializable sequence that rejects all mutation."""
+
+    def __init__(self, values: list[JsonValue]) -> None:
+        super().__init__(_freeze_json_value(value) for value in values)
+
+    @staticmethod
+    def _immutable() -> NoReturn:
+        raise TypeError("JSON value is immutable")
+
+    def __setitem__(self, index: int | slice, value: JsonValue | list[JsonValue]) -> None:
+        self._immutable()
+
+    def __delitem__(self, index: int | slice) -> None:
+        self._immutable()
+
+    def __iadd__(self, value: list[JsonValue]) -> NoReturn:
+        self._immutable()
+
+    def __imul__(self, value: int) -> NoReturn:
+        self._immutable()
+
+    def append(self, value: JsonValue) -> NoReturn:
+        self._immutable()
+
+    def clear(self) -> NoReturn:
+        self._immutable()
+
+    def extend(self, values: list[JsonValue]) -> NoReturn:
+        self._immutable()
+
+    def insert(self, index: int, value: JsonValue) -> NoReturn:
+        self._immutable()
+
+    def pop(self, index: int = -1) -> NoReturn:
+        self._immutable()
+
+    def remove(self, value: JsonValue) -> NoReturn:
+        self._immutable()
+
+    def reverse(self) -> NoReturn:
+        self._immutable()
+
+    def sort(self, *, key: object = None, reverse: bool = False) -> NoReturn:
+        self._immutable()
+
+
+def _freeze_json_value(value: JsonValue) -> JsonValue:
+    if isinstance(value, Mapping):
+        return _FrozenJsonDict(value)
+    if isinstance(value, list):
+        return _FrozenJsonList(value)
+    return value
 
 
 class AdapterErrorCode(StrEnum):
@@ -39,7 +128,7 @@ class AdapterError(Exception):
         object.__setattr__(self, "code", code)
         object.__setattr__(self, "public_message", public_message)
         object.__setattr__(self, "retryable", retryable)
-        object.__setattr__(self, "details", MappingProxyType(dict(details or {})))
+        object.__setattr__(self, "details", _FrozenJsonDict(details or {}))
         object.__setattr__(self, "_sealed", True)
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -76,7 +165,7 @@ class EntityDetails:
     properties: Mapping[str, JsonValue] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "properties", MappingProxyType(dict(self.properties)))
+        object.__setattr__(self, "properties", _FrozenJsonDict(self.properties))
 
 
 class AutoCADAdapter(Protocol):

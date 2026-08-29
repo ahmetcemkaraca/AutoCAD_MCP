@@ -154,6 +154,40 @@ def test_entity_conversion_omits_non_json_optional_values() -> None:
     )
 
 
+def test_entity_conversion_rejects_scalar_and_mapping_key_subclasses() -> None:
+    """Subclassed scalar/proxy values must not cross the immutable JSON boundary."""
+    class ProxyInteger(int):
+        pass
+
+    class ProxyString(str):
+        pass
+
+    class ProxyFloat(float):
+        pass
+
+    entity = SimpleNamespace(
+        ObjectID=7,
+        Handle="A7",
+        ObjectName="AcDbLine",
+        Layer="0",
+        Color=ProxyInteger(3),
+        Linetype=ProxyString("Dashed"),
+        Length=ProxyFloat(4.5),
+        Center={ProxyString("point"): 1},
+        Area=2,
+        Radius=0.5,
+        Volume="safe",
+    )
+    manager, _ = manager_for(connected_application(entities=(entity,)))
+
+    detail = WindowsAutoCADAdapter(manager).get_entity_info(7)
+
+    assert detail.properties == {"area": 2, "volume": "safe", "radius": 0.5}
+    assert json.dumps(detail.properties, allow_nan=False) == (
+        '{"area": 2, "volume": "safe", "radius": 0.5}'
+    )
+
+
 def test_detail_not_found_is_a_public_error() -> None:
     """An absent entity is a normal lookup result, not a COM exception leak."""
     manager, _ = manager_for(connected_application())
@@ -177,6 +211,16 @@ def test_status_is_read_only_and_handles_no_document() -> None:
     assert status.read_only is None
     assert status.release_hint == "24.3"
     assert status.capabilities.available == frozenset({AdapterCapability.CONNECTION})
+
+
+def test_status_rejects_a_missing_active_document_member() -> None:
+    """Absent ActiveDocument is an adapter error, not a false no-document state."""
+    manager, _ = manager_for(SimpleNamespace(Name="AutoCAD", Version="24.3"))
+
+    with pytest.raises(AdapterError) as raised:
+        WindowsAutoCADAdapter(manager).status()
+
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
 
 
 def test_document_without_model_space_has_only_document_capability() -> None:
@@ -319,3 +363,60 @@ def test_one_shot_model_space_keeps_the_sampled_first_entity() -> None:
 
     assert adapter.list_entities() == (EntitySummary(7, "A7", "AcDbLine", "Annotations"),)
     assert adapter.get_entity_info(7).object_id == 7
+
+
+def test_status_does_not_overclaim_for_a_one_shot_iterator_that_cannot_next() -> None:
+    """Status must not inspect a one-shot iterator that only an operation can consume."""
+    class FailingIterator:
+        def __iter__(self) -> FailingIterator:
+            return self
+
+        def __next__(self) -> object:
+            raise RuntimeError("iterator read failed")
+
+    class Document:
+        Name = "drawing.dwg"
+        ReadOnly = True
+
+        @property
+        def ModelSpace(self) -> object:  # noqa: N802
+            return FailingIterator()
+
+    manager, _ = manager_for(
+        SimpleNamespace(Name="AutoCAD", Version="24.3", ActiveDocument=Document())
+    )
+    adapter = WindowsAutoCADAdapter(manager)
+
+    status = adapter.status()
+    assert not status.capabilities.supports(AdapterCapability.LIST_ENTITIES)
+    assert not status.capabilities.supports(AdapterCapability.GET_ENTITY_INFO)
+    assert status.capabilities.issues[0].member == "ModelSpace"
+
+    with pytest.raises(AdapterError) as raised:
+        adapter.list_entities()
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
+
+
+def test_one_shot_missing_identity_is_unsupported_only_during_operation() -> None:
+    """Status must defer identity validation, while listing validates the sampled entity."""
+    class Document:
+        Name = "drawing.dwg"
+        ReadOnly = True
+
+        @property
+        def ModelSpace(self) -> object:  # noqa: N802
+            return iter((SimpleNamespace(),))
+
+    manager, _ = manager_for(
+        SimpleNamespace(Name="AutoCAD", Version="24.3", ActiveDocument=Document())
+    )
+    adapter = WindowsAutoCADAdapter(manager)
+
+    status = adapter.status()
+    assert not status.capabilities.supports(AdapterCapability.LIST_ENTITIES)
+    assert not status.capabilities.supports(AdapterCapability.GET_ENTITY_INFO)
+
+    with pytest.raises(AdapterError) as raised:
+        adapter.get_entity_info(7)
+    assert raised.value.code is AdapterErrorCode.UNSUPPORTED_CAPABILITY
+    assert raised.value.details == {"capability": "get_entity_info"}

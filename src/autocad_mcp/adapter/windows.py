@@ -6,6 +6,7 @@ import logging
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import chain
+from typing import cast
 
 from autocad_mcp.adapter.capabilities import (
     AdapterCapability,
@@ -38,6 +39,7 @@ _OPTIONAL_PROPERTIES = (
 logger = logging.getLogger(__name__)
 _NO_SAMPLE = object()
 _EMPTY_MODEL_SPACE = object()
+_JSON_SCALAR_TYPES = frozenset({bool, int, str})
 
 
 def _issue(
@@ -89,6 +91,13 @@ def _model_space_sample(
         )
         return _NO_SAMPLE
     if entities is model_space:
+        issues.append(
+            _issue(
+                AdapterCapabilityIssueCode.MEMBER_ACCESS_FAILED,
+                AdapterCapability.LIST_ENTITIES,
+                "ModelSpace",
+            )
+        )
         return _NO_SAMPLE
     try:
         return next(entities)
@@ -156,16 +165,20 @@ def _entity_summary(entity: object) -> EntitySummary:
 
 
 def _json_value(value: object) -> JsonValue:
-    if value is None or isinstance(value, bool | int | str):
-        return value
-    if isinstance(value, float):
+    if value is None:
+        return None
+    if type(value) in _JSON_SCALAR_TYPES:
+        return cast(JsonValue, value)
+    if type(value) is float:
         if math.isfinite(value):
-            return value
+            return float(value)
         raise ValueError("Non-finite values are not JSON-safe")
+    if isinstance(value, bool | int | float | str):
+        raise TypeError("Optional AutoCAD scalar subclass is not JSON-safe")
     if isinstance(value, Mapping):
-        if not all(isinstance(key, str) for key in value):
+        if not all(type(key) is str for key in value):
             raise TypeError("JSON object keys must be strings")
-        return {key: _json_value(item) for key, item in value.items()}
+        return {str(key): _json_value(item) for key, item in value.items()}
     if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
         return [_json_value(item) for item in value]
     raise TypeError("Optional AutoCAD value is not JSON-safe")
@@ -193,10 +206,12 @@ def _unsupported(capability: AdapterCapability) -> AdapterError:
     )
 
 
-def _status_member(target: object, name: str) -> object | None:
+def _status_member(target: object, name: str, *, required: bool = False) -> object | None:
     try:
         return getattr(target, name)
-    except AttributeError:
+    except AttributeError as error:
+        if required:
+            raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
         return None
     except Exception as error:
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
@@ -230,7 +245,7 @@ class WindowsAutoCADAdapter:
 
     def status(self) -> ConnectionInfo:
         with self._session_manager.session(require_document=False) as connected:
-            document = _status_member(connected.application, "ActiveDocument")
+            document = _status_member(connected.application, "ActiveDocument", required=True)
             model_space = _status_member(document, "ModelSpace") if document is not None else None
             session = AutoCADSession(connected.com, connected.application, document, model_space)
             product = _status_member(connected.application, "Name")

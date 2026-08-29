@@ -26,22 +26,22 @@ No AutoCAD release is marked verified by the stewardship documentation pull requ
 
 ## Python
 
-`pyproject.toml` declares Python 3.12 or newer. The stewardship syntax check used Python 3.14.4, which does not establish dependency or COM compatibility. The stable-core delivery must test the locked dependencies on supported Windows Python releases before narrowing or expanding the Python claim.
+`pyproject.toml` declares Python 3.12 or newer, but its dependency tables and the absent `uv.lock` do not yet establish a reproducible uv environment. The stewardship syntax check used Python 3.14.4, which does not establish dependency or COM compatibility. The development-baseline epic must create and test the locked dependency set on supported Windows Python releases before narrowing or expanding the Python claim.
 
 ## Capability policy
 
 The target adapter will detect required COM capabilities after connecting. A feature should return a structured unsupported-capability result when the connected release lacks a required member; it should not assume that every API behaves identically across AutoCAD 2021-2026.
 
-## Promoting a release to verified
+## Promoting a compatibility scope to verified
 
-A release becomes verified only after the canonical smoke suite records:
+Verification is feature-specific; a passing narrow scope does not promote an entire AutoCAD release. The first read-only Stable-core scope records:
 
-1. dependency installation;
+1. frozen dependency installation;
 2. MCP startup and initialization;
 3. server status and document discovery;
-4. line and circle creation in a disposable drawing;
-5. entity query and property extraction;
-6. Undo cleanup;
-7. clean shutdown and reconnect behavior.
+4. entity listing and property extraction from a guarded disposable copy opened read-only;
+5. unchanged source/copy hashes and drawing fingerprint;
+6. clean shutdown; and
+7. reconnect behavior.
 
-Feature-specific compatibility, such as visual capture or 3D operations, is recorded separately after its own integration tests pass.
+Drawing mutation is a separate later scope. Its verification additionally requires trusted human approval, stale-state rejection, a fresh disposable copy per case, successful line/circle application through the edit-plan path, Undo recovery, injected mid-plan failure, and persistent `rollback_failed` handling. Visual capture, semantic analysis, and any future 3D operation likewise retain separate compatibility evidence. A release row may be promoted beyond `Targeted` only when canonical documentation names the exact verified scopes and links their reproducible records.

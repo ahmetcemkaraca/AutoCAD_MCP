@@ -4,6 +4,8 @@
 
 **Date:** 2026-08-25
 
+**Documentation revision:** 2026-08-28
+
 ## Purpose
 
 This design establishes a maintainable foundation for AutoCAD MCP after the original upstream repository became unavailable. The protected `archive` branch preserves the imported history. The rewritten `main` branch starts with a single adoption commit, and all subsequent work uses English-language feature branches and pull requests.
@@ -32,6 +34,7 @@ Every existing document must be reviewed. Documents that are obsolete, misleadin
 - `docs/project-status.md`: evidence-based implementation status
 - `docs/architecture.md`: current architecture and boundaries
 - `docs/roadmap.md`: ordered, acceptance-gated delivery roadmap
+- `docs/epics/README.md`: detailed dependency, ownership, and parallel-agent execution portfolio
 - `docs/testing.md`: platform-specific test strategy and commands
 - `docs/compatibility.md`: supported, targeted, and verified versions
 
@@ -77,9 +80,13 @@ The implementation prefers AutoCAD plot or export capabilities over desktop-wind
 
 The MCP client submits a constrained `EditPlan`; it cannot submit arbitrary executable code. The plan identifies the source snapshot, target handles, expected prior values, requested operations, and predicted effects.
 
-`preview_edit_plan` validates the plan and returns a human-readable dry-run plus a short-lived, single-use approval token. `apply_edit_plan` checks the drawing fingerprint and entity preconditions again immediately before applying supported operations in one AutoCAD Undo group.
+`preview_edit_plan` validates the plan and returns a human-readable dry-run, an immutable `preview_id`, and a digest of the document, snapshot, and requested operations. It does not return authority to mutate the drawing. A trusted host-side approval broker that is not exposed as a model-callable MCP tool may issue a short-lived, single-use approval token only after a human confirms that exact preview.
 
-Initial operations cover creation, movement, rotation, scaling, geometry or property updates, layer changes, and architectural component edits. Deletion is initially disabled because an Undo mark is not an atomic database transaction. Destructive operations require a later checkpoint and recovery design.
+The server stores the approval record and binds the token to the active document, AutoCAD session, snapshot fingerprint, preview digest, expiration, and single-use state. `apply_edit_plan` fails closed when the broker is absent or the binding cannot be proven, then checks the drawing fingerprint and entity preconditions again immediately before applying supported operations in one AutoCAD Undo group.
+
+Initial operations cover constrained creation, movement, rotation, scaling, geometry or property updates, and layer changes. Architectural semantic edits belong to the later architectural-semantics delivery. Deletion is initially disabled because an Undo mark is not an atomic database transaction. Destructive operations require a later checkpoint and recovery design.
+
+Every plan is fully preflighted before mutation. If an operation fails after mutation begins, the server invalidates the token, closes the Undo group, requests Undo, rereads the affected entities and drawing fingerprint, and returns per-operation outcomes with either `rolled_back` or `rollback_failed`. A rollback failure stops further mutation and requires explicit human recovery.
 
 Image capture is not part of the mandatory edit loop. A user or model may invoke it separately before or after an edit when visual evidence is useful.
 
@@ -90,9 +97,11 @@ Image capture is not part of the mandatory edit loop. A user or model may invoke
 - `get_entity_context`: detailed context for selected entities
 - `analyze_drawing`: an explicitly requested structured drawing graph
 - `capture_drawing_view`: an explicitly requested clean or annotated raster view
-- `preview_edit_plan`: validation, impact summary, and approval-token creation
+- `preview_edit_plan`: validation, impact summary, preview identifier/digest, and trusted-broker registration; it creates no mutation authority
 - `apply_edit_plan`: approved, preconditioned mutation in one Undo group
-- Existing basic drawing tools retained through the canonical adapter for compatibility
+- `list_entities` and `get_entity_info`: retained read-only compatibility queries during migration
+
+The stable core initially registers only `server_status`, `list_entities`, and `get_entity_info`. Historical `draw_line`, `draw_circle`, `extrude_profile`, and `revolve_profile` schemas are preserved as compatibility records but are not model-callable mutation paths. After safe edit plans pass, `draw_line` and `draw_circle` may return preview-only compatibility results that still require separate trusted human approval and `apply_edit_plan`. Extrusion and revolution remain unregistered until a separately reviewed 3D edit-primitive extension passes the same safety and recovery gates.
 
 ## Error Handling
 
@@ -106,7 +115,7 @@ Retries are limited to transient connection or COM-busy conditions. Validation e
 - A focused fake AutoCAD backend verifies the adapter contract without pretending to reproduce the entire COM object model.
 - MCP tests verify schemas, pagination, structured errors, and tool results.
 - Real integration and smoke tests run only on Windows with full AutoCAD.
-- AutoCAD 2026 is the first verified release.
+- AutoCAD 2026 is the first planned real validation release; it remains unverified until the documented smoke and integration gates pass.
 - AutoCAD 2021-2025 are documented as targeted until each is exercised in a real installation.
 - Integration tests use disposable drawing copies, avoid deletion by default, and group created test entities for Undo cleanup.
 
@@ -117,10 +126,10 @@ Linux is not a product runtime target. Passing Linux tests proves only that plat
 Each stage is a separately reviewable pull request with observable acceptance criteria:
 
 1. **Stewardship baseline:** honest README, contributor rules, complete documentation audit, canonical docs, status matrix, compatibility statement, and evidence-based roadmap.
-2. **Stable MCP core:** one server, delayed Windows imports, structured errors, focused fake backend, and baseline CI.
+2. **Stable MCP core:** reproducible dependency and launch metadata, one server with three active read-only/status tools, delayed Windows imports, structured errors, focused fake backend, and baseline CI.
 3. **Structured drawing context:** snapshots, handle-based queries, geometry extraction, and relationship graph.
 4. **On-demand visual capture:** clean and optional annotated output for current view, extents, and selection.
-5. **Safe edit plans:** dry-run, stale-state protection, approval tokens, and Undo grouping.
+5. **Safe edit plans:** dry-run, stale-state protection, trusted human approval outside model-callable tools, and verified Undo recovery.
 6. **Architectural semantics:** walls, doors, windows, columns, rooms, dimensions, and text with evidence.
 7. **General and mechanical semantics:** general relationships followed by parts, holes, axes, profiles, tolerances, and manufacturing context.
 8. **Validated advanced features:** surface unfolding, automatic dimensioning, and selected legacy ideas promoted only after focused automated and real-AutoCAD verification.

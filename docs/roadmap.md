@@ -6,6 +6,8 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 
 **Outcome:** Establish an honest, maintainable project surface.
 
+**Status:** In progress in draft pull request #1. The documentation archive and canonical surface exist; review corrections and `main` branch protection remain open gates.
+
 **Acceptance criteria:**
 
 - The imported Git history is preserved on the protected `archive` branch.
@@ -24,11 +26,16 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 **Acceptance criteria:**
 
 - One canonical MCP server owns all active tool registration.
+- PEP 621 dependency metadata, a committed `uv.lock`, and Windows-only COM markers produce a reproducible clean installation.
+- The documented launch command starts the installed `autocad_mcp.server` module and matches `mcp.json`; `src.server` remains only a tested temporary compatibility shim.
+- Package, initialization, and metadata versions agree.
+- Docker and Compose artifacts are either proven against the supported architecture or removed with a documented justification.
 - Platform-independent server and schema modules import without Windows COM installed.
-- A focused fake adapter supports connection, document, line, circle, entity query, and failure contract tests.
+- A focused fake adapter supports connection, document discovery, entity query, and failure contract tests without a mutation capability.
 - Existing Flask-oriented tests are replaced or archived with an explicit reason.
-- MCP startup and basic tool contracts pass automated tests.
-- A Windows smoke test connects to full AutoCAD 2026 using a disposable drawing.
+- MCP startup and the active `server_status`, `list_entities`, and `get_entity_info` contracts pass automated tests.
+- Historical mutation schemas are preserved as compatibility records but are absent from active registration and metadata.
+- A read-only Windows smoke test connects to full AutoCAD 2026 using a disposable drawing and proves unchanged drawing state.
 
 ## 3. Structured drawing context
 
@@ -68,14 +75,17 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 
 - Plans identify their source snapshot, target handles, expected prior state, and requested operations.
 - Dry-run produces an impact summary without changing the drawing.
-- Approval tokens are short-lived and single-use.
+- Preview returns an immutable identifier and plan digest but no mutation authority.
+- A trusted, non-model-callable host approval broker issues short-lived, single-use tokens only after human confirmation.
+- Approval records are bound server-side to the active document, AutoCAD session, snapshot fingerprint, plan digest, and expiration; application fails closed without a valid binding.
 - Stale snapshots, missing handles, read-only drawings, invalid values, and unsupported operations fail before mutation.
-- Supported changes run in one AutoCAD Undo group and return structured results.
-- Arbitrary executable code and deletion are not supported in the first delivery.
+- Supported changes run in one AutoCAD Undo group and return structured per-operation results.
+- Mid-plan failure triggers token invalidation, Undo, state reread, fingerprint verification, and an explicit `rolled_back` or `rollback_failed` outcome.
+- Arbitrary executable code, deletion, and architectural semantic edits are not supported in the first delivery.
 
 ## 6. Architectural semantics
 
-**Depends on:** Stages 3-5
+**Depends on:** Stage 3 for read-only architectural analysis. The optional confirmed-edit bridge additionally depends on Stage 5. Stage 4 capture is an optional evidence input, not a delivery gate.
 
 **Outcome:** Interpret and safely develop 2D architectural plans.
 
@@ -89,7 +99,7 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 
 ## 7. General and mechanical semantics
 
-**Depends on:** A stable architectural semantic model
+**Depends on:** General topology depends on Stage 3. Mechanical semantics additionally depends on the accepted general-topology contract and the evidence/confidence contract from Stage 6 read-only analysis.
 
 **Outcome:** Extend context beyond architectural plans without weakening evidence rules.
 
@@ -119,3 +129,5 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 ## Status updates
 
 A roadmap stage may be marked complete only in the pull request that provides its acceptance evidence. Partially implemented code remains in progress or experimental regardless of size.
+
+Detailed future work, dependencies, file ownership, parallel-agent lanes, tests, and evidence gates are defined in the [modernization epic portfolio](epics/README.md).

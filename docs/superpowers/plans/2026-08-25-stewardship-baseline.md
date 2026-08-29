@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-25-maintenance-and-modernization-design.md`
 
+**Execution status (2026-08-28):** Tasks 1-3 are implemented on `docs/stewardship-baseline`. Task 4 verification, push, draft pull-request creation, and readback are complete. Final review remains open while documentation corrections are incorporated and the `main` branch-protection acceptance gate is pending.
+
 ## Global Constraints
 
 - Product runtime support targets full AutoCAD 2021-2026 on Windows; AutoCAD LT and Linux-hosted AutoCAD are out of scope.
@@ -36,7 +38,7 @@
 - Consumes: the complete imported documentation inventory and source-code evidence collected during design
 - Produces: a lossless historical archive plus a human-readable classification record used by canonical docs
 
-- [ ] **Step 1: Record the pre-move inventory**
+- [x] **Step 1: Record the pre-move inventory**
 
 Run:
 
@@ -46,11 +48,11 @@ find docs docs_for_drafters monitoring-tools -type f -print | sort
 
 Expected: every imported document appears, including the duplicated drafter guides, planning documents, use cases, existing legacy integrations, and monitoring guide.
 
-- [ ] **Step 2: Move the imported corpus without rewriting its contents**
+- [x] **Step 2: Move the imported corpus without rewriting its contents**
 
 Use `git mv` so history remains traceable. Preserve the former top-level grouping below `docs/legacy/imported-2025/`; leave `docs/superpowers/` in place.
 
-- [ ] **Step 3: Write the legacy archive index**
+- [x] **Step 3: Write the legacy archive index**
 
 Create `docs/legacy/README.md` with these sections and conclusions:
 
@@ -73,15 +75,15 @@ Use these files as research input only. Confirm every claim against current sour
 
 Link to `document-audit.md` and the canonical `../README.md`.
 
-- [ ] **Step 4: Write the audit record**
+- [x] **Step 4: Write the audit record**
 
 Create `docs/legacy/document-audit.md` with one row for every original documentation file. Each row contains original path, archived path, classification, and evidence-based reason. Use the classifications `duplicate`, `obsolete`, `speculative`, `code-inconsistent`, `historical research`, and `unrelated tooling`. Record exact duplicate groups and representative missing endpoints or paths.
 
-- [ ] **Step 5: Verify lossless coverage**
+- [x] **Step 5: Verify lossless coverage**
 
 Compare the audit rows and archived files to the pre-move inventory. Confirm no imported document was deleted and no historical document remains in the canonical docs root.
 
-- [ ] **Step 6: Commit the archive**
+- [x] **Step 6: Commit the archive**
 
 ```bash
 git add docs docs_for_drafters monitoring-tools
@@ -101,7 +103,7 @@ git commit -m "docs: archive imported documentation"
 - Consumes: approved contributor rules and observed current MCP entry-point behavior
 - Produces: enforceable repository guidance and root metadata that no longer advertises unavailable endpoints or the removed upstream owner
 
-- [ ] **Step 1: Write `AGENTS.md`**
+- [x] **Step 1: Write `AGENTS.md`**
 
 Include scope, platform boundary, workflow, testing, documentation, security, and legacy-code sections. State these mandatory rules using `MUST` or `MUST NOT`:
 
@@ -117,7 +119,7 @@ Include scope, platform boundary, workflow, testing, documentation, security, an
 
 Also require focused changes, existing-dependency reuse, evidence-based docs, preservation of unrelated user changes, and explicit real-AutoCAD verification labels.
 
-- [ ] **Step 2: Replace the README**
+- [x] **Step 2: Replace the README**
 
 Keep it concise and use these sections:
 
@@ -141,15 +143,15 @@ An experimental Model Context Protocol bridge for automating full AutoCAD on Win
 
 Do not list feature classifications in the README. Link `Current limitations` to `docs/project-status.md`, and state that setup and live AutoCAD behavior are being revalidated before wider use.
 
-- [ ] **Step 3: Correct `mcp.json` metadata**
+- [x] **Step 3: Correct `mcp.json` metadata**
 
 Set version `0.1.0`, the current GitHub owner and URLs, an experimental description, Windows/full AutoCAD 2021-2026 target wording, and Python `>=3.12`. Retain only the seven tools registered by `src/server.py`: `draw_line`, `draw_circle`, `extrude_profile`, `revolve_profile`, `list_entities`, `get_entity_info`, and `server_status`. Do not advertise surface unfolding, Boolean, dimensioning, batch, or pattern tools as registered MCP tools.
 
-- [ ] **Step 4: Validate root claims**
+- [x] **Step 4: Validate root claims**
 
 Run searches proving that `README.md`, `AGENTS.md`, and `mcp.json` contain no old owner URL, no `production-ready` claim, no AutoCAD LT support, and no advanced tool registration absent from `src/server.py`.
 
-- [ ] **Step 5: Commit root stewardship files**
+- [x] **Step 5: Commit root stewardship files**
 
 ```bash
 git add AGENTS.md README.md mcp.json
@@ -172,11 +174,11 @@ git commit -m "docs: establish project stewardship rules"
 - Consumes: legacy audit, current source tree, approved modernization design
 - Produces: the only canonical documentation linked from the root README
 
-- [ ] **Step 1: Write the documentation index**
+- [x] **Step 1: Write the documentation index**
 
 Route maintainers and contributors to each canonical document, the approved design, the delivery plan, and the legacy archive. State that only files linked by this index are current documentation.
 
-- [ ] **Step 2: Write the evidence-based project status**
+- [x] **Step 2: Write the evidence-based project status**
 
 Record these observed facts:
 
@@ -189,15 +191,15 @@ Record these observed facts:
 
 Separate `Observed in source`, `Not yet verified`, `Known inconsistencies`, and `Next validation gate`. Do not use a production-readiness label.
 
-- [ ] **Step 3: Write current and target architecture**
+- [x] **Step 3: Write current and target architecture**
 
 Describe the current duplicate server paths and direct COM boundary. Then summarize the approved target: one canonical server, delayed Windows adapter imports, structured drawing snapshots, explicitly invoked capture, constrained edit plans, and client-side vision. Keep future architecture visibly labeled as target design.
 
-- [ ] **Step 4: Write the roadmap**
+- [x] **Step 4: Write the roadmap**
 
 Create the eight approved stages: stewardship baseline, stable MCP core, structured drawing context, on-demand visual capture, safe edit plans, architectural semantics, general/mechanical semantics, and validated advanced features. Give each stage concrete acceptance criteria and dependencies. Avoid calendar promises.
 
-- [ ] **Step 5: Write testing guidance**
+- [x] **Step 5: Write testing guidance**
 
 Distinguish pure Python checks from Windows/AutoCAD integration checks. Document the currently available syntax command:
 
@@ -207,15 +209,15 @@ python -m compileall -q src tests
 
 Label Poetry dependency installation and pytest as intended commands pending baseline repair. State that Linux is only a test host for platform-independent components.
 
-- [ ] **Step 6: Write compatibility guidance**
+- [x] **Step 6: Write compatibility guidance**
 
 Use a table with `Targeted`, `Verified`, and `Out of scope` columns. Full AutoCAD 2021-2026 on Windows is targeted; no release is marked verified in this pull request; AutoCAD LT, macOS, and Linux-hosted AutoCAD are out of scope. Explain that AutoCAD 2026 is the first planned real validation environment.
 
-- [ ] **Step 7: Validate canonical links and claims**
+- [x] **Step 7: Validate canonical links and claims**
 
 Use a Python standard-library Markdown-link check for relative links in `README.md`, `AGENTS.md`, and canonical docs. Run `git diff --check main...HEAD -- . ':(exclude)docs/legacy/imported-2025/**'` and search for old owner references outside `docs/legacy/`. The archive exclusion preserves historical files byte-for-byte instead of rewriting their original whitespace.
 
-- [ ] **Step 8: Commit canonical documentation**
+- [x] **Step 8: Commit canonical documentation**
 
 ```bash
 git add docs
@@ -234,7 +236,7 @@ git commit -m "docs: add canonical project documentation"
 - Consumes: all prior task deliverables
 - Produces: a reviewable remote branch and draft pull request
 
-- [ ] **Step 1: Run repository checks**
+- [x] **Step 1: Run repository checks**
 
 ```bash
 python3 -m compileall -q src tests
@@ -248,16 +250,16 @@ Run the relative Markdown-link checker, JSON-parse `mcp.json`, verify every audi
 
 Confirm the README has one maintenance-handover sentence, no detailed status inventory, and no unsupported feature claim. Confirm every imported document is archived, contributor rules use mandatory language, and roadmap/status statements match source evidence.
 
-- [ ] **Step 3: Push the feature branch**
+- [x] **Step 3: Push the feature branch**
 
 ```bash
 git push --set-upstream origin docs/stewardship-baseline
 ```
 
-- [ ] **Step 4: Open the draft pull request**
+- [x] **Step 4: Open the draft pull request**
 
 Use title `docs: establish stewardship baseline` and an English body with summary, evidence, test commands, limitations, and the note that runtime behavior is unchanged. Open it as a draft against `main`.
 
-- [ ] **Step 5: Read back the pull request**
+- [x] **Step 5: Read back the pull request**
 
 Verify the PR is draft, targets `main`, uses the feature branch, contains only intended commits, and reports the actual verification results.

@@ -21,20 +21,14 @@ The adopted runtime and installation flow are being revalidated before wider use
 - Windows
 - Full AutoCAD 2021-2026; compatibility is targeted and tracked per release
 - Python 3.12 or newer
-- [uv](https://docs.astral.sh/uv/) or Poetry for dependency management
 
 AutoCAD LT and AutoCAD hosted on Linux or macOS are outside the supported scope. See the [compatibility policy](docs/compatibility.md).
 
 ## Development setup
 
-```powershell
-git clone https://github.com/ahmetcemkaraca/AutoCAD_MCP.git
-cd AutoCAD_MCP
-uv sync
-uv run python src/server.py
-```
+The adopted dependency declarations and launch metadata are not yet a reproducible development baseline. In particular, the repository has not validated a clean dependency installation or a successful MCP startup on the target Windows environment. Do not treat `uv sync`, Poetry installation, or the command currently stored in `mcp.json` as supported setup instructions.
 
-The command above starts the stdio MCP entry point configured by `mcp.json`. Live AutoCAD behavior must be validated on a disposable drawing while the stabilization work is in progress.
+The first modernization epic will establish and test the Windows setup and launch procedure. Until that work passes its acceptance gate, use the repository for source review and documentation work only. See the [project status](docs/project-status.md) and [epic portfolio](docs/epics/README.md).
 
 ## Documentation
 

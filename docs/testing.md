@@ -48,17 +48,17 @@ Use a disposable copy of every DWG. Mutation tests should group created entities
 
 AutoCAD 2026 is the first planned validation environment. Earlier targeted releases remain unverified until the same documented contract checks pass on a real installation.
 
-## Intended developer commands
+## Intended developer commands after the development-baseline epic
 
-After the stable-core test repair, the expected workflow is:
+After dependency metadata is migrated to PEP 621, a `uv.lock` is committed, and the stable-core test boundary is repaired, the expected workflow is:
 
 ```powershell
-uv sync
+uv sync --frozen --group dev
 uv run pytest
 uv run ruff check src tests
 ```
 
-These commands describe the intended workflow; this stewardship pull request does not claim they currently pass. When dependency and test repair lands, replace this note with fresh results and supported command variants.
+These commands describe the target workflow; this stewardship pull request does not claim that they currently install the adopted dependencies or pass. The current repository has no supported setup command. When dependency and test repair lands, replace this note with fresh Windows results and supported command variants.
 
 ## Documentation checks
 

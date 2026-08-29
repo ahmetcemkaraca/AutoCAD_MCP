@@ -21,12 +21,14 @@ Full AutoCAD on Windows
 
 `mcp.json` selects `src/server.py`, which manually declares MCP tools, resources, prompts, and handlers. AutoCAD operations call shared helpers that currently import Windows COM dependencies eagerly.
 
+Four selected-server tools can mutate a drawing directly. They do not currently pass through preview, trusted human approval, stale-state validation, or verified Undo recovery. Their presence is an adopted risk, not an approved target behavior; the stable-core delivery removes them from active registration until the safe edit-plan boundary exists.
+
 Two additional server directions exist:
 
 - `src/mcp_server.py` repeats the basic tool set with FastMCP.
 - `src/mcp_integration/enhanced_mcp_server.py` combines many experimental inspection, execution, generation, testing, and enterprise-oriented components.
 
-Neither is selected by the root MCP command. Consolidation must preserve observable basic behavior while removing this ambiguity.
+Neither is selected by the root MCP command. Consolidation preserves observable read-only/status behavior while removing this ambiguity. Historical mutation schemas are retained as compatibility evidence, not as active behavior, until the approved edit-plan safety boundary exists.
 
 ## Approved target
 
@@ -54,6 +56,8 @@ Full AutoCAD 2021-2026 on Windows
 
 One entry point owns tool registration and transport. Tool schemas, `mcp.json`, implementation names, tests, and documentation must agree. Normal logging uses standard error so stdio protocol messages remain valid.
 
+The first stable-core catalog is deliberately read-only: `server_status`, `list_entities`, and `get_entity_info`. Historical mutation schemas remain recorded but unregistered until they can route through the human-approved edit-plan boundary. No canonical MCP tool may call a direct creation adapter method before that boundary is accepted.
+
 ### Windows AutoCAD adapter
 
 Only this boundary imports `pythoncom`, `win32com`, or AutoCAD COM wrappers. It detects connected capabilities at runtime rather than assuming identical behavior across six releases. Pure data and MCP modules remain importable without COM.
@@ -72,9 +76,11 @@ The server produces the image and view metadata. Vision inference remains in the
 
 ### Constrained edit plans
 
-The client submits declarative operations rather than executable Python, AutoLISP, VBA, shell commands, or unrestricted `SendCommand` input. A preview validates the snapshot, handles, prior values, and requested operations before issuing a short-lived approval token.
+The client submits declarative operations rather than executable Python, AutoLISP, VBA, shell commands, or unrestricted `SendCommand` input. A preview validates the snapshot, handles, prior values, and requested operations, then returns a preview identifier and plan digest without mutation authority.
 
-Application checks those preconditions again and groups supported changes in one AutoCAD Undo group. Initial support excludes deletion because an Undo mark does not provide database-transaction atomicity.
+A trusted host-side approval broker, which is not exposed as a model-callable MCP tool, may issue a short-lived, single-use token after a human confirms that exact preview. The server binds the token to the document, AutoCAD session, snapshot, and plan digest. Application fails closed without that binding, checks the preconditions again, and groups supported changes in one AutoCAD Undo group. Initial support excludes deletion and semantic architectural edits.
+
+If a later operation fails, application invalidates the token, requests Undo, rereads affected state, and reports either verified rollback or `rollback_failed` with per-operation outcomes. An Undo mark is treated as a recovery mechanism, not database-transaction atomicity.
 
 ## Trust boundaries
 

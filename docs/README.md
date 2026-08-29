@@ -7,6 +7,7 @@ This index defines the current AutoCAD MCP documentation surface. Files below [`
 - [Project status](project-status.md): observed source state, known inconsistencies, and current validation limits
 - [Architecture](architecture.md): adopted architecture and approved modernization target
 - [Roadmap](roadmap.md): ordered deliveries with evidence-based acceptance gates
+- [Epic portfolio](epics/README.md): detailed, dependency-gated work packages for parallel AI-agent development
 - [Testing](testing.md): pure Python, MCP contract, and real AutoCAD test boundaries
 - [Compatibility](compatibility.md): targeted, verified, and excluded platforms and releases
 

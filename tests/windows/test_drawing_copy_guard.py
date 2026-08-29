@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import get_type_hints
 
@@ -167,24 +167,27 @@ def test_finalize_records_cleanup_or_preservation(tmp_path: Path) -> None:
     assert preserved_guard.copy_path.exists()
 
 
-def test_finalize_refuses_tampered_state_without_deleting_unrelated_directory(
+def test_finalize_refuses_coherent_ownership_retarget_without_deleting_unrelated_directory(
     tmp_path: Path,
 ) -> None:
     guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
-    original_run_directory = guard.copy_path.parent
     unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
     sentinel = unrelated / "keep.txt"
     sentinel.write_text("must survive", encoding="utf-8")
-    guard._run_directory = unrelated
-    guard._copy_path = unrelated / "drawing-copy.dwg"
+    ownership = guard._ownership
 
-    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
-        guard.finalize(preserve=False, reason="completed")
+    with pytest.raises(AttributeError):
+        guard._ownership = replace(
+            ownership,
+            temp_root=tmp_path,
+            run_directory=unrelated,
+            copy_path=unrelated / "drawing-copy.dwg",
+        )
 
-    assert raised.value.evidence.cleanup_succeeded is False
+    evidence = guard.finalize(preserve=False, reason="completed")
+    assert evidence.cleanup_succeeded is True
     assert sentinel.read_text(encoding="utf-8") == "must survive"
-    assert original_run_directory.exists()
 
 
 def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
@@ -208,6 +211,103 @@ def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
     assert evidence.copy_sha256_before == evidence.copy_sha256_after
     assert evidence.preserved is True
     assert Path(evidence.copy_path).exists()
+
+
+def test_prepare_marker_setup_failure_reports_no_copy_preserved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+    real_write_text = Path.write_text
+
+    def fail_marker_write(path: Path, text: str, **kwargs: object) -> int:
+        if path.name == ".drawing-copy-guard-token":
+            raise OSError("marker failure")
+        return real_write_text(path, text, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", fail_marker_write)
+
+    with pytest.raises(DrawingCopyViolation, match="guard setup failed") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is False
+    assert Path(raised.value.evidence.copy_path).exists() is False
+
+
+def test_prepare_copy_failure_reports_no_copy_preserved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+
+    def fail_copy(source_path: Path, copy_path: Path) -> Path:
+        raise OSError("copy failure")
+
+    monkeypatch.setattr(shutil, "copy2", fail_copy)
+
+    with pytest.raises(DrawingCopyViolation, match="copy preparation failed") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is False
+    assert Path(raised.value.evidence.copy_path).exists() is False
+
+
+def test_finalize_preserves_copy_after_marker_removal_and_latches_actual_state(
+    tmp_path: Path,
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    marker = guard.copy_path.parent / ".drawing-copy-guard-token"
+    marker.unlink()
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    assert raised.value.evidence.preserved is True
+    assert guard.copy_path.exists()
+    later = guard.finalize(preserve=False, reason="completed")
+    assert later.preserved is True
+
+
+def test_finalize_quarantines_before_post_move_validation_and_preserves_actual_location(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    original_directory = guard.copy_path.parent
+    real_replace = Path.replace
+
+    def move_then_tamper(path: Path, target: Path) -> Path:
+        result = real_replace(path, target)
+        if path == original_directory:
+            (Path(target) / ".drawing-copy-guard-token").unlink()
+        return result
+
+    monkeypatch.setattr(Path, "replace", move_then_tamper)
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused after quarantine") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    evidence = raised.value.evidence
+    assert evidence.preserved is True
+    assert "autocad-mcp-quarantine-" in evidence.copy_path
+    assert Path(evidence.copy_path).exists()
+    assert original_directory.exists() is False
+
+
+def test_partial_cleanup_reports_missing_copy_and_never_flips_to_preserved(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+
+    def remove_copy_then_fail(run_directory: Path) -> None:
+        (run_directory / "drawing-copy.dwg").unlink()
+        raise OSError("partial cleanup failure")
+
+    monkeypatch.setattr(shutil, "rmtree", remove_copy_then_fail)
+
+    with pytest.raises(DrawingCopyViolation, match="copy unavailable") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    assert raised.value.evidence.preserved is False
+    later = guard.finalize(preserve=False, reason="completed")
+    assert later.preserved is False
 
 
 def test_guard_source_does_not_import_com() -> None:

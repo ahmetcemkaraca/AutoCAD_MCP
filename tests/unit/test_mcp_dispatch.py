@@ -1,4 +1,4 @@
-"""Contract tests for pure MCP service dispatch and unavailable composition."""
+"""Contract tests for MCP dispatch and delayed adapter runtime composition."""
 
 import asyncio
 import logging

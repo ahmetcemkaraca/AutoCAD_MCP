@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
+import json
+import subprocess
 import sys
+from pathlib import Path
+from typing import NoReturn
 
 import pytest
 from autocad_mcp.adapter.capabilities import (
@@ -23,6 +26,7 @@ from autocad_mcp.core.models import (
     ServerStatusInput,
     ToolFailure,
     ToolSuccess,
+    response_json,
 )
 
 
@@ -30,6 +34,16 @@ def _service(adapter: FakeAutoCADAdapter):
     from autocad_mcp.adapter.service import AdapterToolService
 
     return AdapterToolService(StaticAdapterProvider(adapter))
+
+
+class RaisingAdapterProvider:
+    """Provider double that exposes a public adapter error before an operation starts."""
+
+    def __init__(self, error: AdapterError) -> None:
+        self._error = error
+
+    def get(self) -> NoReturn:
+        raise self._error
 
 
 @pytest.mark.anyio
@@ -166,6 +180,87 @@ async def test_adapter_errors_preserve_public_error_fields(code: AdapterErrorCod
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("code", tuple(AdapterErrorCode))
+async def test_provider_errors_preserve_public_error_fields(code: AdapterErrorCode) -> None:
+    """A provider error must not be reclassified as an internal dispatch failure."""
+    from autocad_mcp.adapter.service import AdapterToolService
+
+    response = await AdapterToolService(
+        RaisingAdapterProvider(
+            AdapterError(
+                code,
+                "Public provider failure",
+                retryable=True,
+                details={"context": {"operation": "provider_get"}},
+            )
+        )
+    ).invoke(ServerStatusInput())
+
+    assert isinstance(response, ToolFailure)
+    assert response.error.code is ErrorCode(code.value)
+    assert response.error.message == "Public provider failure"
+    assert response.error.retryable is True
+    assert response.error.details == {"context": {"operation": "provider_get"}}
+
+
+@pytest.mark.anyio
+async def test_detail_properties_are_detached_to_plain_json_values() -> None:
+    """Returning adapter-private frozen containers would leak an adapter implementation detail."""
+    from autocad_mcp.adapter.protocol import EntityDetails
+
+    adapter = FakeAutoCADAdapter(
+        entities=(
+            EntityDetails(
+                1001,
+                "10",
+                "AcDbLine",
+                "0",
+                {"nested": {"points": [(1, 2), {"coordinate": [3, 4]}]}},  # type: ignore[list-item]
+            ),
+        )
+    )
+
+    response = await _service(adapter).invoke(GetEntityInfoInput(1001))
+
+    assert isinstance(response, ToolSuccess)
+    properties = response.data["entity"]["properties"]  # type: ignore[index]
+    assert type(properties) is dict
+    assert type(properties["nested"]) is dict
+    assert type(properties["nested"]["points"]) is list
+    assert type(properties["nested"]["points"][0]) is list
+    assert type(properties["nested"]["points"][1]) is dict
+    assert json.loads(response_json(response))["entity"]["properties"] == {
+        "nested": {"points": [[1, 2], {"coordinate": [3, 4]}]}
+    }
+
+
+@pytest.mark.anyio
+async def test_adapter_error_details_are_detached_to_plain_json_values() -> None:
+    """Returning frozen adapter error details would leak private container subclasses."""
+    adapter = FakeAutoCADAdapter()
+    adapter.fail_next(
+        AdapterError(
+            AdapterErrorCode.COM_BUSY,
+            "AutoCAD is busy",
+            retryable=True,
+            details={"nested": [{"attempts": (1, 2)}]},  # type: ignore[list-item]
+        )
+    )
+
+    response = await _service(adapter).invoke(ServerStatusInput())
+
+    assert isinstance(response, ToolFailure)
+    details = response.error.details
+    assert type(details) is dict
+    assert type(details["nested"]) is list
+    assert type(details["nested"][0]) is dict
+    assert type(details["nested"][0]["attempts"]) is list
+    assert json.loads(response_json(response))["error"]["details"] == {
+        "nested": [{"attempts": [1, 2]}]
+    }
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("tool_input", "expected_call"),
     [
@@ -197,12 +292,20 @@ async def test_each_adapter_operation_crosses_to_thread_once(
 
 def test_production_runtime_imports_canonical_and_shim_without_com_modules() -> None:
     """Eager COM loading would make the production stdio entrypoint non-portable."""
-    com_modules = {"pythoncom", "win32com", "win32com.client", "pyautocad"}
-    for name in (*com_modules, "src.server", "autocad_mcp.server"):
-        sys.modules.pop(name, None)
+    command = (
+        "import autocad_mcp.server, src.server, sys; "
+        "assert not {'pythoncom', 'win32com', 'win32com.client', 'pyautocad'} & set(sys.modules)"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed interpreter and inline import assertion
+        [
+            sys.executable,
+            "-c",
+            command,
+        ],
+        capture_output=True,
+        check=False,
+        cwd=Path(__file__).parents[2],
+        text=True,
+    )
 
-    canonical = importlib.import_module("autocad_mcp.server")
-    shim = importlib.import_module("src.server")
-
-    assert shim.server is canonical.server
-    assert com_modules.isdisjoint(sys.modules)
+    assert result.returncode == 0, result.stderr

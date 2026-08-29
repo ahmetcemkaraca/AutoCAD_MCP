@@ -1,6 +1,7 @@
 """MCP service mapping for the synchronous read-only AutoCAD adapter."""
 
 import asyncio
+from collections.abc import Mapping
 from typing import assert_never
 
 from autocad_mcp.adapter.protocol import AdapterError, ConnectionInfo, EntityDetails, EntitySummary
@@ -9,6 +10,7 @@ from autocad_mcp.core.models import (
     BasicToolInput,
     ErrorCode,
     GetEntityInfoInput,
+    JsonValue,
     ListEntitiesInput,
     ServerStatusInput,
     ToolError,
@@ -26,8 +28,8 @@ class AdapterToolService:
 
     async def invoke(self, request: BasicToolInput) -> ToolResponse:
         """Run exactly one synchronous adapter operation outside the event loop."""
-        adapter = self._provider.get()
         try:
+            adapter = self._provider.get()
             if isinstance(request, ServerStatusInput):
                 return ToolSuccess(_status_data(await asyncio.to_thread(adapter.status)))
             if isinstance(request, ListEntitiesInput):
@@ -48,7 +50,7 @@ class AdapterToolService:
                     ErrorCode(error.code.value),
                     error.public_message,
                     retryable=error.retryable,
-                    details=dict(error.details),
+                    details=_plain_json_mapping(error.details),
                 )
             )
 
@@ -89,4 +91,16 @@ def _summary_data(entity: EntitySummary) -> dict[str, object]:
 
 
 def _details_data(entity: EntityDetails) -> dict[str, object]:
-    return {**_summary_data(entity), "properties": dict(entity.properties)}
+    return {**_summary_data(entity), "properties": _plain_json_mapping(entity.properties)}
+
+
+def _plain_json_mapping(values: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
+    return {key: _plain_json_value(value) for key, value in values.items()}
+
+
+def _plain_json_value(value: object) -> JsonValue:
+    if isinstance(value, Mapping):
+        return {str(key): _plain_json_value(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_plain_json_value(item) for item in value]
+    return value  # type: ignore[return-value]

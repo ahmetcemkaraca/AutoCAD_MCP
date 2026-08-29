@@ -49,8 +49,12 @@ def test_manifest_catalog_matches_the_canonical_tool_definitions() -> None:
     manifest = json.loads((Path(__file__).parents[2] / "mcp.json").read_text(encoding="utf-8"))
     server = manifest["mcpServers"]["autocad-mcp"]
 
-    assert [tool["name"] for tool in manifest["tools"]] == [
-        definition.name for definition in TOOL_DEFINITIONS
+    assert [
+        {"name": tool["name"], "description": tool["description"]}
+        for tool in manifest["tools"]
+    ] == [
+        {"name": definition.name, "description": definition.description}
+        for definition in TOOL_DEFINITIONS
     ]
     assert server == {"command": "uv", "args": ["run", "python", "-m", "autocad_mcp.server"]}
 

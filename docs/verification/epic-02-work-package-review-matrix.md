@@ -12,7 +12,7 @@ work package or gate has passed.
 | E02-WP4: Add the service port and centralized dispatch | controller; independent contract reviewer; independent quality reviewer | `docs/verification/evidence/epic-02/E02-WP4-dispatch-tests.md` | controller records evidence for E02-G3 |
 | E02-WP5: Create the canonical package server and compatibility shim | controller; independent contract reviewer; independent quality reviewer | `docs/verification/evidence/epic-02/E02-WP5-stdio-contracts.md` | independent contract reviewer at E02-G3 |
 | E02-WP6: Retire duplicate server and mismatched Flask tests | controller; independent contract reviewer; independent quality reviewer | `docs/verification/evidence/epic-02/E02-WP6-retirement-and-regression.md` | independent quality reviewer at E02-G4 |
-| E02-WP7: Align manifest and canonical documentation | controller; independent contract reviewer; independent quality reviewer | `docs/verification/evidence/epic-02/E02-WP7-documentation-and-final-regression.md` | maintainer approval at E02-G4 |
+| E02-WP7: Align manifest and canonical documentation | controller; independent contract reviewer; independent quality reviewer | `docs/verification/evidence/epic-02/E02-WP7-documentation-and-final-regression.md` | independent quality reviewer at E02-G5 |
 
 Linux package, unit, and stdio-contract results are automated evidence only. They
 do not substitute for the Windows/full-AutoCAD evidence controlled by EPIC-03.

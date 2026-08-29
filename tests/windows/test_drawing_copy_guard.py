@@ -196,9 +196,10 @@ def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
     source = _source_dwg(tmp_path)
     real_copy = drawing_copy_guard._copy_source_to_new_file
 
-    def copy_then_change_source(source_path: Path, copy_path: Path) -> None:
-        real_copy(source_path, copy_path)
+    def copy_then_change_source(source_path: Path, copy_path: Path) -> tuple[int, int]:
+        identity = real_copy(source_path, copy_path)
         source.write_bytes(b"source changed during copy")
+        return identity
 
     monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", copy_then_change_source)
 
@@ -244,6 +245,48 @@ def test_prepare_copy_failure_reports_no_copy_preserved(
 
     assert raised.value.evidence.preserved is False
     assert Path(raised.value.evidence.copy_path).exists() is False
+
+
+def test_prepare_rejects_post_close_copy_replacement_before_ownership(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+    real_copy = drawing_copy_guard._copy_source_to_new_file
+
+    def copy_then_replace(source_path: Path, copy_path: Path) -> tuple[int, int]:
+        identity = real_copy(source_path, copy_path)
+        copy_path.unlink()
+        copy_path.write_bytes(b"replacement")
+        return identity
+
+    monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", copy_then_replace)
+
+    with pytest.raises(DrawingCopyViolation, match="copy changed during preparation") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is False
+    assert Path(raised.value.evidence.copy_path).read_bytes() == b"replacement"
+
+
+def test_prepare_rejects_post_close_marker_replacement_before_ownership(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+    real_write_marker = drawing_copy_guard._write_private_token
+
+    def write_then_replace_marker(path: Path, token: str) -> tuple[int, int]:
+        identity = real_write_marker(path, token)
+        path.unlink()
+        path.write_text("replacement", encoding="utf-8")
+        return identity
+
+    monkeypatch.setattr(drawing_copy_guard, "_write_private_token", write_then_replace_marker)
+
+    with pytest.raises(DrawingCopyViolation, match="marker changed during preparation") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is True
+    assert Path(raised.value.evidence.copy_path).exists()
 
 
 def test_finalize_preserves_copy_after_marker_removal_and_latches_actual_state(
@@ -334,6 +377,117 @@ def test_latched_violation_reports_replaced_copy_as_unavailable(tmp_path: Path) 
     evidence = guard.finalize(preserve=False, reason="completed")
     assert evidence.preserved is False
     assert sentinel.read_text(encoding="utf-8") == "must survive"
+
+
+def test_finalize_revalidates_copy_immediately_before_unlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    real_same_file = drawing_copy_guard._same_private_regular_file
+    copy_checks = 0
+
+    def replace_on_sink_check(path: Path, identity: tuple[int, int]) -> bool:
+        nonlocal copy_checks
+        if path == guard.copy_path:
+            copy_checks += 1
+            if copy_checks == 2:
+                path.unlink()
+                path.write_bytes(b"late replacement")
+        return real_same_file(path, identity)
+
+    monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    assert raised.value.evidence.cleanup_succeeded is False
+    assert raised.value.evidence.preserved is False
+    assert guard.copy_path.read_bytes() == b"late replacement"
+
+
+def test_finalize_revalidates_marker_immediately_before_unlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    marker = guard.copy_path.parent / ".drawing-copy-guard-token"
+    real_same_file = drawing_copy_guard._same_private_regular_file
+    marker_checks = 0
+
+    def replace_on_sink_check(path: Path, identity: tuple[int, int]) -> bool:
+        nonlocal marker_checks
+        if path == marker:
+            marker_checks += 1
+            if marker_checks == 2:
+                path.unlink()
+                path.write_text("late replacement", encoding="utf-8")
+        return real_same_file(path, identity)
+
+    monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    assert raised.value.evidence.cleanup_succeeded is False
+    assert raised.value.evidence.preserved is False
+    assert marker.read_text(encoding="utf-8") == "late replacement"
+
+
+def test_prepare_late_directory_failure_carries_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+
+    def fail_chmod(path: Path, mode: int) -> None:
+        raise OSError("chmod failure")
+
+    monkeypatch.setattr(drawing_copy_guard.os, "chmod", fail_chmod)
+
+    with pytest.raises(DrawingCopyViolation, match="guard setup failed") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is False
+
+
+def test_finalize_converts_marker_decode_and_iterdir_failures_to_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    marker = guard.copy_path.parent / ".drawing-copy-guard-token"
+    marker.write_bytes(b"\xff")
+
+    with pytest.raises(DrawingCopyViolation) as decode_failure:
+        guard.finalize(preserve=False, reason="completed")
+    assert decode_failure.value.evidence.preserved is True
+
+    second = DrawingCopyGuard.prepare(
+        _source_dwg(tmp_path, "second.dwg"), temp_root=tmp_path / "runs"
+    )
+
+    def fail_iterdir(path: Path) -> object:
+        raise OSError("iterdir failure")
+
+    monkeypatch.setattr(Path, "iterdir", fail_iterdir)
+    with pytest.raises(DrawingCopyViolation) as iterdir_failure:
+        second.finalize(preserve=False, reason="completed")
+    assert iterdir_failure.value.evidence.preserved is True
+
+
+def test_windows_directory_validation_does_not_require_posix_mode_bits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    directory = tmp_path / "windows-private"
+    directory.mkdir()
+    directory.chmod(0o755)
+
+    monkeypatch.setattr(drawing_copy_guard.os, "name", "nt")
+    assert drawing_copy_guard._is_private_directory(directory) is True
+
+
+def test_guard_documents_controlled_temp_root_trust_boundary() -> None:
+    source = (Path(__file__).parent / "drawing_copy_guard.py").read_text(encoding="utf-8")
+
+    assert "controlled test/infrastructure input" in source
+    assert "Task16" in source
 
 
 def test_guard_source_does_not_import_com() -> None:

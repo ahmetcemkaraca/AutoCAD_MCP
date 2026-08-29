@@ -1,4 +1,10 @@
-"""COM-free disposable drawing-copy guard for real AutoCAD test policies."""
+"""COM-free disposable drawing-copy guard for real AutoCAD test policies.
+
+The default temporary directory is the real runner's per-user namespace.  A
+``temp_root`` is a controlled test/infrastructure input and must not be writable
+by an untrusted principal.  A hostile same-user writer is not a supported caller;
+Task16's Windows lease/ACL verification is the real-run gate for that boundary.
+"""
 
 from __future__ import annotations
 
@@ -47,8 +53,13 @@ class _Ownership:
     run_directory: Path
     copy_path: Path
     marker_token: str
+    source_identity: tuple[int, int]
     marker_identity: tuple[int, int]
     copy_identity: tuple[int, int]
+
+
+class _CleanupRefusedError(Exception):
+    """A pre-unlink identity check failed without deleting the target."""
 
 
 class DrawingCopyViolation(RuntimeError):  # noqa: N818 - public contract name
@@ -87,75 +98,76 @@ class DrawingCopyGuard:
         object.__setattr__(self, name, value)
 
     @classmethod
-    def prepare(cls, source_path: Path, *, temp_root: Path | None = None) -> Self:
+    def prepare(cls, source_path: Path, *, temp_root: Path | None = None) -> Self:  # noqa: C901
         source = Path(source_path).resolve()
         if source.suffix.lower() != ".dwg" or not _is_regular_file(source):
             raise ValueError("source_path must be a regular .dwg file")
-        source_before = _sha256_regular_file(source)
         root = Path(tempfile.gettempdir()) if temp_root is None else Path(temp_root)
-        root.mkdir(parents=True, exist_ok=True)
-        root = root.resolve()
         run_id = str(uuid.uuid4())
         run_directory = root / f"{_RUN_PREFIX}{run_id}"
-        os.mkdir(run_directory, mode=0o700)
-        os.chmod(run_directory, 0o700)
         copy_path = run_directory / _COPY_NAME
-        marker_path = run_directory / _MARKER_NAME
-        marker_token = secrets.token_urlsafe(32)
         try:
-            _write_private_token(marker_path, marker_token)
+            source_before, source_identity = _sha256_and_identity_regular_file(source)
         except OSError as error:
-            evidence = _preparation_evidence(
+            raise _preparation_violation(
+                run_id, source, copy_path, "", None, "source preparation failed"
+            ) from error
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+            root = root.resolve()
+            run_directory = root / f"{_RUN_PREFIX}{run_id}"
+            copy_path = run_directory / _COPY_NAME
+            os.mkdir(run_directory, mode=0o700)
+            os.chmod(run_directory, 0o700)
+            marker_path = run_directory / _MARKER_NAME
+            marker_token = secrets.token_urlsafe(32)
+            marker_identity = _write_private_token(marker_path, marker_token)
+        except (OSError, UnicodeError, ValueError) as error:
+            raise _preparation_violation(
                 run_id,
                 source,
                 copy_path,
                 source_before,
                 _maybe_sha256_regular_file(source),
                 "guard setup failed",
-            )
-            raise DrawingCopyViolation("guard setup failed", evidence) from error
+            ) from error
+        copy_identity: tuple[int, int] | None = None
         try:
-            _copy_source_to_new_file(source, copy_path)
-        except OSError as error:
-            evidence = _preparation_evidence(
+            copy_identity = _copy_source_to_new_file(source, copy_path)
+            source_after = _maybe_sha256_regular_file(source)
+            copy_after = _maybe_sha256_regular_file(copy_path)
+            if not _same_private_regular_file(copy_path, copy_identity):
+                raise _CleanupRefusedError("copy changed during preparation")
+            if source == copy_path.resolve(strict=True):
+                raise _CleanupRefusedError("source and disposable copy must differ")
+            if not _same_regular_file(source, source_identity):
+                raise _CleanupRefusedError("source changed during preparation")
+            if not _same_private_regular_file(marker_path, marker_identity):
+                raise _CleanupRefusedError("marker changed during preparation")
+            if source_after != source_before:
+                raise _CleanupRefusedError("source changed during preparation")
+            if copy_after != source_before:
+                raise _CleanupRefusedError("initial copy hash does not match source")
+        except _CleanupRefusedError as error:
+            raise _preparation_violation(
                 run_id,
                 source,
                 copy_path,
                 source_before,
                 _maybe_sha256_regular_file(source),
-                f"copy preparation failed: {error}",
-            )
-            raise DrawingCopyViolation("copy preparation failed", evidence) from error
-
-        source_after = _maybe_sha256_regular_file(source)
-        copy_after = _maybe_sha256_regular_file(copy_path)
-        if source == copy_path.resolve(strict=True):
+                str(error),
+                copy_identity=copy_identity,
+            ) from error
+        except (OSError, UnicodeError, ValueError) as error:
             raise _preparation_violation(
                 run_id,
                 source,
                 copy_path,
                 source_before,
-                source_after,
-                "source and disposable copy must differ",
-            )
-        if source_after != source_before:
-            raise _preparation_violation(
-                run_id,
-                source,
-                copy_path,
-                source_before,
-                source_after,
-                "source changed during preparation",
-            )
-        if copy_after != source_before:
-            raise _preparation_violation(
-                run_id,
-                source,
-                copy_path,
-                source_before,
-                source_after,
-                "initial copy hash does not match source",
-            )
+                _maybe_sha256_regular_file(source),
+                "copy preparation failed",
+                copy_identity=copy_identity,
+            ) from error
         return cls(
             ownership=_Ownership(
                 run_id=run_id,
@@ -166,8 +178,9 @@ class DrawingCopyGuard:
                 run_directory=run_directory,
                 copy_path=copy_path,
                 marker_token=marker_token,
-                marker_identity=_identity(marker_path),
-                copy_identity=_identity(copy_path),
+                source_identity=source_identity,
+                marker_identity=marker_identity,
+                copy_identity=copy_identity,
             ),
             creation_key=_CREATION_KEY,
         )
@@ -192,12 +205,15 @@ class DrawingCopyGuard:
         self._close_without_save_attempted = True
         close_document(False)
 
-    def finalize(self, *, preserve: bool, reason: str) -> DrawingCopyEvidence:
+    def finalize(self, *, preserve: bool, reason: str) -> DrawingCopyEvidence:  # noqa: C901
         source_after = _maybe_sha256_regular_file(self.source_path)
         copy_after = _maybe_sha256_regular_file(self.copy_path)
         if self._preserve_reason is not None:
             return self._evidence(source_after, copy_after, cleanup_succeeded=False)
-        if source_after != self._ownership.source_sha256_before:
+        if (
+            source_after != self._ownership.source_sha256_before
+            or not _same_regular_file(self.source_path, self._ownership.source_identity)
+        ):
             self._latch_preservation("source changed during guarded run")
             evidence = self._evidence(source_after, copy_after, cleanup_succeeded=False)
             raise DrawingCopyViolation("source changed during guarded run", evidence)
@@ -212,19 +228,35 @@ class DrawingCopyGuard:
             raise DrawingCopyViolation(
                 "cleanup refused: guard ownership validation failed", evidence
             )
-        if self._unexpected_run_contents():
+        try:
+            unexpected_contents = self._unexpected_run_contents()
+        except (OSError, UnicodeError, ValueError) as error:
+            self._latch_preservation(f"cleanup refused: unable to inspect run directory: {error}")
+            evidence = self._evidence(source_after, copy_after, cleanup_succeeded=False)
+            raise DrawingCopyViolation(
+                "cleanup refused: unable to inspect run directory", evidence
+            ) from error
+        if unexpected_contents:
             self._latch_preservation("cleanup refused: run directory contains unexpected contents")
             evidence = self._evidence(source_after, copy_after, cleanup_succeeded=False)
             raise DrawingCopyViolation("cleanup refused: unexpected run contents", evidence)
         try:
+            if not _same_private_regular_file(self.copy_path, self._ownership.copy_identity):
+                raise _CleanupRefusedError("copy changed immediately before cleanup")
             self.copy_path.unlink()
             if not _same_private_regular_file(
                 self._marker_path(), self._ownership.marker_identity
             ):
-                raise OSError("marker changed during cleanup")
+                raise _CleanupRefusedError("marker changed immediately before cleanup")
             self._marker_path().unlink()
             self._ownership.run_directory.rmdir()
-        except OSError as error:
+        except _CleanupRefusedError as error:
+            self._latch_preservation(f"cleanup refused: {error}")
+            evidence = self._evidence(
+                source_after, _maybe_sha256_regular_file(self.copy_path), cleanup_succeeded=False
+            )
+            raise DrawingCopyViolation("cleanup refused: identity changed", evidence) from error
+        except (OSError, UnicodeError, ValueError) as error:
             self._latch_preservation(f"cleanup failed: {error}")
             evidence = self._evidence(
                 source_after, _maybe_sha256_regular_file(self.copy_path), cleanup_succeeded=False
@@ -247,7 +279,7 @@ class DrawingCopyGuard:
                 and _same_private_regular_file(self._marker_path(), self._ownership.marker_identity)
                 and _read_private_token(self._marker_path()) == self._ownership.marker_token
             )
-        except OSError:
+        except (OSError, UnicodeError, ValueError):
             return False
 
     def _unexpected_run_contents(self) -> bool:
@@ -309,10 +341,13 @@ def _preparation_violation(
     source_before: str,
     source_after: str | None,
     reason: str,
+    copy_identity: tuple[int, int] | None = None,
 ) -> DrawingCopyViolation:
     return DrawingCopyViolation(
         reason,
-        _preparation_evidence(run_id, source_path, copy_path, source_before, source_after, reason),
+        _preparation_evidence(
+            run_id, source_path, copy_path, source_before, source_after, reason, copy_identity
+        ),
     )
 
 
@@ -323,6 +358,7 @@ def _preparation_evidence(
     source_before: str,
     source_after: str | None,
     reason: str,
+    copy_identity: tuple[int, int] | None = None,
 ) -> DrawingCopyEvidence:
     copy_hash = _maybe_sha256_regular_file(copy_path)
     return DrawingCopyEvidence(
@@ -335,13 +371,15 @@ def _preparation_evidence(
         copy_sha256_after=copy_hash,
         active_full_name=None,
         close_without_save_attempted=False,
-        preserved=_is_private_regular_file(copy_path),
+        preserved=(
+            copy_identity is not None and _same_private_regular_file(copy_path, copy_identity)
+        ),
         preserve_reason=reason,
         cleanup_succeeded=False,
     )
 
 
-def _copy_source_to_new_file(source_path: Path, destination: Path) -> None:
+def _copy_source_to_new_file(source_path: Path, destination: Path) -> tuple[int, int]:
     """Copy through exclusively created, no-follow descriptors; never overwrite a destination."""
     source_fd = os.open(source_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
@@ -364,12 +402,13 @@ def _copy_source_to_new_file(source_path: Path, destination: Path) -> None:
             destination_fd, "wb", closefd=False
         ) as destination_file:
             shutil.copyfileobj(source, destination_file)
+        return destination_stat.st_dev, destination_stat.st_ino
     finally:
         os.close(source_fd)
         os.close(destination_fd)
 
 
-def _write_private_token(path: Path, token: str) -> None:
+def _write_private_token(path: Path, token: str) -> tuple[int, int]:
     descriptor = os.open(
         path,
         os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
@@ -380,6 +419,7 @@ def _write_private_token(path: Path, token: str) -> None:
         if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_nlink != 1:
             raise OSError("marker is not a private regular file")
         os.write(descriptor, token.encode("utf-8"))
+        return file_stat.st_dev, file_stat.st_ino
     finally:
         os.close(descriptor)
 
@@ -409,6 +449,14 @@ def _same_private_regular_file(path: Path, identity: tuple[int, int]) -> bool:
         return False
 
 
+def _same_regular_file(path: Path, identity: tuple[int, int]) -> bool:
+    try:
+        file_stat = path.lstat()
+        return stat.S_ISREG(file_stat.st_mode) and (file_stat.st_dev, file_stat.st_ino) == identity
+    except OSError:
+        return False
+
+
 def _is_private_regular_file(path: Path) -> bool:
     try:
         file_stat = path.lstat()
@@ -427,6 +475,10 @@ def _is_regular_file(path: Path) -> bool:
 def _is_private_directory(path: Path) -> bool:
     try:
         directory_stat = path.lstat()
+        if os.name == "nt":
+            reparse_point = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+            attributes = getattr(directory_stat, "st_file_attributes", 0)
+            return stat.S_ISDIR(directory_stat.st_mode) and not attributes & reparse_point
         owner_matches = not hasattr(os, "geteuid") or directory_stat.st_uid == os.geteuid()
         return (
             stat.S_ISDIR(directory_stat.st_mode)
@@ -438,6 +490,10 @@ def _is_private_directory(path: Path) -> bool:
 
 
 def _sha256_regular_file(path: Path) -> str:
+    return _sha256_and_identity_regular_file(path)[0]
+
+
+def _sha256_and_identity_regular_file(path: Path) -> tuple[str, tuple[int, int]]:
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
         file_stat = os.fstat(descriptor)
@@ -446,7 +502,7 @@ def _sha256_regular_file(path: Path) -> str:
         digest = hashlib.sha256()
         while block := os.read(descriptor, 1024 * 1024):
             digest.update(block)
-        return digest.hexdigest()
+        return digest.hexdigest(), (file_stat.st_dev, file_stat.st_ino)
     finally:
         os.close(descriptor)
 

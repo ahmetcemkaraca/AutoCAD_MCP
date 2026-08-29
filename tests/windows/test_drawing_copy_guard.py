@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import get_type_hints
 
+import drawing_copy_guard
 import pytest
 from drawing_copy_guard import DrawingCopyEvidence, DrawingCopyGuard, DrawingCopyViolation
 
@@ -194,14 +194,13 @@ def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = _source_dwg(tmp_path)
-    real_copy2 = shutil.copy2
+    real_copy = drawing_copy_guard._copy_source_to_new_file
 
-    def copy_then_change_source(source_path: Path, copy_path: Path) -> Path:
-        result = real_copy2(source_path, copy_path)
+    def copy_then_change_source(source_path: Path, copy_path: Path) -> None:
+        real_copy(source_path, copy_path)
         source.write_bytes(b"source changed during copy")
-        return result
 
-    monkeypatch.setattr(shutil, "copy2", copy_then_change_source)
+    monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", copy_then_change_source)
 
     with pytest.raises(DrawingCopyViolation, match="source changed during preparation") as raised:
         DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
@@ -217,14 +216,11 @@ def test_prepare_marker_setup_failure_reports_no_copy_preserved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = _source_dwg(tmp_path)
-    real_write_text = Path.write_text
 
-    def fail_marker_write(path: Path, text: str, **kwargs: object) -> int:
-        if path.name == ".drawing-copy-guard-token":
-            raise OSError("marker failure")
-        return real_write_text(path, text, **kwargs)
+    def fail_marker_write(path: Path, token: str) -> None:
+        raise OSError("marker failure")
 
-    monkeypatch.setattr(Path, "write_text", fail_marker_write)
+    monkeypatch.setattr(drawing_copy_guard, "_write_private_token", fail_marker_write)
 
     with pytest.raises(DrawingCopyViolation, match="guard setup failed") as raised:
         DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
@@ -238,10 +234,10 @@ def test_prepare_copy_failure_reports_no_copy_preserved(
 ) -> None:
     source = _source_dwg(tmp_path)
 
-    def fail_copy(source_path: Path, copy_path: Path) -> Path:
+    def fail_copy(source_path: Path, copy_path: Path) -> None:
         raise OSError("copy failure")
 
-    monkeypatch.setattr(shutil, "copy2", fail_copy)
+    monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", fail_copy)
 
     with pytest.raises(DrawingCopyViolation, match="copy preparation failed") as raised:
         DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
@@ -266,41 +262,32 @@ def test_finalize_preserves_copy_after_marker_removal_and_latches_actual_state(
     assert later.preserved is True
 
 
-def test_finalize_quarantines_before_post_move_validation_and_preserves_actual_location(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_finalize_refuses_unexpected_run_contents_without_deleting_them(tmp_path: Path) -> None:
     guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
-    original_directory = guard.copy_path.parent
-    real_replace = Path.replace
+    sentinel = guard.copy_path.parent / "unexpected.txt"
+    sentinel.write_text("must survive", encoding="utf-8")
 
-    def move_then_tamper(path: Path, target: Path) -> Path:
-        result = real_replace(path, target)
-        if path == original_directory:
-            (Path(target) / ".drawing-copy-guard-token").unlink()
-        return result
-
-    monkeypatch.setattr(Path, "replace", move_then_tamper)
-
-    with pytest.raises(DrawingCopyViolation, match="cleanup refused after quarantine") as raised:
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
         guard.finalize(preserve=False, reason="completed")
 
     evidence = raised.value.evidence
     assert evidence.preserved is True
-    assert "autocad-mcp-quarantine-" in evidence.copy_path
     assert Path(evidence.copy_path).exists()
-    assert original_directory.exists() is False
+    assert sentinel.read_text(encoding="utf-8") == "must survive"
 
 
 def test_partial_cleanup_reports_missing_copy_and_never_flips_to_preserved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    real_unlink = Path.unlink
 
-    def remove_copy_then_fail(run_directory: Path) -> None:
-        (run_directory / "drawing-copy.dwg").unlink()
-        raise OSError("partial cleanup failure")
+    def fail_marker_unlink(path: Path, **kwargs: object) -> None:
+        if path.name == ".drawing-copy-guard-token":
+            raise OSError("partial cleanup failure")
+        real_unlink(path, **kwargs)
 
-    monkeypatch.setattr(shutil, "rmtree", remove_copy_then_fail)
+    monkeypatch.setattr(Path, "unlink", fail_marker_unlink)
 
     with pytest.raises(DrawingCopyViolation, match="copy unavailable") as raised:
         guard.finalize(preserve=False, reason="completed")
@@ -308,6 +295,45 @@ def test_partial_cleanup_reports_missing_copy_and_never_flips_to_preserved(
     assert raised.value.evidence.preserved is False
     later = guard.finalize(preserve=False, reason="completed")
     assert later.preserved is False
+
+
+def test_exclusive_copy_destination_refuses_preexisting_or_symlinked_files(tmp_path: Path) -> None:
+    source = _source_dwg(tmp_path)
+    destination = tmp_path / "drawing-copy.dwg"
+    destination.write_bytes(b"existing sentinel")
+
+    with pytest.raises(FileExistsError):
+        drawing_copy_guard._copy_source_to_new_file(source, destination)
+    assert destination.read_bytes() == b"existing sentinel"
+
+    target = tmp_path / "unrelated.txt"
+    target.write_text("must survive", encoding="utf-8")
+    alias = tmp_path / "alias.dwg"
+    try:
+        alias.symlink_to(target)
+    except OSError as error:
+        pytest.skip(f"symlinks unavailable: {error}")
+
+    with pytest.raises(FileExistsError):
+        drawing_copy_guard._copy_source_to_new_file(source, alias)
+    assert target.read_text(encoding="utf-8") == "must survive"
+
+
+def test_latched_violation_reports_replaced_copy_as_unavailable(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    with pytest.raises(DrawingCopyViolation):
+        guard.assert_active_full_name(str(tmp_path / "unexpected.dwg"))
+    guard.copy_path.unlink()
+    sentinel = tmp_path / "unrelated.txt"
+    sentinel.write_text("must survive", encoding="utf-8")
+    try:
+        guard.copy_path.symlink_to(sentinel)
+    except OSError as error:
+        pytest.skip(f"symlinks unavailable: {error}")
+
+    evidence = guard.finalize(preserve=False, reason="completed")
+    assert evidence.preserved is False
+    assert sentinel.read_text(encoding="utf-8") == "must survive"
 
 
 def test_guard_source_does_not_import_com() -> None:

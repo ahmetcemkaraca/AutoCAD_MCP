@@ -295,4 +295,4 @@
 - [x] Test the ordered two-process MCP smoke: initialize/catalog, status, list, detail, shutdown, fingerprint, reconnect, and final fingerprint.
 - [x] On Linux, run the complete active platform-independent suite plus lock/metadata/lint/type/compile/JSON/stdio/diff checks at the final gate.
 - [x] Preserve the harness and handoff guide without a Windows result; keep 2026 targeted and do not create a passing verification record.
-- [ ] Inspect the exact final diff, push `origin/codex/local-autocad-testable`, create/update an unmerged draft PR with required evidence/limitations/rollback, and read back local, remote, and PR head SHAs.
+- [x] Inspect the exact final diff, push `origin/codex/local-autocad-testable`, create draft PR #2 with evidence/limitations/rollback, and read back matching local, remote, and PR head SHAs.

@@ -202,6 +202,51 @@ def test_close_does_not_call_document_after_lease_loss(tmp_path: Path) -> None:
     assert guard.copy_path.exists()
 
 
+def test_lease_loss_after_close_preserves_instead_of_destructive_cleanup(tmp_path: Path) -> None:
+    copy_path = tmp_path / "drawing-copy.dwg"
+    copy_path.write_bytes(b"copy")
+
+    class Guard:
+        def __init__(self) -> None:
+            self.copy_path = copy_path
+            self.finalize_calls: list[bool] = []
+
+        def assert_active_full_name(self, path: str) -> None:
+            assert path == str(copy_path)
+
+        @staticmethod
+        def close_without_save(callback: object) -> None:
+            callback(False)  # type: ignore[operator]
+
+        def finalize(self, *, preserve: bool, reason: str) -> None:
+            self.finalize_calls.append(preserve)
+            if not preserve:
+                copy_path.unlink()
+
+    class Lease(_Lease):
+        def assert_owned(self) -> None:
+            super().assert_owned()
+            if self.assertions == 4:
+                raise RuntimeError("lease lost before cleanup")
+
+    guard = Guard()
+    document = _Document(copy_path)
+    harness = ReadOnlyAutoCADHarness(
+        lease=Lease(),
+        guard=guard,  # type: ignore[arg-type]
+        opener=lambda path, readonly: document,
+        acl_verifier=lambda path: None,
+    )
+    harness.open()
+
+    with pytest.raises(RuntimeError, match="lease lost before cleanup"):
+        harness.close()
+
+    assert document.close_calls == [False]
+    assert guard.finalize_calls == [True]
+    assert copy_path.exists()
+
+
 def test_open_file_mutation_is_detected_and_preserved(tmp_path: Path) -> None:
     guard = _guard(tmp_path)
     document = _Document(guard.copy_path)
@@ -384,6 +429,78 @@ def test_fixture_releases_lease_after_guard_finalization_failure(
         next(fixture)
 
     assert lease.released == 1
+
+
+def test_fixture_teardown_keeps_primary_error_and_notes_later_failures(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "source.dwg"
+    installation = tmp_path / "acad.exe"
+    source.write_bytes(b"fixture")
+    installation.write_bytes(b"binary")
+    root = tmp_path / "guard-root"
+    copy_path = root / "run" / "drawing-copy.dwg"
+    copy_path.parent.mkdir(parents=True)
+    copy_path.write_bytes(b"copy")
+
+    class Lease:
+        released = 0
+
+        @staticmethod
+        def assert_owned() -> None:
+            return None
+
+        def release(self) -> None:
+            self.released += 1
+            raise RuntimeError("lease release failed")
+
+    class Guard:
+        def __init__(self) -> None:
+            self.copy_path = copy_path
+
+        @staticmethod
+        def finalize(*, preserve: bool, reason: str) -> None:
+            raise RuntimeError("guard finalization failed")
+
+    class Config:
+        @staticmethod
+        def getoption(name: str) -> bool:
+            return name == "--run-autocad"
+
+    class Request:
+        config = Config()
+
+    lease = Lease()
+    monkeypatch.setattr(smoke_conftest.sys, "platform", "win32")
+    monkeypatch.setenv("AUTOCAD_MCP_SMOKE_DISPOSABLE", "YES")
+    monkeypatch.setenv("AUTOCAD_MCP_SMOKE_SOURCE_DWG", str(source))
+    monkeypatch.setenv("AUTOCAD_MCP_AUTOCAD_INSTALLATION", str(installation))
+    monkeypatch.setattr(smoke_conftest, "_assert_readonly_source", lambda path: None)
+    monkeypatch.setattr(smoke_conftest, "build_autocad_lease_key", lambda **kwargs: "key")
+    monkeypatch.setattr(smoke_conftest.AutoCADLease, "acquire", lambda key: lease)
+    monkeypatch.setattr(smoke_conftest, "create_guard_run_temp_root", lambda: root)
+    monkeypatch.setattr(smoke_conftest.DrawingCopyGuard, "prepare", lambda *args, **kwargs: Guard())
+    monkeypatch.setattr(
+        smoke_conftest, "assert_guard_run_current_user_system_acl", lambda path: None
+    )
+    monkeypatch.setattr(
+        smoke_conftest, "_remove_empty_guard_root", lambda root, lease: (_ for _ in ()).throw(
+            RuntimeError("root cleanup failed")
+        )
+    )
+
+    fixture = smoke_conftest.autocad_smoke_session.__wrapped__(Request())
+    next(fixture)
+    primary = RuntimeError("primary test failure")
+    with pytest.raises(RuntimeError, match="primary test failure") as raised:
+        fixture.throw(primary)
+
+    assert raised.value is primary
+    assert lease.released == 1
+    notes = "\n".join(raised.value.__notes__)
+    assert "guard finalization failed" in notes
+    assert "root cleanup failed" in notes
+    assert "lease release failed" in notes
 
 
 def test_harness_has_no_writable_policy_class_or_mutation_apis() -> None:

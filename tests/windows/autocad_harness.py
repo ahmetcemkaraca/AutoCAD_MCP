@@ -101,6 +101,7 @@ class ReadOnlyAutoCADHarness:
             self._close_once(document)
             self._assert_file_unchanged()
             self._verify_acl()
+            self._assert_owned()
             return self._guard.finalize(preserve=False, reason="read-only smoke completed")
         except BaseException as error:
             document = self._document

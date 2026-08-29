@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import stat
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,6 +72,7 @@ def autocad_smoke_session(request: pytest.FixtureRequest) -> AutoCADSmokeSession
     lease = AutoCADLease.acquire(lease_key)
     guard: DrawingCopyGuard | None = None
     guard_root: Path | None = None
+    primary_error: BaseException | None = None
     try:
         lease.assert_owned()
         guard_root = create_guard_run_temp_root()
@@ -78,15 +80,23 @@ def autocad_smoke_session(request: pytest.FixtureRequest) -> AutoCADSmokeSession
         assert_guard_run_current_user_system_acl(guard.copy_path.parent)
         lease.assert_owned()
         yield AutoCADSmokeSession(source_path, installation_path, lease, guard)
+    except BaseException as error:
+        primary_error = error
+        raise
     finally:
-        try:
-            try:
-                if guard is not None and guard.copy_path.exists():
-                    guard.finalize(preserve=True, reason="session fixture ended")
-            finally:
-                _remove_empty_guard_root(guard_root)
-        finally:
-            lease.release()
+        cleanup_errors: list[tuple[str, BaseException]] = []
+        _attempt_cleanup(
+            cleanup_errors,
+            "guard preservation",
+            lambda: _preserve_existing_guard(guard),
+        )
+        _attempt_cleanup(
+            cleanup_errors,
+            "guard-root cleanup",
+            lambda: _remove_empty_guard_root(guard_root, lease),
+        )
+        _attempt_cleanup(cleanup_errors, "lease release", lease.release)
+        _raise_or_note_cleanup_errors(primary_error, cleanup_errors)
 
 
 def _required_absolute_file(
@@ -113,9 +123,39 @@ def _assert_readonly_source(source_path: Path) -> None:
         pytest.fail("AUTOCAD_MCP_SMOKE_SOURCE_DWG must be immutable (read-only)")
 
 
-def _remove_empty_guard_root(guard_root: Path | None) -> None:
+def _preserve_existing_guard(guard: DrawingCopyGuard | None) -> None:
+    if guard is not None and guard.copy_path.exists():
+        guard.finalize(preserve=True, reason="session fixture ended")
+
+
+def _remove_empty_guard_root(guard_root: Path | None, lease: AutoCADLease) -> None:
     if guard_root is None or not guard_root.exists():
         return
     assert_guard_run_current_user_system_acl(guard_root)
     if next(guard_root.iterdir(), None) is None:
+        lease.assert_owned()
         guard_root.rmdir()
+
+
+def _attempt_cleanup(
+    cleanup_errors: list[tuple[str, BaseException]], name: str, operation: Callable[[], object]
+) -> None:
+    try:
+        operation()
+    except BaseException as error:
+        cleanup_errors.append((name, error))
+
+
+def _raise_or_note_cleanup_errors(
+    primary_error: BaseException | None, cleanup_errors: list[tuple[str, BaseException]]
+) -> None:
+    if primary_error is not None:
+        for name, error in cleanup_errors:
+            primary_error.add_note(f"{name} also failed: {error}")
+        return
+    if not cleanup_errors:
+        return
+    _, first_error = cleanup_errors[0]
+    for name, error in cleanup_errors[1:]:
+        first_error.add_note(f"{name} also failed: {error}")
+    raise first_error

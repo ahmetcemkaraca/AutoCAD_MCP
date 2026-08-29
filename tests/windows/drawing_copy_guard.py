@@ -62,6 +62,14 @@ class _CleanupRefusedError(Exception):
     """A pre-unlink identity check failed without deleting the target."""
 
 
+class _CopyTransferError(OSError):
+    """A transfer failed after an exclusively created destination was identified."""
+
+    def __init__(self, copy_identity: tuple[int, int]) -> None:
+        super().__init__("copy transfer failed")
+        self.copy_identity = copy_identity
+
+
 class DrawingCopyViolation(RuntimeError):  # noqa: N818 - public contract name
     """A guard invariant failed; the associated disposable copy is preserved."""
 
@@ -158,6 +166,16 @@ class DrawingCopyGuard:
                 str(error),
                 copy_identity=copy_identity,
             ) from error
+        except _CopyTransferError as error:
+            raise _preparation_violation(
+                run_id,
+                source,
+                copy_path,
+                source_before,
+                _maybe_sha256_regular_file(source),
+                "copy preparation failed",
+                copy_identity=error.copy_identity,
+            ) from error
         except (OSError, UnicodeError, ValueError) as error:
             raise _preparation_violation(
                 run_id,
@@ -195,10 +213,21 @@ class DrawingCopyGuard:
 
     def assert_active_full_name(self, active_full_name: str) -> None:
         self._active_full_name = active_full_name
-        active_path = _normalized_windows_path(active_full_name)
-        if active_path == _normalized_windows_path(str(self.source_path)):
+        try:
+            active_path = _normalized_windows_path(active_full_name)
+            source_path = _normalized_windows_path(str(self.source_path))
+            copy_path = _normalized_windows_path(str(self.copy_path))
+        except (OSError, ValueError, RuntimeError) as error:
+            self._latch_preservation("active document path is invalid")
+            evidence = self._evidence(
+                _maybe_sha256_regular_file(self.source_path),
+                _maybe_sha256_regular_file(self.copy_path),
+                cleanup_succeeded=False,
+            )
+            raise DrawingCopyViolation("active document path is invalid", evidence) from error
+        if active_path == source_path:
             self._raise_violation("active document is the source drawing")
-        if active_path != _normalized_windows_path(str(self.copy_path)):
+        if active_path != copy_path:
             self._raise_violation("active document does not match the disposable copy")
 
     def close_without_save(self, close_document: Callable[[bool], None]) -> None:
@@ -398,10 +427,13 @@ def _copy_source_to_new_file(source_path: Path, destination: Path) -> tuple[int,
         destination_stat = os.fstat(destination_fd)
         if not stat.S_ISREG(destination_stat.st_mode) or destination_stat.st_nlink != 1:
             raise OSError("destination is not a private regular file")
-        with os.fdopen(source_fd, "rb", closefd=False) as source, os.fdopen(
-            destination_fd, "wb", closefd=False
-        ) as destination_file:
-            shutil.copyfileobj(source, destination_file)
+        try:
+            with os.fdopen(source_fd, "rb", closefd=False) as source, os.fdopen(
+                destination_fd, "wb", closefd=False
+            ) as destination_file:
+                shutil.copyfileobj(source, destination_file)
+        except Exception as error:
+            raise _CopyTransferError((destination_stat.st_dev, destination_stat.st_ino)) from error
         return destination_stat.st_dev, destination_stat.st_ino
     finally:
         os.close(source_fd)

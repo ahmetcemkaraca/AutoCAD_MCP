@@ -112,6 +112,19 @@ def test_active_full_name_resolves_supported_symlink_aliases(tmp_path: Path) -> 
     assert evidence.active_full_name == str(alias)
 
 
+def test_active_full_name_malformed_path_latches_preservation(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+
+    with pytest.raises(DrawingCopyViolation, match="active document path is invalid") as raised:
+        guard.assert_active_full_name("invalid\x00drawing.dwg")
+
+    assert raised.value.evidence.active_full_name == "invalid\x00drawing.dwg"
+    assert raised.value.evidence.preserved is True
+    evidence = guard.finalize(preserve=False, reason="completed")
+    assert evidence.preserved is True
+    assert guard.copy_path.exists()
+
+
 def test_close_without_save_passes_false(tmp_path: Path) -> None:
     guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
     calls: list[bool] = []
@@ -245,6 +258,27 @@ def test_prepare_copy_failure_reports_no_copy_preserved(
 
     assert raised.value.evidence.preserved is False
     assert Path(raised.value.evidence.copy_path).exists() is False
+
+
+def test_prepare_partial_copy_failure_preserves_original_private_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+
+    def write_part_then_fail(
+        source_file: object, destination_file: object, **kwargs: object
+    ) -> None:
+        destination_file.write(source_file.read(4))  # type: ignore[attr-defined]
+        raise OSError("copy transfer failure")
+
+    monkeypatch.setattr(drawing_copy_guard.shutil, "copyfileobj", write_part_then_fail)
+
+    with pytest.raises(DrawingCopyViolation, match="copy preparation failed") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    evidence = raised.value.evidence
+    assert evidence.preserved is True
+    assert Path(evidence.copy_path).read_bytes() == b"safe"
 
 
 def test_prepare_rejects_post_close_copy_replacement_before_ownership(

@@ -5,13 +5,12 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import tomllib
+from pathlib import Path
 
 from packaging.requirements import Requirement
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -26,7 +25,9 @@ def _source_version_from_synchronized_venv() -> str:
     """Import the source module without relying on PYTHONPATH."""
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
-    result = subprocess.run(
+    # The interpreter and command are fixed test-controlled values; PYTHONPATH is explicitly
+    # removed before this invocation.
+    result = subprocess.run(  # noqa: S603
         [_synchronized_python(), "-c", "from src import __version__; print(__version__)"],
         capture_output=True,
         check=False,

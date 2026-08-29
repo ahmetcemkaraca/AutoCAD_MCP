@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import sys
 
-import pytest
 from autocad_mcp.adapter.fake import FakeAutoCADAdapter
-from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode
 from autocad_mcp.adapter.provider import StaticAdapterProvider, WindowsAdapterProvider
 
 
@@ -23,11 +21,12 @@ def test_windows_provider_defers_the_windows_import_until_get() -> None:
     assert isinstance(provider.get(), FakeAutoCADAdapter)
 
 
-def test_default_windows_provider_classifies_missing_implementation_as_unavailable() -> None:
+def test_default_windows_provider_creates_the_windows_adapter_without_loading_com() -> None:
     sys.modules.pop("autocad_mcp.adapter.windows", None)
 
-    with pytest.raises(AdapterError) as raised:
-        WindowsAdapterProvider().get()
+    adapter = WindowsAdapterProvider().get()
 
-    assert raised.value.code is AdapterErrorCode.AUTOCAD_UNAVAILABLE
-    assert raised.value.retryable is True
+    from autocad_mcp.adapter.windows import WindowsAutoCADAdapter
+
+    assert isinstance(adapter, WindowsAutoCADAdapter)
+    assert not {"pythoncom", "win32com", "win32com.client"} & set(sys.modules)

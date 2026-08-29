@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+import math
+from collections.abc import Iterable, Mapping, Sequence
+from itertools import chain
 
 from autocad_mcp.adapter.capabilities import (
     AdapterCapability,
@@ -19,6 +21,7 @@ from autocad_mcp.adapter.protocol import (
     EntitySummary,
 )
 from autocad_mcp.adapter.windows_session import AutoCADSession, WindowsSessionManager, _com_error
+from autocad_mcp.core.models import JsonValue
 
 _IDENTITY_MEMBERS = ("ObjectID", "Handle", "ObjectName", "Layer")
 _OPTIONAL_PROPERTIES = (
@@ -33,13 +36,20 @@ _OPTIONAL_PROPERTIES = (
     ("EndPoint", "end_point"),
 )
 logger = logging.getLogger(__name__)
+_NO_SAMPLE = object()
+_EMPTY_MODEL_SPACE = object()
 
 
 def _issue(
     code: AdapterCapabilityIssueCode, capability: AdapterCapability, member: str
 ) -> AdapterCapabilityIssue:
+    message = (
+        "Required AutoCAD member could not be read"
+        if code is AdapterCapabilityIssueCode.MEMBER_ACCESS_FAILED
+        else "Required AutoCAD member is unavailable"
+    )
     return AdapterCapabilityIssue(
-        code, capability, member, "Required AutoCAD member is unavailable"
+        code, capability, member, message
     )
 
 
@@ -55,17 +65,11 @@ def _member(
     return None
 
 
-def detect_capabilities(session: AutoCADSession) -> AdapterCapabilityReport:
-    """Report supported operations from observed members, never product release text."""
-    available: set[AdapterCapability] = set()
-    issues: list[AdapterCapabilityIssue] = []
-    if session.application is not None:
-        available.add(AdapterCapability.CONNECTION)
-    if session.document is None or session.model_space is None:
-        return AdapterCapabilityReport(frozenset(available), tuple(issues))
-    available.add(AdapterCapability.ACTIVE_DOCUMENT)
+def _model_space_sample(
+    model_space: object, issues: list[AdapterCapabilityIssue]
+) -> object:
     try:
-        entities = iter(session.model_space)
+        entities = iter(model_space)
     except TypeError:
         issues.append(
             _issue(
@@ -74,7 +78,7 @@ def detect_capabilities(session: AutoCADSession) -> AdapterCapabilityReport:
                 "ModelSpace",
             )
         )
-        return AdapterCapabilityReport(frozenset(available), tuple(issues))
+        return _NO_SAMPLE
     except Exception:
         issues.append(
             _issue(
@@ -83,23 +87,53 @@ def detect_capabilities(session: AutoCADSession) -> AdapterCapabilityReport:
                 "ModelSpace",
             )
         )
-        return AdapterCapabilityReport(frozenset(available), tuple(issues))
+        return _NO_SAMPLE
+    if entities is model_space:
+        return _NO_SAMPLE
     try:
-        first = next(entities)
+        return next(entities)
     except StopIteration:
+        return _EMPTY_MODEL_SPACE
+    except Exception:
+        issues.append(
+            _issue(
+                AdapterCapabilityIssueCode.MEMBER_ACCESS_FAILED,
+                AdapterCapability.LIST_ENTITIES,
+                "ModelSpace",
+            )
+        )
+        return _NO_SAMPLE
+
+
+def detect_capabilities(
+    session: AutoCADSession, sample: object = _NO_SAMPLE
+) -> AdapterCapabilityReport:
+    """Report supported operations from observed members, never product release text."""
+    available: set[AdapterCapability] = set()
+    issues: list[AdapterCapabilityIssue] = []
+    if session.application is not None:
+        available.add(AdapterCapability.CONNECTION)
+    if session.document is None:
+        return AdapterCapabilityReport(frozenset(available), tuple(issues))
+    available.add(AdapterCapability.ACTIVE_DOCUMENT)
+    if session.model_space is None:
+        issues.append(
+            _issue(
+                AdapterCapabilityIssueCode.MEMBER_UNAVAILABLE,
+                AdapterCapability.LIST_ENTITIES,
+                "ModelSpace",
+            )
+        )
+        return AdapterCapabilityReport(frozenset(available), tuple(issues))
+    if sample is _NO_SAMPLE:
+        sample = _model_space_sample(session.model_space, issues)
+    if issues:
+        return AdapterCapabilityReport(frozenset(available), tuple(issues))
+    if sample is _NO_SAMPLE or sample is _EMPTY_MODEL_SPACE:
         available.update({AdapterCapability.LIST_ENTITIES, AdapterCapability.GET_ENTITY_INFO})
         return AdapterCapabilityReport(frozenset(available), tuple(issues))
-    except Exception:
-        issues.append(
-            _issue(
-                AdapterCapabilityIssueCode.MEMBER_ACCESS_FAILED,
-                AdapterCapability.LIST_ENTITIES,
-                "ModelSpace",
-            )
-        )
-        return AdapterCapabilityReport(frozenset(available), tuple(issues))
     for member in _IDENTITY_MEMBERS:
-        _member(first, member, AdapterCapability.LIST_ENTITIES, issues)
+        _member(sample, member, AdapterCapability.LIST_ENTITIES, issues)
     if not issues:
         available.update({AdapterCapability.LIST_ENTITIES, AdapterCapability.GET_ENTITY_INFO})
     return AdapterCapabilityReport(frozenset(available), tuple(issues))
@@ -121,17 +155,25 @@ def _entity_summary(entity: object) -> EntitySummary:
     )
 
 
-def _json_value(value: object) -> object:
-    if isinstance(value, tuple):
+def _json_value(value: object) -> JsonValue:
+    if value is None or isinstance(value, bool | int | str):
+        return value
+    if isinstance(value, float):
+        if math.isfinite(value):
+            return value
+        raise ValueError("Non-finite values are not JSON-safe")
+    if isinstance(value, Mapping):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("JSON object keys must be strings")
+        return {key: _json_value(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
         return [_json_value(item) for item in value]
-    if isinstance(value, list):
-        return [_json_value(item) for item in value]
-    return value
+    raise TypeError("Optional AutoCAD value is not JSON-safe")
 
 
 def _entity_details(entity: object) -> EntityDetails:
     summary = _entity_summary(entity)
-    properties: dict[str, object] = {}
+    properties: dict[str, JsonValue] = {}
     for member, key in _OPTIONAL_PROPERTIES:
         try:
             properties[key] = _json_value(getattr(entity, member))
@@ -151,11 +193,33 @@ def _unsupported(capability: AdapterCapability) -> AdapterError:
     )
 
 
-def _optional(target: object, name: str) -> object | None:
+def _status_member(target: object, name: str) -> object | None:
     try:
         return getattr(target, name)
-    except Exception:
+    except AttributeError:
         return None
+    except Exception as error:
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+
+
+def _probed_entities(
+    session: AutoCADSession,
+) -> tuple[AdapterCapabilityReport, Iterable[object]]:
+    if session.model_space is None:
+        return detect_capabilities(session), ()
+    try:
+        entities = iter(session.model_space)
+    except TypeError:
+        return detect_capabilities(session), ()
+    except Exception as error:
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+    try:
+        first = next(entities)
+    except StopIteration:
+        return detect_capabilities(session), ()
+    except Exception as error:
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+    return detect_capabilities(session, first), chain((first,), entities)
 
 
 class WindowsAutoCADAdapter:
@@ -166,18 +230,20 @@ class WindowsAutoCADAdapter:
 
     def status(self) -> ConnectionInfo:
         with self._session_manager.session(require_document=False) as connected:
-            document = _optional(connected.application, "ActiveDocument")
-            model_space = _optional(document, "ModelSpace") if document is not None else None
+            document = _status_member(connected.application, "ActiveDocument")
+            model_space = _status_member(document, "ModelSpace") if document is not None else None
             session = AutoCADSession(connected.com, connected.application, document, model_space)
-            product = _optional(connected.application, "Name")
-            version = _optional(connected.application, "Version")
-            document_name = _optional(document, "Name") if document is not None else None
-            read_only = _optional(document, "ReadOnly") if document is not None else None
+            product = _status_member(connected.application, "Name")
+            version = _status_member(connected.application, "Version")
+            release = _status_member(connected.application, "Release")
+            release_hint = release if release is not None else version
+            document_name = _status_member(document, "Name") if document is not None else None
+            read_only = _status_member(document, "ReadOnly") if document is not None else None
             return ConnectionInfo(
                 True,
                 str(product) if product is not None else None,
                 str(version) if version is not None else None,
-                str(product) if product is not None else None,
+                str(release_hint) if release_hint is not None else None,
                 str(document_name) if document_name is not None else None,
                 bool(read_only) if read_only is not None else None,
                 detect_capabilities(session),
@@ -188,11 +254,11 @@ class WindowsAutoCADAdapter:
 
     def list_entities(self) -> tuple[EntitySummary, ...]:
         with self._session_manager.session(require_document=True) as session:
-            report = detect_capabilities(session)
+            report, entities = _probed_entities(session)
             if not report.supports(AdapterCapability.LIST_ENTITIES):
                 raise _unsupported(AdapterCapability.LIST_ENTITIES)
             try:
-                return tuple(_entity_summary(entity) for entity in session.model_space)  # type: ignore[union-attr]
+                return tuple(_entity_summary(entity) for entity in entities)
             except AdapterError:
                 raise
             except Exception as error:
@@ -200,11 +266,10 @@ class WindowsAutoCADAdapter:
 
     def get_entity_info(self, object_id: int) -> EntityDetails:
         with self._session_manager.session(require_document=True) as session:
-            report = detect_capabilities(session)
+            report, entities = _probed_entities(session)
             if not report.supports(AdapterCapability.GET_ENTITY_INFO):
                 raise _unsupported(AdapterCapability.GET_ENTITY_INFO)
             try:
-                entities: Iterable[object] = session.model_space  # type: ignore[assignment]
                 for entity in entities:
                     if int(_required(entity, "ObjectID")) == object_id:
                         return _entity_details(entity)

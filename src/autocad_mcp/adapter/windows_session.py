@@ -78,6 +78,31 @@ def _com_error(error: Exception, code: AdapterErrorCode) -> AdapterError:
     return AdapterError(code, message, retryable=retryable)
 
 
+def _document_and_model_space(application: object) -> tuple[object, object | None]:
+    try:
+        document = application.ActiveDocument
+    except Exception as error:
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+    if document is None:
+        raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+    try:
+        return document, document.ModelSpace
+    except AttributeError:
+        return document, None
+    except Exception as error:
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+
+
+def _uninitialize(com: ComModules, primary_error: BaseException | None) -> None:
+    try:
+        com.pythoncom.CoUninitialize()
+    except Exception as error:
+        if primary_error is not None:
+            logger.exception("AutoCAD COM cleanup failed after a primary error", exc_info=error)
+            return
+        raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+
+
 class WindowsSessionManager:
     """Own one COM apartment and running-AutoCAD attachment per operation."""
 
@@ -89,6 +114,7 @@ class WindowsSessionManager:
         """Yield transient proxies and always balance a successful apartment initialization."""
         com = self._com_loader()
         initialized = False
+        primary_error: BaseException | None = None
         try:
             try:
                 com.pythoncom.CoInitialize()
@@ -109,13 +135,7 @@ class WindowsSessionManager:
             document: object | None = None
             model_space: object | None = None
             if require_document:
-                try:
-                    document = application.ActiveDocument
-                    model_space = document.ModelSpace if document is not None else None
-                except Exception as error:
-                    raise _com_error(error, AdapterErrorCode.NO_ACTIVE_DOCUMENT) from error
-                if document is None or model_space is None:
-                    raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+                document, model_space = _document_and_model_space(application)
             try:
                 yield AutoCADSession(com, application, document, model_space)
             except AdapterError as error:
@@ -127,9 +147,9 @@ class WindowsSessionManager:
                     retryable=error.retryable,
                     details=error.details,
                 ) from error
+        except BaseException as error:
+            primary_error = error
+            raise
         finally:
             if initialized:
-                try:
-                    com.pythoncom.CoUninitialize()
-                except Exception as error:
-                    raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+                _uninitialize(com, primary_error)

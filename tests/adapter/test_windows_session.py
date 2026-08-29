@@ -10,12 +10,15 @@ from autocad_mcp.adapter.windows_session import ComModules, WindowsSessionManage
 class StubPythonCom:
     def __init__(self) -> None:
         self.events: list[str] = []
+        self.uninitialize_error: Exception | None = None
 
     def CoInitialize(self) -> None:  # noqa: N802
         self.events.append("initialize")
 
     def CoUninitialize(self) -> None:  # noqa: N802
         self.events.append("uninitialize")
+        if self.uninitialize_error is not None:
+            raise self.uninitialize_error
 
 
 class StubClient:
@@ -92,6 +95,32 @@ def test_session_balances_com_on_consumer_error() -> None:
     assert pythoncom.events == ["initialize", "uninitialize"]
 
 
+def test_cleanup_failure_does_not_mask_consumer_error(caplog: pytest.LogCaptureFixture) -> None:
+    """A cleanup failure must not replace the exception the caller needs to handle."""
+    manager, pythoncom, _ = make_manager(application())
+    pythoncom.uninitialize_error = RuntimeError("cleanup failed")
+
+    with pytest.raises(RuntimeError, match="consumer"):
+        with manager.session(require_document=False):
+            raise RuntimeError("consumer")
+
+    assert pythoncom.events == ["initialize", "uninitialize"]
+    assert "AutoCAD COM cleanup failed after a primary error" in caplog.text
+
+
+def test_cleanup_failure_is_classified_after_success() -> None:
+    """A failed cleanup after normal work must still be visible as a public error."""
+    manager, pythoncom, _ = make_manager(application())
+    pythoncom.uninitialize_error = RuntimeError("cleanup failed")
+
+    with pytest.raises(AdapterError) as raised:
+        with manager.session(require_document=False):
+            pass
+
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
+    assert pythoncom.events == ["initialize", "uninitialize"]
+
+
 def test_session_balances_com_on_connection_error() -> None:
     """An attachment failure after initialization must be paired with cleanup."""
     manager, pythoncom, _ = make_manager(RuntimeError("not running"))
@@ -112,7 +141,7 @@ def test_session_balances_com_on_document_error() -> None:
         with manager.session(require_document=True):
             pass
 
-    assert raised.value.code is AdapterErrorCode.NO_ACTIVE_DOCUMENT
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
     assert pythoncom.events == ["initialize", "uninitialize"]
 
 

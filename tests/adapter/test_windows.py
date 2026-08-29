@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
+import math
 from types import SimpleNamespace
 
 import pytest
 from autocad_mcp.adapter.capabilities import AdapterCapability, AdapterCapabilityIssueCode
-from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode
+from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode, EntitySummary
 from autocad_mcp.adapter.windows import WindowsAutoCADAdapter, detect_capabilities
 from autocad_mcp.adapter.windows_session import AutoCADSession, ComModules, WindowsSessionManager
 
@@ -94,6 +96,7 @@ def test_detect_capabilities_records_member_access_failure() -> None:
 
     assert not report.supports(AdapterCapability.LIST_ENTITIES)
     assert report.issues[0].code is AdapterCapabilityIssueCode.MEMBER_ACCESS_FAILED
+    assert report.issues[0].message == "Required AutoCAD member could not be read"
 
 
 def test_entity_conversion_uses_only_allowlisted_properties() -> None:
@@ -129,6 +132,28 @@ def test_entity_conversion_omits_missing_optional_properties() -> None:
     assert vars(adapter) == {"_session_manager": manager}
 
 
+def test_entity_conversion_omits_non_json_optional_values() -> None:
+    """COM proxies and non-finite values must not escape in an otherwise valid detail."""
+    entity = SimpleNamespace(
+        ObjectID=7,
+        Handle="A7",
+        ObjectName="AcDbLine",
+        Layer="0",
+        Color=object(),
+        Area=math.nan,
+        Volume=math.inf,
+        Center={"point": [1.0, 2.0, 3.0]},
+    )
+    manager, _ = manager_for(connected_application(entities=(entity,)))
+
+    detail = WindowsAutoCADAdapter(manager).get_entity_info(7)
+
+    assert detail.properties == {"center": {"point": [1.0, 2.0, 3.0]}}
+    assert json.dumps(detail.properties, allow_nan=False) == (
+        '{"center": {"point": [1.0, 2.0, 3.0]}}'
+    )
+
+
 def test_detail_not_found_is_a_public_error() -> None:
     """An absent entity is a normal lookup result, not a COM exception leak."""
     manager, _ = manager_for(connected_application())
@@ -150,7 +175,77 @@ def test_status_is_read_only_and_handles_no_document() -> None:
     assert status.connected is True
     assert status.active_document is None
     assert status.read_only is None
+    assert status.release_hint == "24.3"
     assert status.capabilities.available == frozenset({AdapterCapability.CONNECTION})
+
+
+def test_document_without_model_space_has_only_document_capability() -> None:
+    """A present document without ModelSpace is not the same as no active document."""
+    application = SimpleNamespace(
+        Name="AutoCAD",
+        Version="24.3",
+        ActiveDocument=SimpleNamespace(Name="drawing.dwg", ReadOnly=True, ModelSpace=None),
+    )
+    manager, _ = manager_for(application)
+    adapter = WindowsAutoCADAdapter(manager)
+
+    status = adapter.status()
+    assert status.capabilities.available == frozenset(
+        {AdapterCapability.CONNECTION, AdapterCapability.ACTIVE_DOCUMENT}
+    )
+
+    with pytest.raises(AdapterError) as listed:
+        adapter.list_entities()
+    with pytest.raises(AdapterError) as detailed:
+        adapter.get_entity_info(7)
+
+    assert listed.value.code is AdapterErrorCode.UNSUPPORTED_CAPABILITY
+    assert listed.value.details == {"capability": "list_entities"}
+    assert detailed.value.code is AdapterErrorCode.UNSUPPORTED_CAPABILITY
+    assert detailed.value.details == {"capability": "get_entity_info"}
+
+
+@pytest.mark.parametrize(
+    ("document", "expected"),
+    [
+        (RuntimeError("server busy"), AdapterErrorCode.COM_BUSY),
+        (RuntimeError("model space read failed"), AdapterErrorCode.AUTOCAD_OPERATION_FAILED),
+    ],
+)
+def test_status_classifies_document_access_errors(
+    document: Exception, expected: AdapterErrorCode
+) -> None:
+    """A COM access failure must not become a false no-document status."""
+    if expected is AdapterErrorCode.COM_BUSY:
+        application = SimpleNamespace(Name="AutoCAD", Version="24.3")
+
+        class BusyApplication:
+            Name = application.Name
+            Version = application.Version
+
+            @property
+            def ActiveDocument(self) -> object:  # noqa: N802
+                raise document
+
+        application = BusyApplication()
+    else:
+        class BrokenDocument:
+            Name = "drawing.dwg"
+            ReadOnly = True
+
+            @property
+            def ModelSpace(self) -> object:  # noqa: N802
+                raise document
+
+        application = SimpleNamespace(
+            Name="AutoCAD", Version="24.3", ActiveDocument=BrokenDocument()
+        )
+    manager, _ = manager_for(application)
+
+    with pytest.raises(AdapterError) as raised:
+        WindowsAutoCADAdapter(manager).status()
+
+    assert raised.value.code is expected
 
 
 @pytest.mark.parametrize(
@@ -204,3 +299,23 @@ def test_entity_read_failure_is_redacted_as_an_operation_error() -> None:
 
     assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
     assert "private COM detail" not in raised.value.public_message
+
+
+def test_one_shot_model_space_keeps_the_sampled_first_entity() -> None:
+    """Capability probing must replay, not lose, the first one-shot entity."""
+    entity = Entity()
+
+    class Document:
+        Name = "drawing.dwg"
+        ReadOnly = True
+
+        @property
+        def ModelSpace(self) -> object:  # noqa: N802
+            return iter((entity,))
+
+    application = SimpleNamespace(Name="AutoCAD", Version="24.3", ActiveDocument=Document())
+    manager, _ = manager_for(application)
+    adapter = WindowsAutoCADAdapter(manager)
+
+    assert adapter.list_entities() == (EntitySummary(7, "A7", "AcDbLine", "Annotations"),)
+    assert adapter.get_entity_info(7).object_id == 7

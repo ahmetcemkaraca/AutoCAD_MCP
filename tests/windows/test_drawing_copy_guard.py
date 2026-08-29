@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+from dataclasses import asdict
 from pathlib import Path
+from typing import get_type_hints
 
 import pytest
-from drawing_copy_guard import DrawingCopyGuard, DrawingCopyViolation
+from drawing_copy_guard import DrawingCopyEvidence, DrawingCopyGuard, DrawingCopyViolation
 
 
 def _source_dwg(tmp_path: Path, name: str = "fixture.dwg") -> Path:
@@ -27,8 +31,23 @@ def test_prepare_creates_unique_guid_copy(tmp_path: Path) -> None:
     assert re.fullmatch(r"autocad-mcp-[0-9a-f-]{36}", first.copy_path.parent.name)
     assert first.copy_path.read_bytes() == source.read_bytes()
     assert first.copy_path.resolve() != first.source_path
-    first.finalize(preserve=False, reason="completed")
-    second.finalize(preserve=False, reason="completed")
+    first_evidence = first.finalize(preserve=False, reason="completed")
+    second_evidence = second.finalize(preserve=False, reason="completed")
+    assert isinstance(first_evidence.source_path, str)
+    assert isinstance(first_evidence.copy_path, str)
+    assert first_evidence.source_path == str(source.resolve())
+    assert first_evidence.copy_path.endswith("drawing-copy.dwg")
+    assert second_evidence.cleanup_succeeded is True
+
+
+def test_evidence_is_json_native_and_violation_declares_it(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    evidence = guard.finalize(preserve=True, reason="serialize evidence")
+
+    assert get_type_hints(DrawingCopyEvidence)["source_path"] is str
+    assert get_type_hints(DrawingCopyEvidence)["copy_path"] is str
+    assert get_type_hints(DrawingCopyViolation)["evidence"] is DrawingCopyEvidence
+    assert json.dumps(asdict(evidence))
 
 
 def test_prepare_rejects_same_or_non_dwg_path(tmp_path: Path) -> None:
@@ -70,10 +89,27 @@ def test_active_full_name_must_equal_copy(tmp_path: Path) -> None:
     with pytest.raises(DrawingCopyViolation) as source_error:
         guard.assert_active_full_name(str(source))
     assert source_error.value.evidence.active_full_name == str(source)
+    run_directory = guard.copy_path.parent
 
     with pytest.raises(DrawingCopyViolation):
         guard.assert_active_full_name(str(tmp_path / "unexpected.dwg"))
-    guard.finalize(preserve=False, reason="completed")
+    evidence = guard.finalize(preserve=False, reason="completed")
+    assert evidence.preserved is True
+    assert evidence.preserve_reason == "active document is the source drawing"
+    assert run_directory.exists()
+
+
+def test_active_full_name_resolves_supported_symlink_aliases(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    alias = tmp_path / "copy-alias.dwg"
+    try:
+        alias.symlink_to(guard.copy_path)
+    except OSError as error:
+        pytest.skip(f"symlinks unavailable: {error}")
+
+    guard.assert_active_full_name(str(alias))
+    evidence = guard.finalize(preserve=True, reason="alias evidence")
+    assert evidence.active_full_name == str(alias)
 
 
 def test_close_without_save_passes_false(tmp_path: Path) -> None:
@@ -129,6 +165,49 @@ def test_finalize_records_cleanup_or_preservation(tmp_path: Path) -> None:
     assert preserved.preserve_reason == "policy requested evidence"
     assert preserved.cleanup_succeeded is False
     assert preserved_guard.copy_path.exists()
+
+
+def test_finalize_refuses_tampered_state_without_deleting_unrelated_directory(
+    tmp_path: Path,
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    original_run_directory = guard.copy_path.parent
+    unrelated = tmp_path / "unrelated"
+    unrelated.mkdir()
+    sentinel = unrelated / "keep.txt"
+    sentinel.write_text("must survive", encoding="utf-8")
+    guard._run_directory = unrelated
+    guard._copy_path = unrelated / "drawing-copy.dwg"
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused") as raised:
+        guard.finalize(preserve=False, reason="completed")
+
+    assert raised.value.evidence.cleanup_succeeded is False
+    assert sentinel.read_text(encoding="utf-8") == "must survive"
+    assert original_run_directory.exists()
+
+
+def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _source_dwg(tmp_path)
+    real_copy2 = shutil.copy2
+
+    def copy_then_change_source(source_path: Path, copy_path: Path) -> Path:
+        result = real_copy2(source_path, copy_path)
+        source.write_bytes(b"source changed during copy")
+        return result
+
+    monkeypatch.setattr(shutil, "copy2", copy_then_change_source)
+
+    with pytest.raises(DrawingCopyViolation, match="source changed during preparation") as raised:
+        DrawingCopyGuard.prepare(source, temp_root=tmp_path / "runs")
+
+    evidence = raised.value.evidence
+    assert evidence.source_sha256_before != evidence.source_sha256_after
+    assert evidence.copy_sha256_before == evidence.copy_sha256_after
+    assert evidence.preserved is True
+    assert Path(evidence.copy_path).exists()
 
 
 def test_guard_source_does_not_import_com() -> None:

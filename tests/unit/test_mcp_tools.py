@@ -1,6 +1,10 @@
 """Contract tests for the active MCP tool catalog and input parser."""
 
+import json
+import os
+import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from autocad_mcp.core.models import (
@@ -17,22 +21,49 @@ from autocad_mcp.core.tools import (
 )
 
 
-def test_core_imports_do_not_load_com_modules() -> None:
-    """Adding a COM import to the pure core would break non-Windows unit use."""
-    assert {"pythoncom", "win32com", "win32com.client", "pyautocad"}.isdisjoint(sys.modules)
+def test_core_imports_are_hermetic_from_com_modules() -> None:
+    """A COM import in the pure core would break platform-independent clients."""
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    result = subprocess.run(  # noqa: S603 -- sys.executable and a fixed import probe are trusted.
+        [
+            sys.executable,
+            "-c",
+            "import autocad_mcp.core.models, autocad_mcp.core.tools, sys; "
+            "forbidden = {'pythoncom', 'win32com', 'win32com.client', 'pyautocad', 'comtypes'}; "
+            "loaded = forbidden & set(sys.modules); "
+            "raise SystemExit(f'COM modules loaded: {sorted(loaded)}' if loaded else 0)",
+        ],
+        cwd=Path(__file__).parents[2],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_manifest_catalog_matches_the_canonical_tool_definitions() -> None:
+    """Manifest drift would advertise tools unavailable from the canonical server."""
+    manifest = json.loads((Path(__file__).parents[2] / "mcp.json").read_text(encoding="utf-8"))
+    server = manifest["mcpServers"]["autocad-mcp"]
+
+    assert [tool["name"] for tool in manifest["tools"]] == [
+        definition.name for definition in TOOL_DEFINITIONS
+    ]
+    assert server == {"command": "uv", "args": ["run", "python", "-m", "autocad_mcp.server"]}
 
 
 @pytest.mark.parametrize(
-    ("name", "expected_type"),
+    "name",
     (
-        ("server_status", ServerStatusInput),
-        ("list_entities", ListEntitiesInput),
-        ("get_entity_info", GetEntityInfoInput),
+        "server_status",
+        "list_entities",
+        "get_entity_info",
     ),
 )
-def test_tool_definitions_are_ordered_closed_object_schemas(
-    name: str, expected_type: type[object]
-) -> None:
+def test_tool_definitions_are_ordered_closed_object_schemas(name: str) -> None:
     """Catalog drift or open schemas would expose undocumented tool inputs."""
     definitions = {definition.name: definition for definition in TOOL_DEFINITIONS}
     definition = definitions[name]
@@ -40,7 +71,6 @@ def test_tool_definitions_are_ordered_closed_object_schemas(
     assert tuple(item.name for item in TOOL_DEFINITIONS) == tuple(ToolName)
     assert definition.inputSchema["type"] == "object"
     assert definition.inputSchema["additionalProperties"] is False
-    assert expected_type in (ServerStatusInput, ListEntitiesInput, GetEntityInfoInput)
 
 
 def test_empty_tool_schemas_accept_no_properties() -> None:

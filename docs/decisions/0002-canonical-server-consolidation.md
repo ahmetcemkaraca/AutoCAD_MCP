@@ -1,17 +1,16 @@
 # 0002: Freeze legacy mutation evidence before canonical server consolidation
 
-**Status:** Proposed — compatibility record prepared; no EPIC gate is accepted by this record.
+**Status:** Replacement evidence recorded — no EPIC, Windows, or AutoCAD gate is accepted by this record.
 
 **Date:** 2026-08-29
 
 ## Context and evidence boundary
 
-EPIC-01's selected entry point is currently `src.server`.  It is a low-level
-`mcp.server.Server` stdio server that registers seven tools, one resource, and
-one prompt.  Linux preparation for the safe, platform-independent core is
-authorized while EPIC-01's Windows/AutoCAD evidence remains pending.  This
-does not accept E01-G4, E02-G1, or any later EPIC gate; it only freezes the
-observed compatibility evidence needed for review.
+At the EPIC-01 boundary, the selected entry point was `src.server`: a
+low-level `mcp.server.Server` stdio server with seven tools, one resource, and
+one prompt. Linux preparation for the safe, platform-independent core is
+authorized while Windows/AutoCAD evidence remains pending. This record does
+not accept E01-G4, E02-G1, E02-G4, E02-G5, or any later gate.
 
 The adopted tool-list handler at baseline commit
 `00207ed084e9ef81538b5283615e689d483632d1`, `src/server.py`, returned the
@@ -31,7 +30,7 @@ tightening, normalization, or runtime reuse) to
 SHA-256 is
 `695ecf23340d9d804ac393c13e2421e47c038ecf8f5324647adabca23177c06b`.
 
-## Current seven-tool behavior inventory
+## Historical seven-tool behavior inventory
 
 | Tool | Input properties; required properties | Valid observed-shaped example | Success payload fields |
 | --- | --- | --- | --- |
@@ -43,16 +42,16 @@ SHA-256 is
 | `get_entity_info` | `entity_id`; required | `{"entity_id":1001}` | `success`, `entity` |
 | `server_status` | no properties; no required properties | `{}` | `success`, `mcp_server`, `autocad_connected`, `active_document`, `tools_available`, `transport`, `message` |
 
-Current failures are ad-hoc JSON and generally include `success`, `error`, and
+Historical failures were ad-hoc JSON and generally included `success`, `error`, and
 `message`; `server_status` additionally preserves its MCP/connection fields.
 The table records observed behavior, not a claim that any operation was
 executed against AutoCAD.
 
-`src/server.py` also advertises the resource
+At that boundary, `src/server.py` also advertised the resource
 `autocad://server-status` (`AutoCAD MCP Server Status`, JSON) and the
 `autocad-help` prompt, whose body lists all seven names and mutation examples.
-`mcp.json` advertises the same seven tools, that resource, and that prompt and
-launches `uv run python -m src.server`.
+`mcp.json` advertised the same seven tools, that resource, and that prompt and
+launched `uv run python -m src.server`.
 
 `src/mcp_server.py` is a separate FastMCP surface with the same seven basic
 tool names, the same resource URI, and the same prompt name.  Its status and
@@ -102,35 +101,48 @@ selected server, is not evidence of active tools, and is not deleted here.
    `UnavailableToolService` reports the honest unavailable state without a COM
    import; EPIC-03 later replaces only the runtime factory with the Windows
    adapter-backed service.
-7. `src/mcp_server.py`, `tests/test_server.py`, and
-   `tests/unit/test_drawing_operations.py` are not deleted by this record.
-   Deletion is delayed until E02-G4 accepts replacement coverage: canonical
-   schema/order/dispatch and stdio contracts for the three selected tools,
-   explicit fixture/runtime/manifest/help exclusion coverage for the four
-   mutations, and canonical status-resource/prompt contracts.  The Flask
-   `/health` and imagined draw routes have no MCP replacement; they are
-   removed only because they are not selected MCP behavior.  The Flask
-   `/acad-status` claim is replaced by `server_status`, with connected
-   verification still deferred to EPIC-03.
+7. The duplicate FastMCP implementation and two Flask-oriented test modules
+   may be retired only after the replacement matrix below is recorded and
+   re-run. The Flask `/health` and imagined draw routes have no MCP
+   replacement because they were never selected MCP behavior. The Flask
+   `/acad-status` claim maps only to structured `server_status`; real
+   connection verification remains deferred to EPIC-03.
 
 ## Compatibility checks
 
-`tests/compatibility/test_legacy_mutating_tool_schemas.py` first invokes the
-currently selected `src.server.handle_list_tools()` handler and compares the
-four observed `inputSchema` dictionaries to the fixture.  It also checks the
-fixture's exact top-level fields and exact four-name tool key set.  That
-integrity/equality check passes against the current temporary server.
+`tests/compatibility/test_legacy_mutating_tool_schemas.py` verifies the
+fixture's SHA-256, exact top-level fields, and exact four-name tool key set.
+It preserves the observed schemas as historical evidence without importing or
+executing a legacy mutation implementation.
 
-The same test then requires the legacy set to be absent from the runtime
-tool-list result, `mcp.json`, and the `autocad-help` prompt.  It deliberately
-fails in the current state because each surface still advertises all four
-mutations.  This red state is required evidence, not a failure to be hidden
-by weakening the test or changing active source/metadata early.
+The test requires the legacy set to be absent from the canonical runtime
+catalog and `mcp.json`. `tests/contract/test_stdio_server.py` additionally
+checks that the canonical resource and `autocad-help` prompt exclude those
+names. This is exclusion evidence, not replacement mutation functionality.
+
+## Deletion replacement matrix
+
+| Removed behavior claim | Replacement evidence |
+| --- | --- |
+| `server_status`, `list_entities`, and `get_entity_info` from the duplicate FastMCP surface | Canonical closed schemas and exact order in `TOOL_DEFINITIONS`, injected-service dispatch tests, manifest agreement, and stdio `list_tools` contracts for `autocad_mcp.server` and the `src.server` compatibility shim. |
+| `draw_line`, `draw_circle`, `extrude_profile`, and `revolve_profile` schemas | The verbatim fixture and SHA-256 above; runtime, manifest, and help-prompt exclusion tests. These unsafe mutations intentionally have no Stable-core implementation replacement. |
+| FastMCP status resource | Canonical `autocad://server-status` resource contract with a structured `AUTOCAD_UNAVAILABLE` result. |
+| FastMCP help prompt | Canonical `autocad-help` prompt contract listing exactly the three active non-mutating tools. |
+| Flask `/health` | No MCP replacement. It is not selected MCP behavior. |
+| Flask `/acad-status` | Structured `server_status` contract only; a real AutoCAD connection remains an EPIC-03 task. |
+| Imagined Flask draw routes | No MCP replacement or registration. EPIC-06 owns any future reviewed constrained edits. |
+
+Before retirement, the active `mcp.json` parsed successfully and contained no
+`src.mcp_server` selection. The root `Dockerfile` still names
+`src.mcp_integration.enhanced_mcp_server` for an unsupported historical Linux
+HTTP direction; [decision 0001](0001-container-artifact-disposition.md)
+classifies it as neither an active MCP configuration nor a supported deployment.
+The experimental enhanced module remains untouched and unadvertised.
 
 ## Consequences
 
-The next implementation lanes have a stable evidence boundary and a required
-safety outcome, but no claim that the canonical server, Windows adapter, or a
-real AutoCAD session is working.  E02-G1 remains a reviewer decision after
-the package migration, shim-retirement gate, three-tool matrix, digest and
-exclusion policy, error codes, and `BasicToolService` boundary are reviewed.
+The recorded local evidence supports only the pure/core MCP contract exercised
+with unavailable or injected services. It does not claim a completed EPIC,
+Windows adapter, real AutoCAD connection, unchanged drawing, or AutoCAD
+2021-2026 verification. E02-G4 and E02-G5 remain reviewer decisions; EPIC-03
+owns the Windows adapter and real AutoCAD evidence.

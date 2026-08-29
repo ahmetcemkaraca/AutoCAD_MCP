@@ -1,34 +1,49 @@
 # Architecture
 
-This document distinguishes the architecture adopted from the historical repository from the approved modernization target. Target components are not current functionality until their roadmap acceptance gates pass.
+This document distinguishes the adopted canonical MCP core from the Windows
+AutoCAD target. Target components are not current functionality until their
+roadmap acceptance gates pass.
 
-## Adopted architecture
+## Adopted canonical MCP core
 
 ```text
 MCP client
     |
     | stdio
     v
-src/server.py
-    |
+autocad_mcp.server
+    |-- closed schemas and structured errors
+    |-- server_status / list_entities / get_entity_info
+    |-- autocad://server-status resource and autocad-help prompt
     v
-src/utils.py
-    |
-    | pythoncom / win32com / pyautocad
-    v
-Full AutoCAD on Windows
+Unavailable or injected BasicToolService
+
+src.server -> protocol-safe compatibility shim -> autocad_mcp.server
 ```
 
-`mcp.json` selects `src/server.py`, which manually declares MCP tools, resources, prompts, and handlers. AutoCAD operations call shared helpers that currently import Windows COM dependencies eagerly.
+`mcp.json` launches `uv run python -m autocad_mcp.server`. The canonical
+server is the sole registration owner. Its pure schema, dispatch, and stdio
+contracts are tested without COM on Linux; this does not prove a connection to
+AutoCAD or support for Linux as an AutoCAD runtime.
 
-Four selected-server tools can mutate a drawing directly. They do not currently pass through preview, trusted human approval, stale-state validation, or verified Undo recovery. Their presence is an adopted risk, not an approved target behavior; the stable-core delivery removes them from active registration until the safe edit-plan boundary exists.
+The active catalog contains only `server_status`, `list_entities`, and
+`get_entity_info`. The historical mutation schemas are retained as compatibility
+evidence and are excluded from runtime, metadata, and help. EPIC-06 owns any
+future constrained edits.
 
-Two additional server directions exist:
+Two non-canonical directions remain outside the active server surface:
 
-- `src/mcp_server.py` repeats the basic tool set with FastMCP.
-- `src/mcp_integration/enhanced_mcp_server.py` combines many experimental inspection, execution, generation, testing, and enterprise-oriented components.
+- `src/mcp_integration/enhanced_mcp_server.py` remains experimental and
+  unconnected. It is neither launched nor advertised by the canonical core.
+- The root Docker and Compose artifacts name an unsupported historical Linux
+  HTTP direction. Their disposition is recorded in
+  [decision 0001](decisions/0001-container-artifact-disposition.md); this
+  document does not authorize their repair or removal.
 
-Neither is selected by the root MCP command. Consolidation preserves observable read-only/status behavior while removing this ambiguity. Historical mutation schemas are retained as compatibility evidence, not as active behavior, until the approved edit-plan safety boundary exists.
+The retired FastMCP duplicate and Flask-oriented tests are documented in
+[decision 0002](decisions/0002-canonical-server-consolidation.md). Their
+replacement evidence covers the selected MCP behavior, not HTTP routes or real
+AutoCAD behavior.
 
 ## Approved target
 
@@ -54,13 +69,20 @@ Full AutoCAD 2021-2026 on Windows
 
 ### Canonical MCP server
 
-One entry point owns tool registration and transport. Tool schemas, `mcp.json`, implementation names, tests, and documentation must agree. Normal logging uses standard error so stdio protocol messages remain valid.
+One entry point owns tool registration and transport. `autocad_mcp.server` is
+adopted for the pure core; `src.server` remains only a tested compatibility
+shim. Tool schemas, `mcp.json`, implementation names, tests, and documentation
+must agree. Normal logging uses standard error so stdio protocol messages remain
+valid.
 
 The first stable-core catalog is deliberately read-only: `server_status`, `list_entities`, and `get_entity_info`. Historical mutation schemas remain recorded but unregistered until they can route through the human-approved edit-plan boundary. No canonical MCP tool may call a direct creation adapter method before that boundary is accepted.
 
-### Windows AutoCAD adapter
+### Windows AutoCAD adapter (target)
 
-Only this boundary imports `pythoncom`, `win32com`, or AutoCAD COM wrappers. It detects connected capabilities at runtime rather than assuming identical behavior across six releases. Pure data and MCP modules remain importable without COM.
+Only this future boundary may import `pythoncom`, `win32com`, or AutoCAD COM
+wrappers. EPIC-03 owns its implementation and real connection tests. It will
+detect connected capabilities at runtime rather than assuming identical behavior
+across six releases. Pure data and MCP modules remain importable without COM.
 
 ### Structured drawing context
 

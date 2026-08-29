@@ -233,9 +233,8 @@ class AutoCADLease:
         try:
             stale_owner = _recoverable_prior_owner(
                 metadata_path,
-                user_sid,
+                bindings,
                 expected_lease_key=lease_key,
-                expected_bindings=bindings,
                 missing_metadata_allowed=directory_was_new and not metadata_existed,
             )
             owner = _current_owner(lease_key, bindings)
@@ -570,7 +569,7 @@ def _set_private_acl(path: Path, user_sid: str, *, inheritable: bool = False) ->
         )
         dacl.AddAccessAllowedAceEx(
             security.ACL_REVISION,
-            0,
+            ace_flags,
             ntsecuritycon.FILE_ALL_ACCESS,
             security.ConvertStringSidToSid(_SYSTEM_SID),
         )

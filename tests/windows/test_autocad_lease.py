@@ -280,6 +280,7 @@ def test_acl_helpers_use_delayed_ntsecuritycon_and_do_not_repair_existing_paths(
     assert "PROTECTED_DACL_SECURITY_INFORMATION" not in inspect.getsource(module._verify_lease_acl)
     assert "exist_ok" not in inspect.getsource(module._create_private_directory)
     assert "O_EXCL" in inspect.getsource(module._create_private_file)
+    assert inspect.getsource(module._set_private_acl).count("ace_flags,") == 2
 
 
 def test_guard_acl_flag_rules_accept_effective_inherited_and_reject_inherit_only() -> None:
@@ -308,6 +309,68 @@ def test_enter_unlocks_if_ownership_assertion_fails(monkeypatch: pytest.MonkeyPa
 
     assert lease._owned is False
     assert unlocked == [lease._lock_file]
+
+
+def test_acquire_passes_current_bindings_to_prior_owner_recovery(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    module = _lease_module()
+    key = _test_key("acquire-bindings")
+    bindings = module._OwnerBindings("S-1-5-21-100", "controller", 1)
+    owner = module.LeaseOwner(
+        lease_key=key,
+        pid=123,
+        process_created_at_100ns=456,
+        user_sid=bindings.user_sid,
+        computer_name=bindings.computer_name,
+        windows_session_id=bindings.windows_session_id,
+        acquired_at_utc="2026-08-29T12:00:00.000000Z",
+        command=("pytest",),
+    )
+    calls: list[tuple[object, ...]] = []
+
+    def make_directory(path: Path, sid: str) -> bool:
+        was_new = not path.exists()
+        path.mkdir(exist_ok=True)
+        return was_new
+
+    monkeypatch.setattr(module, "_require_windows", lambda: None)
+    monkeypatch.setattr(module, "_current_user_sid", lambda: bindings.user_sid)
+    monkeypatch.setattr(module, "_computer_name", lambda: bindings.computer_name)
+    monkeypatch.setattr(module, "_current_windows_session_id", lambda: bindings.windows_session_id)
+    monkeypatch.setattr(module, "_lease_root", lambda: tmp_path / "verification-leases")
+    monkeypatch.setattr(module, "_create_private_directory", make_directory)
+    monkeypatch.setattr(
+        module, "_create_private_file", lambda path, sid: (path.touch(exist_ok=True), False)[1]
+    )
+    monkeypatch.setattr(module, "_lock_nonblocking", lambda lock_file: None)
+    monkeypatch.setattr(
+        module,
+        "_recoverable_prior_owner",
+        lambda path, received_bindings, **kwargs: calls.append(
+            (
+                path,
+                received_bindings,
+                kwargs["expected_lease_key"],
+                kwargs["missing_metadata_allowed"],
+            )
+        )
+        or None,
+    )
+    monkeypatch.setattr(module, "_current_owner", lambda lease_key, received_bindings: owner)
+    monkeypatch.setattr(module, "_write_metadata", lambda *args: None)
+
+    lease = module.AutoCADLease.acquire(key)
+    lease._lock_file.close()
+
+    assert calls == [
+        (
+            tmp_path / "verification-leases" / key / "owner.json",
+            bindings,
+            key,
+            True,
+        )
+    ]
 
 
 def test_lease_root_uses_the_known_folder_api_not_an_environment_override() -> None:

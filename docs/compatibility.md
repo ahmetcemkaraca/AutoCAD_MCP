@@ -11,7 +11,7 @@ Compatibility claims require a repeatable test result on the named environment. 
 | Full AutoCAD 2023 | Windows | Targeted, not verified | No recorded real-installation test |
 | Full AutoCAD 2024 | Windows | Targeted, not verified | No recorded real-installation test |
 | Full AutoCAD 2025 | Windows | Targeted, not verified | Historical claims were not reproducible from the adopted tests |
-| Full AutoCAD 2026 | Windows | Targeted; first validation environment | A real installation is available, but the stable smoke suite has not run |
+| Full AutoCAD 2026 | Windows | Targeted, not verified; first validation environment | The opt-in read-only smoke is prepared; no real-installation result is recorded |
 | AutoCAD LT | Windows | Out of scope | Required 3D and automation behavior is not part of the product target |
 
 No AutoCAD release is marked verified by the stewardship documentation pull request.

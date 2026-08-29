@@ -56,6 +56,15 @@ Use a disposable copy of every DWG. Mutation tests should group created entities
 
 AutoCAD 2026 is the first planned validation environment. Earlier targeted releases remain unverified until the same documented contract checks pass on a real installation.
 
+The prepared opt-in command is documented in
+[the Windows AutoCAD 2026 smoke guide](windows-testing-guide.md). Before any
+real run, an operator must start full AutoCAD 2026 in the same interactive
+session, close modal dialogs, choose an immutable source DWG, and use the
+provided PowerShell runner. Without `--run-autocad`, every real-installation
+test skips with the exact reason `requires explicit disposable-DWG
+authorization`. A skip, collection-only result, or Linux result is not
+AutoCAD verification.
+
 ## Core developer commands
 
 For the current pure/core boundary, run:

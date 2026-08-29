@@ -77,12 +77,15 @@ valid.
 
 The first stable-core catalog is deliberately read-only: `server_status`, `list_entities`, and `get_entity_info`. Historical mutation schemas remain recorded but unregistered until they can route through the human-approved edit-plan boundary. No canonical MCP tool may call a direct creation adapter method before that boundary is accepted.
 
-### Windows AutoCAD adapter (target)
+### Windows AutoCAD adapter (implemented boundary; real verification pending)
 
-Only this future boundary may import `pythoncom`, `win32com`, or AutoCAD COM
-wrappers. EPIC-03 owns its implementation and real connection tests. It will
-detect connected capabilities at runtime rather than assuming identical behavior
-across six releases. Pure data and MCP modules remain importable without COM.
+Only this boundary imports `pythoncom`, `win32com`, or AutoCAD COM wrappers.
+Its delayed-import, fake-adapter, MCP-contract, lease, copy-guard, and
+read-only-harness behavior has platform-independent automated evidence. The
+opt-in AutoCAD 2026 smoke procedure is prepared, but no real connection,
+disposable-DWG, or release verification record exists. It detects connected
+capabilities at runtime rather than assuming identical behavior across six
+releases. Pure data and MCP modules remain importable without COM.
 
 ### Structured drawing context
 

@@ -11,8 +11,8 @@ source-code presence, automated core evidence, and real AutoCAD verification.
 - `autocad_mcp.server` is the sole registration owner for `server_status`,
   `list_entities`, and `get_entity_info`, one status resource, and one help prompt.
 - `src.server` is a protocol-safe compatibility shim with no registrations.
-- The core runtime uses an unavailable service on this platform instead of
-  importing Windows COM packages.
+- The core runtime composes a Windows adapter provider without importing COM
+  packages until a Windows adapter operation begins.
 - The frozen four mutation schemas remain only in compatibility evidence.
 - Geometry, surface-unfolding, pattern-optimization, code-generation, inspection, mock, interactive, security, monitoring, and enterprise-oriented modules are present in the tree.
 - `src/testing/mock_autocad.py` contains an extensive mock object model.
@@ -41,6 +41,12 @@ These Linux tests use unavailable or injected services. They do not prove
 Windows installation, COM connectivity, drawing operations, unchanged DWG
 state, or AutoCAD release support.
 
+The repository also has a prepared opt-in AutoCAD 2026 smoke path: a trusted
+lease, disposable-copy guard, read-only harness, and two-process canonical
+stdio test. On Linux, the smoke is intentionally skipped with the exact reason
+`requires explicit disposable-DWG authorization`; collection and non-AutoCAD
+selection are not real-AutoCAD evidence.
+
 ## Not yet verified
 
 - A real Windows installation and MCP startup with full AutoCAD
@@ -52,10 +58,10 @@ state, or AutoCAD release support.
 
 ## Next validation gate
 
-EPIC-03 must supply the Windows adapter and pass a documented read-only smoke
-test on full AutoCAD 2026 with an unchanged disposable drawing. Full AutoCAD
-2021-2026 remains targeted, not verified. Stage 2 remains open until that
-evidence exists; the current MCP evidence is not an EPIC completion claim.
+EPIC-03 must execute and document the prepared read-only smoke test on full
+AutoCAD 2026 with an unchanged disposable drawing. Full AutoCAD 2021-2026
+remains targeted, not verified. Stage 2 remains open until that evidence
+exists; the current MCP evidence is not an EPIC completion claim.
 
 ## Repository governance status
 

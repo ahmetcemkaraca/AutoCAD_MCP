@@ -25,7 +25,7 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 connection boundary.
 
 **Status:** Open. The pure/core MCP contract has local Linux evidence, but
-EPIC-03 and the real-AutoCAD acceptance criterion below remain pending.
+EPIC-03's real-AutoCAD acceptance criterion below remains pending.
 
 **Acceptance criteria:**
 
@@ -49,9 +49,9 @@ EPIC-03 and the real-AutoCAD acceptance criterion below remain pending.
 **Recorded partial evidence:** The canonical command, three non-mutating tools,
 structured unavailable status, resource and prompt, compatibility shim,
 legacy-schema exclusion, and stdio contract have Linux pure/core MCP coverage.
-This is not a Stage 2 completion claim: EPIC-03 must still provide the Windows
-adapter and the unchanged-DWG full AutoCAD 2026 smoke test. AutoCAD 2021-2026
-remains targeted, not verified.
+This is not a Stage 2 completion claim: the prepared Windows adapter and
+unchanged-DWG full AutoCAD 2026 smoke must still be executed and recorded on a
+real installation. AutoCAD 2021-2026 remains targeted, not verified.
 
 ## 3. Structured drawing context
 

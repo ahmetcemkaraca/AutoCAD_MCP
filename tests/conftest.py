@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import stat
 import sys
@@ -70,6 +72,7 @@ def autocad_smoke_session(request: pytest.FixtureRequest) -> AutoCADSmokeSession
     )
     lease_key = build_autocad_lease_key(installation_path=installation_path)
     lease = AutoCADLease.acquire(lease_key)
+    _emit_lease_evidence("acquired", lease, None)
     guard: DrawingCopyGuard | None = None
     guard_root: Path | None = None
     primary_error: BaseException | None = None
@@ -95,7 +98,8 @@ def autocad_smoke_session(request: pytest.FixtureRequest) -> AutoCADSmokeSession
             "guard-root cleanup",
             lambda: _remove_empty_guard_root(guard_root, lease),
         )
-        _attempt_cleanup(cleanup_errors, "lease release", lease.release)
+        release_error = _attempt_cleanup(cleanup_errors, "lease release", lease.release)
+        _emit_lease_evidence("released", lease, release_error)
         _raise_or_note_cleanup_errors(primary_error, cleanup_errors)
 
 
@@ -139,11 +143,37 @@ def _remove_empty_guard_root(guard_root: Path | None, lease: AutoCADLease) -> No
 
 def _attempt_cleanup(
     cleanup_errors: list[tuple[str, BaseException]], name: str, operation: Callable[[], object]
-) -> None:
+) -> BaseException | None:
     try:
         operation()
     except BaseException as error:
         cleanup_errors.append((name, error))
+        return error
+    return None
+
+
+def _emit_lease_evidence(
+    stage: str, lease: object, release_error: BaseException | None
+) -> None:
+    """Emit only redacted lease lifecycle facts for the local smoke evidence log."""
+    evidence = getattr(lease, "evidence", None)
+    owner = getattr(evidence, "owner", None)
+    metadata_path = getattr(evidence, "metadata_path", None)
+    payload = {
+        "stage": stage,
+        "lease_key": getattr(owner, "lease_key", None),
+        "owner_process_id": getattr(owner, "pid", None),
+        "metadata_path_sha256": (
+            hashlib.sha256(metadata_path.encode("utf-8")).hexdigest()
+            if isinstance(metadata_path, str)
+            else None
+        ),
+        "acquired_at_utc": getattr(evidence, "acquired_at_utc", None),
+        "released_at_utc": getattr(evidence, "released_at_utc", None),
+        "stale_owner_recovered": getattr(evidence, "stale_owner_recovered", None) is not None,
+        "release_error": type(release_error).__name__ if release_error is not None else None,
+    }
+    sys.stdout.write(f"AUTOCAD_MCP_SMOKE_LEASE_EVIDENCE={json.dumps(payload, sort_keys=True)}\n")
 
 
 def _raise_or_note_cleanup_errors(

@@ -17,3 +17,30 @@
 | 2026-08-29 | Controller ledger setup | Baseline source inventory recorded; no implementation gate passed | This is observed source evidence only. |
 | 2026-08-29 | Linux/fake checks | No result recorded | Future Linux unit, mocked-COM, fake-adapter, and MCP-contract results demonstrate only their stated automated contracts; they are not AutoCAD compatibility evidence. |
 | 2026-08-29 | Real AutoCAD | No result recorded | Windows full-AutoCAD evidence is human-operator-only under E03-WP7 and requires the specified interactive session, lease, disposable read-only DWG, fingerprints, and reviewer gates. It is never substituted by Linux/fake checks. |
+
+## Final Linux automated evidence
+
+The final portable gate ran from the isolated
+`codex/local-autocad-testable` worktree with `uv 0.12.7`, 64-bit CPython
+3.12.14, and Linux 7.0.0-30-generic. These are Linux/pure-contract results,
+not Windows or AutoCAD compatibility evidence.
+
+| Scope | Exact command | Result | Limitation |
+| --- | --- | --- | --- |
+| Lock and environment | `uv lock --check`; `uv sync --frozen --group dev` | Passed; 116 packages resolved and 74 checked | No clean Windows sync has been recorded. |
+| Complete portable suite | `uv run pytest -q -ra` | 215 passed, 9 skipped | One smoke test requires explicit disposable-DWG authorization; eight lease tests require Windows APIs/sessions. |
+| Metadata, package, catalog, and stdio | `uv run pytest tests/unit/test_project_metadata.py tests/unit/test_package_entrypoints.py tests/compatibility/test_legacy_mutating_tool_schemas.py tests/contract/test_stdio_server.py -q` | 11 passed | Uses unavailable/injected services, never real AutoCAD. |
+| Active lint | `uv run ruff check src/autocad_mcp src/server.py tests/adapter tests/compatibility tests/contract tests/mcp tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/windows tests/conftest.py scripts` | Passed | Full-tree legacy Ruff is intentionally not represented as passing; historical paths retain pre-existing diagnostics. |
+| Active source typing | `uv run mypy -p autocad_mcp -m src.server` | Passed: 16 source files, no issues | Windows COM remains dynamically exercised only on Windows. |
+| Syntax, manifest, and import boundary | `uv run python -m compileall -q src tests`; `uv run python -m json.tool mcp.json`; `uv run python -c "import autocad_mcp.server, autocad_mcp.adapter.windows_session, autocad_mcp.adapter.windows, src.server, sys; assert not {'pythoncom', 'win32com', 'win32com.client', 'pyautocad'} & set(sys.modules)"`; `git diff --check` | Passed | Import-boundary evidence is Linux-only. |
+
+`poetry.lock` remains archival and inactive until the first clean Windows
+frozen-sync witness permits its evidence-gated removal. `Dockerfile` and
+`docker-compose.yml` remain unsupported historical artifacts because decision
+0001 requires explicit E01-G3 maintainer approval before their removal. Neither
+retention is a supported runtime instruction.
+
+The prepared PowerShell runner and AutoCAD 2026 smoke have not run on Windows.
+Do not create `docs/verification/autocad-2026-smoke.md`, promote any AutoCAD
+release, or describe the smoke as verified until an operator supplies the
+redacted real-device evidence.

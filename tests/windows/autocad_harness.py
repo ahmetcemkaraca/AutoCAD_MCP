@@ -23,7 +23,7 @@ class ReadOnlyDrawingFingerprint:
 
 
 @dataclass(frozen=True)
-class _FileFingerprint:
+class ReadOnlyFileFingerprint:
     file_sha256: str
     file_size: int
     file_mtime_ns: int
@@ -45,15 +45,23 @@ class ReadOnlyAutoCADHarness:
         self._opener = opener
         self._acl_verifier = acl_verifier
         self._document: object | None = None
-        self._file_fingerprint: _FileFingerprint | None = None
+        self._file_fingerprint: ReadOnlyFileFingerprint | None = None
         self._fingerprint: ReadOnlyDrawingFingerprint | None = None
         self._close_attempted = False
+        self._post_close_file_fingerprint: ReadOnlyFileFingerprint | None = None
 
     @property
     def fingerprint(self) -> ReadOnlyDrawingFingerprint:
         if self._fingerprint is None:
             raise RuntimeError("read-only drawing has not been opened")
         return self._fingerprint
+
+    @property
+    def post_close_file_fingerprint(self) -> ReadOnlyFileFingerprint:
+        """Return the file metadata/hash observed after the no-save close completes."""
+        if self._post_close_file_fingerprint is None:
+            raise RuntimeError("read-only drawing has not been closed")
+        return self._post_close_file_fingerprint
 
     def open(self) -> object:
         """Assert controller and ACL safety before opening only the guard copy."""
@@ -99,7 +107,7 @@ class ReadOnlyAutoCADHarness:
             self._validate_document(document)
             self.assert_unchanged()
             self._close_once(document)
-            self._assert_file_unchanged()
+            self._post_close_file_fingerprint = self._assert_file_unchanged()
             self._verify_acl()
             self._assert_owned()
             return self._guard.finalize(preserve=False, reason="read-only smoke completed")
@@ -129,11 +137,13 @@ class ReadOnlyAutoCADHarness:
         if document.ReadOnly is not True:  # type: ignore[attr-defined]
             raise RuntimeError("AutoCAD document is not read-only")
 
-    def _assert_file_unchanged(self) -> None:
+    def _assert_file_unchanged(self) -> ReadOnlyFileFingerprint:
         if self._file_fingerprint is None:
             raise RuntimeError("read-only drawing file fingerprint has not been captured")
-        if _file_fingerprint(self._guard.copy_path) != self._file_fingerprint:
+        current = _file_fingerprint(self._guard.copy_path)
+        if current != self._file_fingerprint:
             raise RuntimeError("read-only drawing file fingerprint changed")
+        return current
 
     def _attempt_close_safely(self, document: object, original_error: BaseException) -> None:
         if self._close_attempted:
@@ -176,9 +186,9 @@ class ReadOnlyAutoCADHarness:
         )
 
 
-def _file_fingerprint(path: Path) -> _FileFingerprint:
+def _file_fingerprint(path: Path) -> ReadOnlyFileFingerprint:
     file_stat = path.stat()
-    return _FileFingerprint(_sha256(path), file_stat.st_size, file_stat.st_mtime_ns)
+    return ReadOnlyFileFingerprint(_sha256(path), file_stat.st_size, file_stat.st_mtime_ns)
 
 
 def _sha256(path: Path) -> str:

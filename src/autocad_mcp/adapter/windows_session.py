@@ -9,6 +9,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import ModuleType
+from typing import Any, cast
 
 from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode
 
@@ -80,13 +81,13 @@ def _com_error(error: Exception, code: AdapterErrorCode) -> AdapterError:
 
 def _document_and_model_space(application: object) -> tuple[object, object | None]:
     try:
-        document = application.ActiveDocument
+        document = cast(object, cast(Any, application).ActiveDocument)
     except Exception as error:
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
     if document is None:
         raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
     try:
-        return document, document.ModelSpace
+        return document, cast(object, cast(Any, document).ModelSpace)
     except AttributeError:
         return document, None
     except Exception as error:

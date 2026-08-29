@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import inspect
+import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import autocad_harness
 import pytest
@@ -86,7 +88,48 @@ def test_harness_opens_guard_copy_not_source_and_uses_true_readonly_flag(tmp_pat
     assert lease.assertions >= 2
     assert verified == [guard.copy_path.parent] * 4
     assert document.close_calls == [False]
+    assert harness.post_close_file_fingerprint.file_sha256 == harness.fingerprint.file_sha256
+    assert harness.post_close_file_fingerprint.file_size == harness.fingerprint.file_size
+    assert harness.post_close_file_fingerprint.file_mtime_ns == harness.fingerprint.file_mtime_ns
     assert evidence.cleanup_succeeded is True
+
+
+def test_post_close_evidence_uses_the_same_verified_capture(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A second post-close read could report an unvalidated file state as a passing result."""
+    guard = _guard(tmp_path)
+    document = _Document(guard.copy_path)
+    harness = ReadOnlyAutoCADHarness(
+        lease=_Lease(),
+        guard=guard,
+        opener=lambda path, readonly: document,
+        acl_verifier=lambda path: None,
+    )
+    harness.open()
+    verified = autocad_harness.ReadOnlyFileFingerprint(
+        harness.fingerprint.file_sha256,
+        harness.fingerprint.file_size,
+        harness.fingerprint.file_mtime_ns,
+    )
+    unverified_later_value = autocad_harness.ReadOnlyFileFingerprint(
+        "f" * 64,
+        verified.file_size,
+        verified.file_mtime_ns,
+    )
+    reads = 0
+
+    def fingerprint_after_close(path: Path) -> autocad_harness.ReadOnlyFileFingerprint:
+        nonlocal reads
+        reads += 1
+        return unverified_later_value if reads == 3 else verified
+
+    monkeypatch.setattr(autocad_harness, "_file_fingerprint", fingerprint_after_close)
+
+    harness.close()
+
+    assert reads == 2
+    assert harness.post_close_file_fingerprint == verified
 
 
 def test_harness_refuses_writable_document_and_preserves_evidence(tmp_path: Path) -> None:
@@ -503,6 +546,32 @@ def test_fixture_teardown_keeps_primary_error_and_notes_later_failures(
     assert "lease release failed" in notes
 
 
+def test_fixture_emits_redacted_lease_release_evidence(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A successful or failed teardown must expose lease release without personal metadata paths."""
+    metadata_path = tmp_path / "private-user" / "owner.json"
+    lease = SimpleNamespace(
+        evidence=SimpleNamespace(
+            owner=SimpleNamespace(lease_key="a" * 64, pid=42, user_sid="S-1-secret"),
+            metadata_path=str(metadata_path),
+            acquired_at_utc="2026-08-29T12:00:00.000000Z",
+            released_at_utc="2026-08-29T12:01:00.000000Z",
+            stale_owner_recovered=None,
+        )
+    )
+
+    smoke_conftest._emit_lease_evidence("released", lease, None)
+
+    output = capsys.readouterr().out
+    assert str(metadata_path) not in output
+    assert "S-1-secret" not in output
+    payload = json.loads(output.removeprefix("AUTOCAD_MCP_SMOKE_LEASE_EVIDENCE="))
+    assert payload["stage"] == "released"
+    assert payload["released_at_utc"] == "2026-08-29T12:01:00.000000Z"
+    assert payload["release_error"] is None
+
+
 def test_harness_has_no_writable_policy_class_or_mutation_apis() -> None:
     classes = [
         value
@@ -533,8 +602,17 @@ def test_opt_in_fixture_and_runner_are_constrained() -> None:
     assert "$PSScriptRoot" in runner_source
     assert "Push-Location" in runner_source
     assert "Pop-Location" in runner_source
-    command = "uv run pytest tests/windows/test_autocad_2026_smoke.py -m autocad"
-    assert f"{command} --run-autocad -vv --tb=short" in runner_source
+    command = "uv run --frozen pytest tests/windows/test_autocad_2026_smoke.py -m autocad"
+    assert f"{command} --run-autocad --capture=tee-sys -vv --tb=short" in runner_source
+    assert "Tee-Object" in runner_source
+    assert "Get-CimInstance" in runner_source
+    assert "Get-FileHash" in runner_source
+    assert "AUTOCAD_MCP_SMOKE_POSTFLIGHT_ERROR=" in runner_source
+    assert "[guid]::NewGuid" in runner_source
+    assert "New-Item -ItemType File -Path $evidencePath -ErrorAction Stop" in runner_source
+    assert "git rev-parse --verify HEAD" in runner_source
+    assert "git diff --quiet" in runner_source
+    assert "HEAD:uv.lock" in runner_source
     for forbidden in ("LeaseKey", "Salt", "Isolation", "Concurrency", "Copy-Item", "Start-Process"):
         assert forbidden not in runner_source
 

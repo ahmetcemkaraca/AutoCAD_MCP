@@ -72,7 +72,7 @@ For the current pure/core boundary, run:
 ```powershell
 uv sync --frozen --group dev
 uv run pytest tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/compatibility/test_legacy_mutating_tool_schemas.py tests/contract/test_stdio_server.py -q
-uv run ruff check src tests
+uv run ruff check src/autocad_mcp src/server.py tests/adapter tests/compatibility tests/contract tests/mcp tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/windows tests/conftest.py scripts
 uv run python -m compileall -q src tests
 uv run python -m json.tool mcp.json
 ```

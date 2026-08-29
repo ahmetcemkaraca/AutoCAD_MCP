@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import assert_never
+from typing import assert_never, cast
 
 from autocad_mcp.adapter.protocol import AdapterError, ConnectionInfo, EntityDetails, EntitySummary
 from autocad_mcp.adapter.provider import AdapterProvider
@@ -55,7 +55,7 @@ class AdapterToolService:
             )
 
 
-def _status_data(connection: ConnectionInfo) -> dict[str, object]:
+def _status_data(connection: ConnectionInfo) -> dict[str, JsonValue]:
     return {
         "mcp_server": "running",
         "autocad_connected": connection.connected,
@@ -66,9 +66,10 @@ def _status_data(connection: ConnectionInfo) -> dict[str, object]:
         "read_only": connection.read_only,
         "tools_available": 3,
         "transport": "stdio",
-        "capabilities": sorted(
-            capability.value for capability in connection.capabilities.available
-        ),
+        "capabilities": [
+            cast(JsonValue, capability.value)
+            for capability in sorted(connection.capabilities.available)
+        ],
         "capability_issues": [
             {
                 "code": issue.code.value,
@@ -81,7 +82,7 @@ def _status_data(connection: ConnectionInfo) -> dict[str, object]:
     }
 
 
-def _summary_data(entity: EntitySummary) -> dict[str, object]:
+def _summary_data(entity: EntitySummary | EntityDetails) -> dict[str, JsonValue]:
     return {
         "id": entity.object_id,
         "handle": entity.handle,
@@ -90,7 +91,7 @@ def _summary_data(entity: EntitySummary) -> dict[str, object]:
     }
 
 
-def _details_data(entity: EntityDetails) -> dict[str, object]:
+def _details_data(entity: EntityDetails) -> dict[str, JsonValue]:
     return {**_summary_data(entity), "properties": _plain_json_mapping(entity.properties)}
 
 

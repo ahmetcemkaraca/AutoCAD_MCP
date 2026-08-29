@@ -1,8 +1,8 @@
 # Architecture
 
-This document distinguishes the adopted canonical MCP core from the Windows
-AutoCAD target. Target components are not current functionality until their
-roadmap acceptance gates pass.
+This document distinguishes the implemented canonical MCP/Windows-adapter
+boundary from future product targets. No real AutoCAD connection is claimed
+until the corresponding roadmap acceptance evidence is recorded.
 
 ## Adopted canonical MCP core
 
@@ -16,15 +16,18 @@ autocad_mcp.server
     |-- server_status / list_entities / get_entity_info
     |-- autocad://server-status resource and autocad-help prompt
     v
-Unavailable or injected BasicToolService
+AdapterToolService -> delayed Windows adapter provider
+    |-- transient COM only during an adapter operation
+    v
+Full AutoCAD when an operator has started it; structured unavailable otherwise
 
 src.server -> protocol-safe compatibility shim -> autocad_mcp.server
 ```
 
 `mcp.json` launches `uv run python -m autocad_mcp.server`. The canonical
-server is the sole registration owner. Its pure schema, dispatch, and stdio
-contracts are tested without COM on Linux; this does not prove a connection to
-AutoCAD or support for Linux as an AutoCAD runtime.
+server is the sole registration owner. Its pure schema, dispatch, adapter
+contract, and stdio contracts are tested without COM on Linux; this does not
+prove a connection to AutoCAD or support for Linux as an AutoCAD runtime.
 
 The active catalog contains only `server_status`, `list_entities`, and
 `get_entity_info`. The historical mutation schemas are retained as compatibility

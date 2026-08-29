@@ -14,7 +14,7 @@ Compatibility claims require a repeatable test result on the named environment. 
 | Full AutoCAD 2026 | Windows | Targeted, not verified; first validation environment | The opt-in read-only smoke is prepared; no real-installation result is recorded |
 | AutoCAD LT | Windows | Out of scope | Required 3D and automation behavior is not part of the product target |
 
-No AutoCAD release is marked verified by the stewardship documentation pull request.
+No AutoCAD release is currently marked verified.
 
 ## Host platforms
 
@@ -26,11 +26,18 @@ No AutoCAD release is marked verified by the stewardship documentation pull requ
 
 ## Python
 
-`pyproject.toml` declares Python 3.12 or newer, but its dependency tables and the absent `uv.lock` do not yet establish a reproducible uv environment. The stewardship syntax check used Python 3.14.4, which does not establish dependency or COM compatibility. The development-baseline epic must create and test the locked dependency set on supported Windows Python releases before narrowing or expanding the Python claim.
+`pyproject.toml` declares Python 3.12 or newer and the committed `uv.lock`
+supports a frozen Linux development sync. The first real-device smoke requires
+64-bit CPython 3.12 exactly and records that interpreter in its local evidence
+log. A Windows frozen sync has not yet been recorded, so this does not claim
+Windows dependency-installation verification.
 
 ## Capability policy
 
-The target adapter will detect required COM capabilities after connecting. A feature should return a structured unsupported-capability result when the connected release lacks a required member; it should not assume that every API behaves identically across AutoCAD 2021-2026.
+The implemented adapter detects required COM capabilities after connecting. A
+feature returns a structured unsupported-capability result when the connected
+release lacks a required member; it does not assume that every API behaves
+identically across AutoCAD 2021-2026.
 
 ## Promoting a compatibility scope to verified
 

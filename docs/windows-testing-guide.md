@@ -2,118 +2,177 @@
 
 ## Verification status
 
-No real AutoCAD verification has been recorded yet. This procedure prepares
-the first full AutoCAD 2026 read-only Stable-core smoke; it does not verify
-AutoCAD 2021-2026 until a successful Windows run is recorded.
+No real AutoCAD verification is recorded. This guide prepares the first
+full-AutoCAD 2026 read-only smoke only; AutoCAD 2021-2026 remain targeted, not
+verified until a successful Windows result is reviewed and recorded.
 
-## Operator procedure
+## What you must do manually
 
-Complete the following actions manually in an interactive Windows session.
+Use an interactive Windows desktop session with a licensed **full AutoCAD
+2026** instance. Do not use AutoCAD LT, do not use a shared production drawing,
+and do not run a second smoke controller. Start AutoCAD yourself, close every
+modal dialog, and leave it running for the whole test. The runner only attaches
+to the existing process; it never starts AutoCAD.
 
-1. Fetch and check out the review branch:
+## Run the guarded smoke
+
+1. Install Git, 64-bit CPython 3.12, and `uv`. Run this from a new PowerShell
+   window:
 
    ```powershell
-   git fetch origin
-   git checkout codex/local-autocad-testable
-   git pull --ff-only origin codex/local-autocad-testable
+   winget install --exact --id Git.Git --source winget
+   winget install --exact --id Python.Python.3.12 --source winget
+   winget install --exact --id astral-sh.uv --source winget
    ```
 
-2. Install and select 64-bit CPython 3.12 and `uv` yourself. Confirm that the
-   selected interpreter is 64-bit and that `uv --version` runs. From the
-   repository root, create the frozen environment:
+   Close that PowerShell window, open a new one so the installers' `PATH`
+   changes take effect, then clone and enter the exact review branch:
 
    ```powershell
+   New-Item -ItemType Directory -Force C:\src | Out-Null
+   git clone https://github.com/ahmetcemkaraca/AutoCAD_MCP.git C:\src\AutoCAD_MCP
+   Set-Location C:\src\AutoCAD_MCP
+   git fetch origin
+   git switch --track -c codex/local-autocad-testable origin/codex/local-autocad-testable
+   ```
+
+   If your organization blocks `winget`, install those exact products through
+   its approved installer channel, open a new PowerShell window, and continue
+   at the verification commands below. If the checkout already exists, first
+   run `Set-Location C:\src\AutoCAD_MCP`, then use `git switch
+   codex/local-autocad-testable` followed by `git pull --ff-only origin
+   codex/local-autocad-testable` instead of cloning/switching with `-c`.
+
+2. Select 64-bit CPython 3.12 and verify `uv`. The runner repeats this check
+   and fails closed if the synchronized interpreter is not exactly 64-bit
+   CPython 3.12.
+
+   ```powershell
+   py -3.12 -c "import struct, sys; assert sys.version_info[:2] == (3, 12) and struct.calcsize('P') == 8; print(sys.version)"
+   uv --version
+   $env:UV_PYTHON = "3.12"
    uv sync --frozen --group dev
    ```
 
-3. Start licensed **full AutoCAD 2026** manually in the same interactive
-   Windows session. Do not use AutoCAD LT. Close every modal dialog and do not
-   start a second verification controller.
-
-4. Choose a small, immutable, read-only `.dwg` with at least one queryable
-   entity. Keep its source path outside the temporary guard location; the
-   runner makes its own disposable copy and never opens the source. Record a
-   SHA-256 for the source if your fixture process requires it.
-
-5. Run the guarded smoke. Replace the two example paths with your source DWG
-   and the actual full-AutoCAD `acad.exe` installation path:
+3. Pick a small `.dwg` fixture with at least one queryable entity. It must be
+   outside `%TEMP%`, not be the drawing you normally edit, and be explicitly
+   read-only. Record its hash before the run:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts/run_autocad_2026_smoke.ps1 -SourceDwg C:\autocad-mcp-fixtures\basic-smoke.dwg -AutoCADInstallationPath "C:\Program Files\Autodesk\AutoCAD 2026\acad.exe"
+   $source = "C:\autocad-mcp-fixtures\basic-smoke.dwg"
+   attrib +R $source
+   (Get-Item -LiteralPath $source).Attributes
+   Get-FileHash -LiteralPath $source -Algorithm SHA256
    ```
 
-The runner requires a frozen sync, an explicitly read-only source, release
-environment value `2026`, disposable-DWG authorization, and the controller's
-exclusive AutoCAD lease. It attaches only to the AutoCAD process you already
-started, opens only the generated copy read-only, and never saves or sends an
-AutoCAD command.
+4. Start full AutoCAD 2026 manually in the same Windows session, then run the
+   only supported smoke command. Replace the example installation path with the
+   `acad.exe` that belongs to the AutoCAD 2026 instance you started:
 
-## Expected successful result
+   ```powershell
+   .\scripts\run_autocad_2026_smoke.ps1 -SourceDwg $source -AutoCADInstallationPath "C:\Program Files\Autodesk\AutoCAD 2026\acad.exe"
+   ```
 
-Pytest reports one passing `test_autocad_2026_read_only_mcp_smoke` test. The
-test initializes two fresh `python -m autocad_mcp.server` stdio processes. In
-each process it confirms exactly these three tools, then queries status, lists
-at least one entity, and reads the first entity's matching detail:
+The runner accepts only those two absolute paths. It makes a GUID-scoped
+disposable copy, acquires the exclusive lease, proves the source/copy hashes
+match, binds the running AutoCAD window to the leased `acad.exe`, requires an
+AutoCAD 2026 caption, and opens only the copy read-only. It runs the four
+production adapter methods, then two fresh canonical stdio MCP processes. Each
+process confirms the exact three-tool catalog and calls `server_status`,
+`list_entities`, and `get_entity_info`. It checks the guarded full path,
+read-only state, file metadata and hashes, `DBMOD`, entity count, and entity
+digest before closing with `Close(False)`.
 
-- `server_status`
-- `list_entities`
-- `get_entity_info`
+## Expected result and evidence
 
-The harness verifies the copy path, read-only state, source/copy hashes, file
-metadata, `DBMOD`, entity count, and entity digest before and after the first
-process and after the reconnect process. It closes the disposable document
-with `Close(False)`. A genuine pass is still not a release claim until its
-redacted evidence is reviewed and recorded.
+Success ends with one passing `test_autocad_2026_read_only_mcp_smoke` test.
+The runner writes a local, ignored log under `logs/autocad-mcp-smoke-*.log`.
+That local log intentionally contains the private source and installation paths
+needed to diagnose the run; do not share it unchanged.
 
-## Configure an MCP client after the smoke
+The console and log include these machine-readable records:
 
-For Codex or ChatGPT MCP configuration, point the server entry at the checked
-out repository and use this exact command:
+- `AUTOCAD_MCP_SMOKE_RUNNER_EVIDENCE=` — Windows build, interpreter/`uv`,
+  checked-out branch/commit, clean tracked-worktree assertion, `uv.lock` Git
+  blob/hash, installation identity, and source before/after metadata and hash.
+- `AUTOCAD_MCP_SMOKE_LEASE_EVIDENCE=` — acquired and released lease lifecycle
+  facts with the metadata path redacted to a digest.
+- `AUTOCAD_MCP_SMOKE_EVIDENCE=` — a shareable report containing redacted
+  source/copy path classifications, process identity, guard evidence, and
+  post-open/pre-close drawing fingerprints plus post-close file metadata and
+  hash.
+- `AUTOCAD_MCP_SMOKE_PRESERVED_COPY=` — only on failure; this is the private
+  local path to preserve for diagnosis.
 
-```text
-uv run python -m autocad_mcp.server
+A pass proves only the recorded AutoCAD 2026 fixture/run. It does not verify
+AutoCAD 2021-2025, promote compatibility, or close Stage 2 by itself.
+
+## Use the local server with Codex
+
+After a successful smoke, register the local stdio server with Codex from a
+PowerShell prompt. Replace the example checkout path exactly once if yours is
+different:
+
+```powershell
+codex mcp add autocad-mcp -- uv --directory C:\src\AutoCAD_MCP run python -m autocad_mcp.server
+codex mcp get autocad-mcp --json
 ```
 
-For a JSON-style configuration, use the equivalent command, arguments, and
-working directory (replace the example directory):
+The registered launch is equivalent to the canonical command
+`uv run python -m autocad_mcp.server`, with `uv --directory` fixing the checked
+out project as the working directory. Restart Codex after registration.
 
-```json
-{
-  "mcpServers": {
-    "autocad-mcp": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "autocad_mcp.server"],
-      "cwd": "C:\\src\\AutoCAD_MCP"
-    }
-  }
-}
+For manual post-smoke calls, first make a **new** disposable copy and open it
+yourself as read-only in the already-running AutoCAD 2026 session. These manual
+calls are not a substitute for the guarded smoke and must never target the
+immutable source:
+
+```powershell
+$manualCopy = Join-Path $env:TEMP ("autocad-mcp-client-" + [guid]::NewGuid().ToString() + ".dwg")
+Copy-Item -LiteralPath $source -Destination $manualCopy -ErrorAction Stop
+attrib +R $manualCopy
+Get-FileHash -LiteralPath $manualCopy -Algorithm SHA256
 ```
 
-The runner closes its guarded copy at the end. For manual client calls, first
-make and open a separate disposable copy yourself as read-only in the already
-running full AutoCAD 2026 session; never use the immutable source. Then call
-only `server_status`, `list_entities`, and `get_entity_info`. The last call
-needs the `entity_id` returned by `list_entities`. No mutation tool is
-registered: editing remains outside this smoke, under EPIC-06, and extrusion
-and revolution remain unregistered.
+Use AutoCAD's file-open UI to open `$manualCopy` read-only, then ask Codex for
+these exact calls in order:
+
+1. `Call autocad-mcp server_status with {} and show the JSON result.`
+2. `Call autocad-mcp list_entities with {} and show the first entity id.`
+3. `Call autocad-mcp get_entity_info with {"entity_id": <the returned id>} and show the JSON result.`
+
+Only `server_status`, `list_entities`, and `get_entity_info` are registered.
+There is no mutation tool. Close the manual copy without saving when finished.
+
+This release does not configure a hosted ChatGPT connector: it ships only a
+local stdio server. Do not expose, tunnel, or publish this local smoke endpoint
+to make a ChatGPT connector; a separately reviewed remote transport and its
+authentication boundary are outside EPIC-01 through EPIC-03.
 
 ## Failure diagnostics and rollback
 
-On a failure, stop the run, close any AutoCAD modal dialog, and keep the
-original source untouched. The test asks the guard to preserve the disposable
-copy on a smoke assertion failure; record its path from the failure output and
-do not delete it. Collect the console output, lease acquire/release evidence,
-AutoCAD product/build, Windows build, Python and `uv` versions, lock revision,
-source hash, and fingerprint fields. Redact personal path components and
-proprietary drawing content before sharing the report.
+| Symptom | Safe response |
+| --- | --- |
+| `requires explicit disposable-DWG authorization` | Use the supplied PowerShell runner rather than calling the marked test directly. |
+| Missing full AutoCAD / a modal dialog | Start full AutoCAD 2026 manually, clear dialogs, and rerun; do not start it from the runner. |
+| `does not match the leased acad.exe` or `not AutoCAD 2026` | Stop. Supply the `acad.exe` for the already-running full 2026 process; do not relabel another release. |
+| Source is not immutable | Stop and set its read-only attribute. Do not make the user drawing writable for the test. |
+| Lease contention | Stop the second controller. Never delete lease files to bypass contention. |
+| Changed fingerprint, active-path mismatch, or writable document | Stop. Keep the `AUTOCAD_MCP_SMOKE_PRESERVED_COPY` path and collect the evidence. |
 
-To roll back this local trial, remove the MCP client configuration and return
-the checkout to the stewardship baseline:
+For every failure, retain the original source and preserved copy, copy the
+redacted `AUTOCAD_MCP_SMOKE_*_EVIDENCE` lines, and redact personal path
+components and drawing content before sharing. Include AutoCAD product/caption,
+version, `acad.exe` build, Windows build, CPython/`uv` versions, and the branch
+commit. Do not write an AutoCAD verification record for a failed, skipped, or
+unrecorded run.
+
+To undo the local client trial, close the disposable drawing without saving,
+then run:
 
 ```powershell
-git checkout origin/docs/stewardship-baseline
+codex mcp remove autocad-mcp
+git switch --detach origin/docs/stewardship-baseline
 ```
 
-Never delete a preserved evidence copy during rollback. Do not label any
-AutoCAD release verified, promote compatibility, or close Stage 2 after a
-failed, skipped, or unrecorded run.
+Do not delete a preserved evidence copy during rollback.

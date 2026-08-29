@@ -59,7 +59,7 @@ def _member(
     target: object, name: str, capability: AdapterCapability, issues: list[AdapterCapabilityIssue]
 ) -> object | None:
     try:
-        return getattr(target, name)
+        return cast(object, getattr(target, name))
     except AttributeError:
         issues.append(_issue(AdapterCapabilityIssueCode.MEMBER_UNAVAILABLE, capability, name))
     except Exception:
@@ -71,7 +71,7 @@ def _model_space_sample(
     model_space: object, issues: list[AdapterCapabilityIssue]
 ) -> object:
     try:
-        entities = iter(model_space)
+        entities = iter(cast(Iterable[object], model_space))
     except TypeError:
         issues.append(
             _issue(
@@ -157,7 +157,7 @@ def _required(entity: object, name: str) -> object:
 
 def _entity_summary(entity: object) -> EntitySummary:
     return EntitySummary(
-        int(_required(entity, "ObjectID")),
+        int(cast(str, _required(entity, "ObjectID"))),
         str(_required(entity, "Handle")),
         str(_required(entity, "ObjectName")),
         str(_required(entity, "Layer")),
@@ -208,7 +208,7 @@ def _unsupported(capability: AdapterCapability) -> AdapterError:
 
 def _status_member(target: object, name: str, *, required: bool = False) -> object | None:
     try:
-        return getattr(target, name)
+        return cast(object, getattr(target, name))
     except AttributeError as error:
         if required:
             raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
@@ -223,7 +223,7 @@ def _probed_entities(
     if session.model_space is None:
         return detect_capabilities(session), ()
     try:
-        entities = iter(session.model_space)
+        entities = iter(cast(Iterable[object], session.model_space))
     except TypeError:
         return detect_capabilities(session), ()
     except Exception as error:
@@ -286,7 +286,7 @@ class WindowsAutoCADAdapter:
                 raise _unsupported(AdapterCapability.GET_ENTITY_INFO)
             try:
                 for entity in entities:
-                    if int(_required(entity, "ObjectID")) == object_id:
+                    if int(cast(str, _required(entity, "ObjectID"))) == object_id:
                         return _entity_details(entity)
             except AdapterError:
                 raise

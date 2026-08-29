@@ -23,7 +23,7 @@ Source presence does not prove that a module is connected to the root server, fu
 
 | Area | Evidence | Consequence |
 | --- | --- | --- |
-| Windows adapter | No real adapter connection is in the canonical core. | EPIC-03 must provide Windows-only COM behavior and real AutoCAD evidence. |
+| Windows adapter | The delayed Windows COM adapter, fake contracts, lease, copy guard, and read-only harness are in the canonical runtime; no real adapter connection is recorded. | Execute the guarded AutoCAD 2026 smoke and review its evidence before making a real-AutoCAD claim. |
 | Unconnected advanced server | `src/mcp_integration/enhanced_mcp_server.py` remains a large separate system not started by `mcp.json`. | It remains experimental and must not be advertised as root-server functionality. |
 | Historical deployment artifacts | Docker and Compose describe a Linux HTTP direction that names the experimental enhanced server. | They are not a supported deployment; [decision 0001](decisions/0001-container-artifact-disposition.md) records their status without authorizing removal. |
 

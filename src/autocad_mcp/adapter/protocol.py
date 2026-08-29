@@ -1,9 +1,9 @@
 """Pure values and the four-method public AutoCAD adapter protocol."""
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import NoReturn, Protocol
+from typing import NoReturn, Protocol, Self, SupportsIndex, overload
 
 from autocad_mcp.adapter.capabilities import AdapterCapabilityReport
 from autocad_mcp.core.models import JsonValue
@@ -25,7 +25,7 @@ class _FrozenJsonDict(dict[str, JsonValue]):
     def __delitem__(self, key: str) -> None:
         self._immutable()
 
-    def __ior__(self, value: object) -> NoReturn:
+    def __ior__(self, value: object) -> Self:  # type: ignore[misc,override]
         self._immutable()
 
     def clear(self) -> NoReturn:
@@ -54,40 +54,48 @@ class _FrozenJsonList(list[JsonValue]):
     def _immutable() -> NoReturn:
         raise TypeError("JSON value is immutable")
 
-    def __setitem__(self, index: int | slice, value: JsonValue | list[JsonValue]) -> None:
+    @overload
+    def __setitem__(self, index: SupportsIndex, value: JsonValue, /) -> None: ...
+
+    @overload
+    def __setitem__(self, index: slice, value: Iterable[JsonValue], /) -> None: ...
+
+    def __setitem__(
+        self, index: SupportsIndex | slice, value: JsonValue | Iterable[JsonValue], /
+    ) -> None:
         self._immutable()
 
-    def __delitem__(self, index: int | slice) -> None:
+    def __delitem__(self, index: SupportsIndex | slice, /) -> None:
         self._immutable()
 
-    def __iadd__(self, value: list[JsonValue]) -> NoReturn:
+    def __iadd__(self, value: Iterable[JsonValue], /) -> Self:  # type: ignore[misc,override]
         self._immutable()
 
-    def __imul__(self, value: int) -> NoReturn:
+    def __imul__(self, value: SupportsIndex, /) -> Self:
         self._immutable()
 
-    def append(self, value: JsonValue) -> NoReturn:
+    def append(self, value: JsonValue, /) -> None:
         self._immutable()
 
-    def clear(self) -> NoReturn:
+    def clear(self) -> None:
         self._immutable()
 
-    def extend(self, values: list[JsonValue]) -> NoReturn:
+    def extend(self, values: Iterable[JsonValue], /) -> None:
         self._immutable()
 
-    def insert(self, index: int, value: JsonValue) -> NoReturn:
+    def insert(self, index: SupportsIndex, value: JsonValue, /) -> None:
         self._immutable()
 
-    def pop(self, index: int = -1) -> NoReturn:
+    def pop(self, index: SupportsIndex = -1, /) -> JsonValue:
         self._immutable()
 
-    def remove(self, value: JsonValue) -> NoReturn:
+    def remove(self, value: JsonValue, /) -> None:
         self._immutable()
 
-    def reverse(self) -> NoReturn:
+    def reverse(self) -> None:
         self._immutable()
 
-    def sort(self, *, key: object = None, reverse: bool = False) -> NoReturn:
+    def sort(self, *, key: object = None, reverse: bool = False) -> None:
         self._immutable()
 
 

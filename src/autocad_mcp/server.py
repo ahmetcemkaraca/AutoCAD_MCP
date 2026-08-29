@@ -48,7 +48,7 @@ def create_server(service: BasicToolService) -> Server:
     async def list_resources() -> list[types.Resource]:
         return [
             types.Resource(
-                uri=_STATUS_RESOURCE_URI,
+                uri=types.AnyUrl(_STATUS_RESOURCE_URI),
                 name="AutoCAD MCP Server Status",
                 description="Current MCP server and AutoCAD connection status",
                 mimeType="application/json",

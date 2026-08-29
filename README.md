@@ -20,17 +20,22 @@ and delivery order.
 
 ## Current limitations
 
-The Windows AutoCAD adapter remains a target for EPIC-03. Full AutoCAD
+The delayed Windows AutoCAD adapter and guarded AutoCAD 2026 smoke harness are
+implemented, but no real Windows/AutoCAD run has been recorded. Full AutoCAD
 2021-2026 is targeted, not verified. `src/mcp_integration/enhanced_mcp_server.py`
 is experimental and unconnected; it is not launched or advertised by the
-canonical server. Read the [project status](docs/project-status.md) before
-relying on the server with production drawings.
+canonical server. Read the [Windows smoke guide](docs/windows-testing-guide.md)
+and [project status](docs/project-status.md) before relying on the server with
+production drawings.
 
 ## Requirements
 
 - Windows
 - Full AutoCAD 2021-2026; compatibility is targeted and tracked per release
 - Python 3.12 or newer
+
+The first guarded real-device smoke requires 64-bit CPython 3.12 exactly; the
+package metadata remains `>=3.12` for ordinary development.
 
 AutoCAD LT and AutoCAD hosted on Linux or macOS are outside the supported scope. See the [compatibility policy](docs/compatibility.md).
 

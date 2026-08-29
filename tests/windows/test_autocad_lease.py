@@ -145,8 +145,14 @@ def test_public_owner_command_and_context_exit_contracts_are_frozen() -> None:
 
     assert get_type_hints(module.LeaseOwner)["command"] == tuple[str, ...]
     exit_hints = get_type_hints(module.AutoCADLease.__exit__)
+    assert list(inspect.signature(module.AutoCADLease.__exit__).parameters) == [
+        "self",
+        "exc_type",
+        "exc",
+        "traceback",
+    ]
     assert exit_hints["exc_type"] == type[BaseException] | None
-    assert exit_hints["exc_value"] == BaseException | None
+    assert exit_hints["exc"] == BaseException | None
     assert exit_hints["traceback"] == TracebackType | None
 
 
@@ -169,7 +175,10 @@ def test_metadata_parser_normalizes_command_and_rejects_untrusted_shapes(tmp_pat
         json.dumps({"owner": owner, "released_at_utc": None}), encoding="utf-8"
     )
 
-    parsed, released_at = module._read_metadata(metadata_path, expected_lease_key=key)
+    bindings = module._OwnerBindings("S-1-5-21-100", "controller", 1)
+    parsed, released_at = module._read_metadata(
+        metadata_path, expected_lease_key=key, expected_bindings=bindings
+    )
 
     assert parsed.command == tuple(owner["command"])
     assert released_at is None
@@ -188,13 +197,31 @@ def test_metadata_parser_normalizes_command_and_rejects_untrusted_shapes(tmp_pat
             json.dumps({"owner": malformed, "released_at_utc": None}), encoding="utf-8"
         )
         with pytest.raises(module.AutoCADLeaseError, match="metadata is corrupt"):
-            module._read_metadata(metadata_path, expected_lease_key=key)
+            module._read_metadata(
+                metadata_path, expected_lease_key=key, expected_bindings=bindings
+            )
 
     metadata_path.write_text(
         json.dumps({"owner": owner, "released_at_utc": "not-utc"}), encoding="utf-8"
     )
     with pytest.raises(module.AutoCADLeaseError, match="metadata is corrupt"):
-        module._read_metadata(metadata_path, expected_lease_key=key)
+        module._read_metadata(metadata_path, expected_lease_key=key, expected_bindings=bindings)
+
+    for field, invalid in (
+        ("lease_key", _test_key("wrong-key")),
+        ("user_sid", "S-1-5-21-999"),
+        ("computer_name", "other-controller"),
+        ("windows_session_id", 2),
+    ):
+        mismatched = dict(owner)
+        mismatched[field] = invalid
+        metadata_path.write_text(
+            json.dumps({"owner": mismatched, "released_at_utc": None}), encoding="utf-8"
+        )
+        with pytest.raises(module.AutoCADLeaseError, match="metadata is corrupt"):
+            module._read_metadata(
+                metadata_path, expected_lease_key=key, expected_bindings=bindings
+            )
 
 
 def test_prior_owner_recovery_rejects_missing_live_and_indeterminate_states(
@@ -204,10 +231,11 @@ def test_prior_owner_recovery_rejects_missing_live_and_indeterminate_states(
     key = _test_key("prior-owner")
     metadata_path = tmp_path / key / "owner.json"
     metadata_path.parent.mkdir()
+    bindings = module._OwnerBindings("S-1-5-21-100", "controller", 1)
 
     with pytest.raises(module.AutoCADLeaseError, match="unexpectedly missing"):
         module._recoverable_prior_owner(
-            metadata_path, "S-1-5-21-100", expected_lease_key=key, missing_metadata_allowed=False
+            metadata_path, bindings, expected_lease_key=key, missing_metadata_allowed=False
         )
 
     owner = module.LeaseOwner(
@@ -223,21 +251,21 @@ def test_prior_owner_recovery_rejects_missing_live_and_indeterminate_states(
     metadata_path.write_text(
         json.dumps({"owner": dataclasses.asdict(owner), "released_at_utc": None}), encoding="utf-8"
     )
-    monkeypatch.setattr(module, "_verify_acl", lambda path, sid: None)
+    monkeypatch.setattr(module, "_verify_lease_acl", lambda path, sid: None)
     monkeypatch.setattr(module, "_owner_liveness", lambda prior: "live")
     with pytest.raises(module.AutoCADLeaseContendedError, match="cannot be stolen"):
         module._recoverable_prior_owner(
-            metadata_path, "S-1-5-21-100", expected_lease_key=key, missing_metadata_allowed=False
+            metadata_path, bindings, expected_lease_key=key, missing_metadata_allowed=False
         )
     monkeypatch.setattr(module, "_owner_liveness", lambda prior: "indeterminate")
     with pytest.raises(module.AutoCADLeaseError, match="indeterminate"):
         module._recoverable_prior_owner(
-            metadata_path, "S-1-5-21-100", expected_lease_key=key, missing_metadata_allowed=False
+            metadata_path, bindings, expected_lease_key=key, missing_metadata_allowed=False
         )
     monkeypatch.setattr(module, "_owner_liveness", lambda prior: "dead")
     assert (
         module._recoverable_prior_owner(
-            metadata_path, "S-1-5-21-100", expected_lease_key=key, missing_metadata_allowed=False
+            metadata_path, bindings, expected_lease_key=key, missing_metadata_allowed=False
         )
         == owner
     )
@@ -247,19 +275,62 @@ def test_acl_helpers_use_delayed_ntsecuritycon_and_do_not_repair_existing_paths(
     module = _lease_module()
 
     assert "ntsecuritycon" in inspect.getsource(module._set_private_acl)
-    assert "DACL_SECURITY_INFORMATION" in inspect.getsource(module._verify_acl)
-    assert "PROTECTED_DACL_SECURITY_INFORMATION" not in inspect.getsource(module._verify_acl)
+    assert "OWNER_SECURITY_INFORMATION" in inspect.getsource(module._verify_lease_acl)
+    assert "DACL_SECURITY_INFORMATION" in inspect.getsource(module._verify_lease_acl)
+    assert "PROTECTED_DACL_SECURITY_INFORMATION" not in inspect.getsource(module._verify_lease_acl)
     assert "exist_ok" not in inspect.getsource(module._create_private_directory)
     assert "O_EXCL" in inspect.getsource(module._create_private_file)
 
 
-@pytest.mark.skipif(sys.platform != "win32", reason="requires Windows ACL APIs")
-def test_new_private_temporary_directory_has_current_user_system_only_acl() -> None:
+def test_guard_acl_flag_rules_accept_effective_inherited_and_reject_inherit_only() -> None:
     module = _lease_module()
-    directory = module.create_current_user_system_private_directory()
+
+    assert module._guard_ace_is_effective(0, inherit_only_flag=8) is True
+    assert module._guard_ace_is_effective(1 | 2 | 0x10, inherit_only_flag=8) is True
+    assert module._guard_ace_is_effective(8, inherit_only_flag=8) is False
+
+
+def test_enter_unlocks_if_ownership_assertion_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _lease_module()
+    lease = object.__new__(module.AutoCADLease)
+    lease._owned = True
+    lease._lock_file = object()
+    monkeypatch.setattr(
+        module.AutoCADLease,
+        "assert_owned",
+        lambda self: (_ for _ in ()).throw(module.AutoCADLeaseError("lost ownership")),
+    )
+    unlocked: list[object] = []
+    monkeypatch.setattr(module, "_unlock_and_close", unlocked.append)
+
+    with pytest.raises(module.AutoCADLeaseError, match="lost ownership"):
+        lease.__enter__()
+
+    assert lease._owned is False
+    assert unlocked == [lease._lock_file]
+
+
+def test_lease_root_uses_the_known_folder_api_not_an_environment_override() -> None:
+    module = _lease_module()
+
+    assert "LOCALAPPDATA" not in inspect.getsource(module._lease_root)
+    assert "SHGetKnownFolderPath" in inspect.getsource(module._known_local_app_data)
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32", reason="requires Windows temporary-directory and ACL APIs"
+)
+def test_guard_temp_root_and_task15_style_child_are_current_user_system_only() -> None:
+    module = _lease_module()
+    directory = module.create_guard_run_temp_root()
+    child = directory / "autocad-mcp-child"
     try:
-        module.assert_current_user_system_only_acl(directory)
+        module.assert_guard_run_current_user_system_acl(directory)
+        child.mkdir()
+        module.assert_guard_run_current_user_system_acl(child)
     finally:
+        if child.exists():
+            child.rmdir()
         directory.rmdir()
 
 

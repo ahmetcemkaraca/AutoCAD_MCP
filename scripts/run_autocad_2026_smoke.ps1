@@ -40,7 +40,17 @@ $env:AUTOCAD_MCP_AUTOCAD_INSTALLATION = $installation
 $env:AUTOCAD_MCP_SMOKE_RELEASE = "2026"
 $env:AUTOCAD_MCP_SMOKE_DISPOSABLE = "YES"
 
-& uv sync --frozen --group dev
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& uv run pytest tests/windows/test_autocad_2026_smoke.py -m autocad --run-autocad -vv --tb=short
-exit $LASTEXITCODE
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$exitCode = 0
+Push-Location -LiteralPath $repositoryRoot
+try {
+    & uv sync --frozen --group dev
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) {
+        & uv run pytest tests/windows/test_autocad_2026_smoke.py -m autocad --run-autocad -vv --tb=short
+        $exitCode = $LASTEXITCODE
+    }
+} finally {
+    Pop-Location
+}
+exit $exitCode

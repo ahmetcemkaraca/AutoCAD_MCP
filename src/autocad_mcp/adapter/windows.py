@@ -231,7 +231,7 @@ def _probed_entities(
     try:
         first = next(entities)
     except StopIteration:
-        return detect_capabilities(session), ()
+        return detect_capabilities(session, _EMPTY_MODEL_SPACE), ()
     except Exception as error:
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
     return detect_capabilities(session, first), chain((first,), entities)

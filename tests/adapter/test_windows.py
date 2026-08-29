@@ -420,3 +420,24 @@ def test_one_shot_missing_identity_is_unsupported_only_during_operation() -> Non
         adapter.get_entity_info(7)
     assert raised.value.code is AdapterErrorCode.UNSUPPORTED_CAPABILITY
     assert raised.value.details == {"capability": "get_entity_info"}
+
+
+def test_empty_one_shot_model_space_supports_empty_list_and_not_found_detail() -> None:
+    """Known-empty one-shot model space must not be downgraded to unsupported."""
+    class Document:
+        Name = "drawing.dwg"
+        ReadOnly = True
+
+        @property
+        def ModelSpace(self) -> object:  # noqa: N802
+            return iter(())
+
+    manager, _ = manager_for(
+        SimpleNamespace(Name="AutoCAD", Version="24.3", ActiveDocument=Document())
+    )
+    adapter = WindowsAutoCADAdapter(manager)
+
+    assert adapter.list_entities() == ()
+    with pytest.raises(AdapterError) as raised:
+        adapter.get_entity_info(7)
+    assert raised.value.code is AdapterErrorCode.ENTITY_NOT_FOUND

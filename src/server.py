@@ -17,6 +17,8 @@ from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 
+from src import __version__
+
 # Configure logging for Claude Desktop
 logging.basicConfig(
     level=logging.INFO,
@@ -526,7 +528,7 @@ async def main():
     # Configure initialization options for Claude Desktop
     options = InitializationOptions(
         server_name="autocad-mcp",
-        server_version="1.0.0",
+        server_version=__version__,
         capabilities=server.get_capabilities(
             notification_options=NotificationOptions(),
             experimental_capabilities={},

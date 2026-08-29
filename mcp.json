@@ -22,11 +22,9 @@
       "args": [
         "run",
         "python",
-        "src/server.py"
-      ],
-      "env": {
-        "PYTHONPATH": "src"
-      }
+        "-m",
+        "src.server"
+      ]
     }
   },
   "tools": [
@@ -84,10 +82,10 @@
   },
   "installation": {
     "steps": [
-      "Install a targeted full AutoCAD release on Windows",
+      "Install a targeted full AutoCAD 2021-2026 release on Windows",
       "Install Python 3.12 or newer and uv",
-      "Install dependencies with: uv sync",
-      "Start the stdio server with: uv run python src/server.py"
+      "Install development dependencies with: uv sync --frozen --group dev",
+      "Start the stdio server with: uv run python -m src.server"
     ]
   }
 }

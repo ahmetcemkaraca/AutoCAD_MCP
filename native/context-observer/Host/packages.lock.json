@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "AutoCAD.NET": {
+        "type": "Direct",
+        "requested": "[24.0.0, 24.0.0]",
+        "resolved": "24.0.0",
+        "contentHash": "XnkTN8SYa43l33L6pTKmT/xgZK0EeUUnwH96W8gbIOF40R4tToDmPWoL6Oc6QvLHup65pkyzDZTXAFUoZE6Yog==",
+        "dependencies": {
+          "AutoCAD.NET.Core": "[24.0.0, 25.0.0)"
+        }
+      },
+      "AutoCAD.NET.Core": {
+        "type": "Direct",
+        "requested": "[24.0.0, 24.0.0]",
+        "resolved": "24.0.0",
+        "contentHash": "WzcjpLWLilaefe1JHwkyMjr9mMqep3TNKYUHE7Us9CXzwykMtL4ljU9NwqH/kDo1jcPe7xrQI5AtUC2eRj6PlQ==",
+        "dependencies": {
+          "AutoCAD.NET.Model": "[24.0.0, 25.0.0)"
+        }
+      },
+      "AutoCAD.NET.Model": {
+        "type": "Direct",
+        "requested": "[24.0.0, 24.0.0]",
+        "resolved": "24.0.0",
+        "contentHash": "R9Z4wj/mB3iWtfSvE+gCKlLpa11e+tKY1AnXFPIngjfx5NnmNqrR6t0+6OzcfV5Abmp13dVhShIX97T9wOJoCw=="
+      },
+      "Microsoft.NETFramework.ReferenceAssemblies.net48": {
+        "type": "Direct",
+        "requested": "[1.0.3, 1.0.3]",
+        "resolved": "1.0.3",
+        "contentHash": "zMk4D+9zyiEWByyQ7oPImPN/Jhpj166Ky0Nlla4eXlNL8hI/BtSJsgR8Inldd4NNpIAH3oh8yym0W2DrhXdSLQ=="
+      },
+      "contextobserver.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0-windows7.0": {
+      "AutoCAD.NET": {
+        "type": "Direct",
+        "requested": "[25.0.2, 25.0.2]",
+        "resolved": "25.0.2",
+        "contentHash": "MXpDqy1iVvtAJqHyAct5RR9nmFjJvWPxxY1umggMvreqVlT9uBpjDRAsBoHOK9ey5ltvOFYx5pxYuOKI2P1vGQ==",
+        "dependencies": {
+          "AutoCAD.NET.Core": "[25.0.2]"
+        }
+      },
+      "AutoCAD.NET.Core": {
+        "type": "Direct",
+        "requested": "[25.0.2, 25.0.2]",
+        "resolved": "25.0.2",
+        "contentHash": "Pk/OejBoVSDa72aJo5BR8U5Tozvcp+eQikuLtcQyFND8Me1rbq+0Tu+MIFNkR/vYlUlORcuq6swyeZX7Ky5GMw==",
+        "dependencies": {
+          "AutoCAD.NET.Model": "[25.0.2]"
+        }
+      },
+      "AutoCAD.NET.Model": {
+        "type": "Direct",
+        "requested": "[25.0.2, 25.0.2]",
+        "resolved": "25.0.2",
+        "contentHash": "BLo7qubBLN1gMTAUYTqoNX1tWENNj5uM1lOdZttkbR2EucaiyuXRUAwIKh6faTQ3z2NTCkdFb8t9jUSmLdDfCA=="
+      },
+      "contextobserver.core": {
+        "type": "Project"
+      }
+    },
+    "net8.0-windows7.0": {
+      "AutoCAD.NET": {
+        "type": "Direct",
+        "requested": "[25.0.1, 25.0.1]",
+        "resolved": "25.0.1",
+        "contentHash": "57MbBZyhQh6nM16w/tF88uXPUascZygGfYBzE9QsuaXjM/baPArjaTnAJmvfnkzgKLsXtZrJAzr2rCtxVygPiQ==",
+        "dependencies": {
+          "AutoCAD.NET.Core": "[25.0.0]"
+        }
+      },
+      "AutoCAD.NET.Core": {
+        "type": "Direct",
+        "requested": "[25.0.0, 25.0.0]",
+        "resolved": "25.0.0",
+        "contentHash": "jPwsZgVs+4xqXtMLWJjgb4WSSzbb7YGbgn/BqT7LGPRthQb/93CmRZyuSgfjjSK8EgL+YsfRuRYVvYNGHrw3TA==",
+        "dependencies": {
+          "AutoCAD.NET.Model": "[25.0.0]"
+        }
+      },
+      "AutoCAD.NET.Model": {
+        "type": "Direct",
+        "requested": "[25.0.0, 25.0.0]",
+        "resolved": "25.0.0",
+        "contentHash": "XGKd/R/MZ5oHFEMOtxHh9L307ss6XSnW4S0JSC3UkRjvdgv8rTygXkqz+vGoRoUl8IWU/ooskfVT/qOikFfteA=="
+      },
+      "contextobserver.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

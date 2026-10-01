@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0-windows;net10.0-windows</TargetFrameworks>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting><UseWindowsForms>true</UseWindowsForms><UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable><LangVersion>latest</LangVersion><TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile><AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Core/ContextObserver.Core.csproj" /><Compile Include="../Runtime/*.cs" Link="Runtime/%(Filename)%(Extension)" /></ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="[1.0.3]" PrivateAssets="all" />
+    <PackageReference Include="AutoCAD.NET" Version="[24.0.0]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="[24.0.0]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="[24.0.0]" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net8.0-windows'">
+    <PackageReference Include="AutoCAD.NET" Version="[25.0.1]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="[25.0.0]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="[25.0.0]" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows'">
+    <PackageReference Include="AutoCAD.NET" Version="[25.0.2]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="[25.0.2]" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="[25.0.2]" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

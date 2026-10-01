@@ -489,6 +489,20 @@ Each `EntityContext.state_digest` is `sha256:<64 lowercase hex>` over the canoni
 
 All numbers must be finite. A `Bounds3D` requires minimum coordinates no greater than maximum coordinates. Handle filters are unique after normalization. Layer globs support only `*`, `?`, and literal characters; no regular expressions. Exact names and globs are ORed within their field and fields are ANDed. `intersects_wcs` uses inclusive WCS axis-aligned bounds.
 
+Version-one relationship options contain only the effective stored tolerance;
+all six kinds use a fixed policy. `same_owner` requires equal non-null observed
+owner handles. Spatial predicates require matching owner frames. Endpoint touch
+uses line endpoints, open-polyline endpoints and arc endpoints in the documented
+OCS basis; parallel applies to nonzero straight lines with an unoriented angle.
+Symmetric facts are emitted once using numeric-handle order, while contains/
+within are directed reciprocal facts. Facts are attached to their source entity.
+Indexing cannot omit distant ownership/direction matches merely to keep a sparse
+graph. Dense graphs exceeding the published relationship counts fail rather
+than truncate. A build admits at most 200,000 spatial index entries and 1,000,000
+unique candidate evaluations; excess work returns `COMPLETE_SNAPSHOT_LIMIT`
+without a snapshot. Candidate deduplication is per source entity, not a retained
+million-pair cache. These work limits do not alter an accepted graph.
+
 Entities sort by `(space rank: model, paper, block_definition; casefold(layout); numeric handle; handle)`. `SnapshotBuilder` materializes and relates the full bounded entity set before `analyze_drawing` applies filters and response pagination. Downstream semantic analysis may select at most 2,000 handles, all of which must exist inside that retained complete snapshot. Live `query_entities` applies filters before its adapter/public pages. Relationship extraction uses a deterministic spatial grid and emits sorted, deduplicated pairs. If adding the next response entity would exceed 4 MiB, the MCP page stops before that entity and returns a cursor even when fewer than 500 were returned. An individual entity over 256 KiB returns `PAYLOAD_LIMIT` with its handle and measured size; it is never silently truncated.
 
 `CursorCodec.encode(PageCursor) -> str` and `CursorCodec.decode(str) -> PageCursor` use versioned canonical JSON, base64url, and HMAC-SHA256 with a per-process secret. An analyze cursor contains kind `snapshot`, snapshot ID, normalized filter digest, page size, last sort key, issued-at, and an expiry no later than the retained snapshot's expiry; page continuation reads only `SnapshotRepository`. A query cursor contains kind `live_query`, document/session identity, adapter revision-token digest, normalized filter/include digest, page size, adapter/public continuation keys, issued-at, and expiry; it contains no `DrawingFingerprint`. Invalid signatures return `INVALID_CURSOR`, expiry returns `CURSOR_EXPIRED`, a missing retained snapshot returns its repository error, and a changed live revision token returns `STALE_CURSOR`.
@@ -687,6 +701,12 @@ class WindowsContextAutoCADAdapter(WindowsAutoCADAdapter): ...
 
 class Clock(Protocol):
     def now(self) -> datetime: ...
+
+@dataclass(frozen=True, slots=True)
+class RelationshipOptions:
+    tolerance: GeometryTolerance = GeometryTolerance(
+        linear=1e-6, angular_radians=1e-6, source="drawing_units_default"
+    )
 
 @dataclass(frozen=True, slots=True)
 class CompleteSnapshotRequest:

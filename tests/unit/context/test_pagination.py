@@ -32,7 +32,7 @@ def cursor(**changes):
         "session_id": "session-1",
         "filter_digest": "sha256:" + "b" * 64,
         "page_size": 100,
-        "last_sort_key": (0, "model", 161, "A1"),
+        "last_handle": "A1",
         "issued_at": NOW,
         "expires_at": NOW + timedelta(seconds=600),
         "snapshot_id": "ds1_" + "c" * 32,
@@ -85,7 +85,7 @@ def test_snapshot_and_live_roundtrip_distinct_binding_and_clock():
         {"page_size": True},
         {"page_size": 0},
         {"page_size": 501},
-        {"last_sort_key": (0, "model", 1, "A1")},
+        {"last_handle": "a1"},
         {"filter_digest": "bad"},
         {"expires_at": NOW},
         {"expires_at": NOW + timedelta(seconds=601)},
@@ -131,7 +131,7 @@ def test_correctly_signed_unknown_fields_and_wrong_primitives_are_invalid():
         ("page_size", True),
         ("version", 2),
         ("issued_at", "not-a-time"),
-        ("last_sort_key", [True, "model", 161, "A1"]),
+        ("last_handle", True),
     ):
         altered = dict(payload, **{key: value})
         with pytest.raises(ContextValidationError) as error:
@@ -212,9 +212,9 @@ def test_opaque_unicode_bindings_preserve_exact_bytes_and_normalization_distinct
 
 
 @pytest.mark.parametrize("layout", ["\x00", "\ud800"])
-def test_invalid_sort_key_text_is_a_structured_cursor_failure(layout):
+def test_invalid_handle_text_is_a_structured_cursor_failure(layout):
     with pytest.raises(ContextValidationError) as error:
-        codec().encode(cursor(last_sort_key=(0, layout, 161, "A1")))
+        codec().encode(cursor(last_handle=layout))
     assert error.value.code == "INVALID_CURSOR"
 
 
@@ -225,7 +225,7 @@ def test_invalid_sort_key_text_is_a_structured_cursor_failure(layout):
         {"session_id": "session-2"},
         {"filter_digest": "sha256:" + "e" * 64},
         {"page_size": 101},
-        {"last_sort_key": (0, "model", 162, "A2")},
+        {"last_handle": "A2"},
         {"snapshot_id": "ds1_" + "e" * 32},
     ],
 )
@@ -282,5 +282,55 @@ def test_casefold_expansion_of_valid_layout_name_remains_a_valid_sort_key():
     entity = replace(entity, space=replace(entity.space, layout_name="ß" * 130))
     key = entity_sort_key(entity)
     assert len(key[1]) == 260
-    value = cursor(last_sort_key=key)
+    value = cursor(last_handle=entity.identity.handle)
     assert codec().decode(codec().encode(value)) == value
+
+
+@pytest.mark.parametrize(
+    "layout", ["🙂" * 255, "ᾈ" * 255], ids=["four-byte-layout", "casefold-layout"]
+)
+def test_valid_maximum_layout_and_handle_fit_snapshot_and_nested_live_cursors(layout):
+    entity = snapshot().entities[0]
+    entity = replace(
+        entity,
+        space=replace(entity.space, kind="paper", layout_name=layout),
+        identity=replace(entity.identity, handle="F" * 128),
+    )
+    assert len(entity_sort_key(entity)[1].encode("utf-8")) >= 1020
+    try:
+        value = cursor(
+            document_id="session_" + "a" * 32,
+            session_id="11111111-1111-4111-8111-111111111111",
+            last_handle=entity.identity.handle,
+            page_size=500,
+        )
+    except TypeError:
+        pytest.fail("Continuation must bind a handle without copying a layout name")
+    assert codec().decode(codec().encode(value)) == value
+    inner = replace(
+        value, kind="live_query", snapshot_id=None,
+        revision_token_digest="sha256:" + "d" * 64,
+        expires_at=NOW + timedelta(seconds=900),
+    )
+    inner_wire = codec().encode(inner)
+    outer = replace(inner, last_handle=None, adapter_cursor=inner_wire)
+    outer_wire = codec().encode(outer)
+    assert len(outer_wire.encode("utf-8")) <= 2048
+    assert codec().decode(codec().decode(outer_wire).adapter_cursor) == inner
+
+
+@pytest.mark.parametrize("handle", ["", "a1", "0xA1", "G", "F" * 129, True, []])
+def test_continuation_handle_requires_normalized_bounded_hex(handle):
+    with pytest.raises(ContextValidationError) as error:
+        codec().encode(cursor(last_handle=handle))
+    assert error.value.code == "INVALID_CURSOR"
+
+
+def test_signed_obsolete_sort_key_field_is_refused():
+    wire = codec().encode(cursor())
+    raw = wire.split(".")[0]
+    payload = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)))
+    payload["last_sort_key"] = [0, "model", 161, "A1"]
+    with pytest.raises(ContextValidationError) as error:
+        codec().decode(signed_payload(payload))
+    assert error.value.code == "INVALID_CURSOR"

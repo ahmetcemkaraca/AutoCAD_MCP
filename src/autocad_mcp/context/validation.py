@@ -311,6 +311,18 @@ def _page(record: Any) -> None:
 def _entity(record: Any) -> None:
     from .serialization import record_to_json
 
+    if record.geometry is None:
+        require(
+            any(
+                issue.code == "NOT_REQUESTED"
+                and issue.capability == "geometry"
+                and issue.entity_handle == record.identity.handle
+                and issue.member is None
+                and issue.required is False
+                for issue in record.capability_issues
+            ),
+            "Omitted geometry requires its explicit projection marker",
+        )
     if hasattr(record, "relationships"):
         require(
             len(record.relationships) <= MAX_ENTITY_RELATIONSHIPS,
@@ -336,6 +348,13 @@ def _collection(record: Any) -> None:
     )
     if name == "DrawingSnapshot":
         require(
+            not any(issue.code == "NOT_REQUESTED" for issue in record.capability_issues),
+            "Complete drawing facts are required",
+            code="SNAPSHOT_INCOMPLETE",
+        )
+        for entity in record.entities:
+            require_complete_entity(entity)
+        require(
             sum(len(entity.relationships) for entity in record.entities)
             <= MAX_COMPLETE_RELATIONSHIPS,
             "Too many complete relationships",
@@ -348,6 +367,16 @@ def _collection(record: Any) -> None:
             "Too many page relationships",
             code="PAYLOAD_LIMIT",
         )
+
+
+def require_complete_entity(entity: Any) -> None:
+    """Reject response projections before calculating or retaining complete state."""
+    require(
+        entity.geometry is not None
+        and not any(issue.code == "NOT_REQUESTED" for issue in entity.capability_issues),
+        "Complete entity facts are required",
+        code="SNAPSHOT_INCOMPLETE",
+    )
 
 
 def _additional(record: Any) -> None:

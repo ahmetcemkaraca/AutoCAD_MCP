@@ -19,7 +19,12 @@ from .models import (
     GeometryTolerance,
 )
 from .serialization import record_to_payload
-from .validation import MAX_SNAPSHOT_ENTITIES, ContextValidationError, require
+from .validation import (
+    MAX_SNAPSHOT_ENTITIES,
+    ContextValidationError,
+    require,
+    require_complete_entity,
+)
 
 
 def _canonical(value: object) -> str:
@@ -75,6 +80,7 @@ def _issues(issues: Sequence[CapabilityIssue]) -> list[dict[str, Any]]:
 
 
 def _entity_facts(entity: EntityContext) -> dict[str, Any]:
+    require_complete_entity(entity)
     payload: dict[str, Any] = record_to_payload(entity)
     del payload["identity"]["object_id"]
     del payload["identity"]["object_id_scope"]
@@ -118,7 +124,7 @@ def _content(
         code="SNAPSHOT_INCOMPLETE",
     )
     require(
-        not any(issue.required for issue in issues)
+        not any(issue.required or issue.code == "NOT_REQUESTED" for issue in issues)
         and not any(issue.required for entity in entities for issue in entity.capability_issues),
         "Required complete facts are unavailable",
         code="SNAPSHOT_INCOMPLETE",

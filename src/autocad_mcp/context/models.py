@@ -297,7 +297,7 @@ class EntityContext(_Validated):
     space: EntitySpace
     layer: LayerFacts
     style: StyleFacts
-    geometry: GeometryFacts
+    geometry: GeometryFacts | None
     bounds: Bounds3D | None
     block: BlockFacts | None
     text: TextFacts | None

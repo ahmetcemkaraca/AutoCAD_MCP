@@ -87,7 +87,7 @@ class PageCursor:
     session_id: str
     filter_digest: str
     page_size: int
-    last_sort_key: tuple[int, str, int, str] | None
+    last_handle: str | None
     issued_at: datetime
     expires_at: datetime
     snapshot_id: str | None = None
@@ -127,17 +127,8 @@ class PageCursor:
                     and re.fullmatch(r"sha256:[0-9a-f]{64}", self.revision_token_digest) is not None
                 )
                 _valid(self.adapter_cursor is None or _text(self.adapter_cursor, MAX_CURSOR_BYTES))
-            if self.last_sort_key is not None:
-                key = self.last_sort_key
-                _valid(isinstance(key, tuple | list) and len(key) == 4)
-                _valid(type(key[0]) is int and 0 <= key[0] <= 2)
-                _valid(isinstance(key[1], str))
-                _valid("\0" not in key[1])
-                _valid(len(key[1].encode("utf-8")) <= MAX_CURSOR_BYTES)
-                _valid(type(key[2]) is int and isinstance(key[3], str))
-                _valid(normalize_handle(key[3]) == key[3] and int(key[3], 16) == key[2])
-                _valid(normalize("NFC", key[1].casefold()) == key[1])
-                object.__setattr__(self, "last_sort_key", tuple(key))
+            if self.last_handle is not None:
+                _valid(normalize_handle(self.last_handle) == self.last_handle)
         except (ContextValidationError, ValueError, TypeError, OverflowError, UnicodeError):
             raise ContextValidationError("Invalid cursor", code="INVALID_CURSOR") from None
 

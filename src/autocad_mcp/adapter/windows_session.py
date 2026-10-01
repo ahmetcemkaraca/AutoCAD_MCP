@@ -48,7 +48,9 @@ def load_com_modules() -> ComModules:
             importlib.import_module("win32com.client"),
         )
     except (ImportError, ModuleNotFoundError) as error:
-        logger.exception("Windows COM dependencies could not be loaded")
+        logger.error(
+            "Windows COM dependencies could not be loaded; error_type=%s", type(error).__name__
+        )
         raise AdapterError(
             AdapterErrorCode.AUTOCAD_UNAVAILABLE,
             "Windows AutoCAD automation dependencies are unavailable",
@@ -67,7 +69,7 @@ def _is_busy(error: Exception) -> bool:
 def _com_error(error: Exception, code: AdapterErrorCode) -> AdapterError:
     if isinstance(error, AdapterError):
         return error
-    logger.exception("AutoCAD COM operation failed", exc_info=error)
+    logger.error("AutoCAD COM operation failed; error_type=%s", type(error).__name__)
     if _is_busy(error):
         return AdapterError(AdapterErrorCode.COM_BUSY, "AutoCAD is busy", retryable=True)
     messages = {
@@ -99,7 +101,10 @@ def _uninitialize(com: ComModules, primary_error: BaseException | None) -> None:
         com.pythoncom.CoUninitialize()
     except Exception as error:
         if primary_error is not None:
-            logger.exception("AutoCAD COM cleanup failed after a primary error", exc_info=error)
+            logger.error(
+                "AutoCAD COM cleanup failed after a primary error; error_type=%s",
+                type(error).__name__,
+            )
             return
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
 

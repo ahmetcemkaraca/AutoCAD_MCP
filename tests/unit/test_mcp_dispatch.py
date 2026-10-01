@@ -133,9 +133,9 @@ def test_dispatch_redacts_unexpected_errors_and_logs_an_incident(
     assert incident_id
     assert "secret COM detail" not in response.error.message
     assert "secret COM detail" not in str(response.error.details)
-    assert caplog.records[0].exc_info is not None
+    assert caplog.records[0].exc_info is None
     assert incident_id in caplog.text
-    assert "secret COM detail" in caplog.text
+    assert "secret COM detail" not in caplog.text
 
 
 @pytest.mark.parametrize(

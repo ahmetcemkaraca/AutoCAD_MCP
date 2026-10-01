@@ -56,9 +56,12 @@ async def dispatch_tool(
         return ToolFailure(ToolError(ErrorCode.INVALID_ARGUMENT, "Invalid tool arguments"))
     except UnknownToolName:
         return ToolFailure(ToolError(ErrorCode.UNKNOWN_TOOL, "Unknown tool"))
-    except Exception:
+    except Exception as error:
         incident_id = uuid4().hex
-        logger.exception("Unexpected tool dispatch failure; incident_id=%s", incident_id)
+        logger.error(
+            "Unexpected tool dispatch failure; incident_id=%s; error_type=%s",
+            incident_id, type(error).__name__,
+        )
         return ToolFailure(
             ToolError(
                 ErrorCode.INTERNAL_ERROR,

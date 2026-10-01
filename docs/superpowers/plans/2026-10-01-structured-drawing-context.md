@@ -34,12 +34,12 @@
 
 **Interfaces:** Produce every frozen/slotted dataclass/type alias in the spec's Exact Python data contract, from `Point2D` through `AnalyzeDrawingResult`, with the exact field names/types. Also implement the explicitly described `EntitySummary` subset and `EntityContextBatch`. Export `snapshot_to_json`, `snapshot_from_json`, `analyze_result_to_json`; strict reusable validation and serialization for these records. Do not invent adapter records or wire requests owned by later tasks.
 
-- [ ] Read the exact data-contract, evidence, bounds, and CTX-01 sections; inspect existing core model conventions.
-- [ ] Write failing behavior tests for unknown version/field rejection, bool-vs-number and finite/1e15 bounds, inverted bounds, normalized handles, deep immutability, interpretation confirmation/evidence rules, 10,000 vs 10,001 vertices, 256 KiB entity limit, timezone-aware UTC millisecond serialization, and exact round-trip.
-- [ ] Run `.venv/bin/python -m pytest tests/unit/context/test_models.py tests/unit/context/test_serialization.py -q`; record expected missing implementation failure.
-- [ ] Implement the minimum complete contract. Frozen dataclasses must not retain mutable mappings/lists from callers. Non-finite numbers and unknown fields are rejected, not coerced or silently dropped. Use strict dataclass decoding rather than a new validation dependency. Keep fingerprint computation out of this task.
-- [ ] Run focused tests, the full existing suite, scoped Ruff, and mypy on new source. Record exact output and any remaining limitations.
-- [ ] Commit as `feat: add immutable drawing context contract` and report exact public helpers/constructors for downstream tasks.
+- [x] Read the exact data-contract, evidence, bounds, and CTX-01 sections; inspect existing core model conventions.
+- [x] Write failing behavior tests for unknown version/field rejection, bool-vs-number and finite/1e15 bounds, inverted bounds, normalized handles, deep immutability, interpretation confirmation/evidence rules, 10,000 vs 10,001 vertices, 256 KiB entity limit, timezone-aware UTC millisecond serialization, and exact round-trip.
+- [x] Run `.venv/bin/python -m pytest tests/unit/context/test_models.py tests/unit/context/test_serialization.py -q`; record expected missing implementation failure.
+- [x] Implement the minimum complete contract. Frozen dataclasses must not retain mutable mappings/lists from callers. Non-finite numbers and unknown fields are rejected, not coerced or silently dropped. Use strict dataclass decoding rather than a new validation dependency. Keep fingerprint computation out of this task.
+- [x] Run focused tests, the full existing suite, scoped Ruff, and mypy on new source. Record exact output and any remaining limitations.
+- [x] Commit as `feat: add immutable drawing context contract` and report exact public helpers/constructors for downstream tasks.
 
 ### Task 2: Identity, canonical fingerprints, signed cursors (CTX-02)
 

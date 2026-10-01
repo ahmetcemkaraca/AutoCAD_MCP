@@ -86,6 +86,22 @@ def complete(index: int = 1, entities: tuple[EntityContext, ...] | None = None) 
     )
 
 
+def session_snapshot(
+    value: DrawingSnapshot, session_id: str, object_id: int = 999
+) -> DrawingSnapshot:
+    return seal(
+        replace(
+            value,
+            document=replace(value.document, session_document_id=session_id),
+            reference=replace(value.reference, session_id=session_id),
+            entities=tuple(
+                replace(entity, identity=replace(entity.identity, object_id=object_id))
+                for entity in value.entities
+            ),
+        )
+    )
+
+
 def sized_snapshot(target: int, index: int = 1) -> DrawingSnapshot:
     """Fill bounded observed block attributes to reach an actual full JSON byte size."""
     source = complete(index)
@@ -226,7 +242,7 @@ def test_pages_and_arbitrary_inputs_are_not_complete_snapshots() -> None:
         error("SNAPSHOT_INCOMPLETE", partial(repository.put_complete, cast(DrawingSnapshot, value)))
 
 
-def test_idempotency_keeps_first_payload_expiry_and_original_session_metadata() -> None:
+def test_same_session_idempotency_keeps_first_payload_expiry_and_diagnostics() -> None:
     clock = TestClock()
     repository = InMemorySnapshotRepository(clock=clock)
     original = complete()
@@ -236,8 +252,6 @@ def test_idempotency_keeps_first_payload_expiry_and_original_session_metadata() 
         replace(
             original,
             captured_at=NOW + timedelta(seconds=500),
-            document=replace(original.document, session_document_id="reopened-session"),
-            reference=replace(original.reference, session_id="reopened-session"),
             materialization=replace(
                 original.materialization, revision_token_digest="sha256:" + "0" * 64
             ),
@@ -538,3 +552,178 @@ def test_empty_complete_drawing_is_admitted_with_zero_fact_counts() -> None:
     assert retained.entities == ()
     assert retained.fingerprint.entity_count == retained.materialization.entity_count == 0
     assert retained.materialization.relationship_count == 0
+
+
+def test_reopened_session_retains_fresh_ids_and_original_scoped_payload() -> None:
+    repository: SnapshotRepository = InMemorySnapshotRepository(clock=TestClock())
+    original = complete()
+    reopened = session_snapshot(original, "reopened-session")
+    assert reopened.snapshot_id == original.snapshot_id
+    repository.put_complete(original)
+    repository.put_complete(reopened)
+
+    old = repository.get_complete(original.snapshot_id, session_id=original.reference.session_id)
+    new = repository.get_complete(reopened.snapshot_id, session_id=reopened.reference.session_id)
+    assert old == original and new == reopened
+    assert old.entities[0].identity.object_id == 42
+    assert new.entities[0].identity.object_id == 999
+    error("SNAPSHOT_ID_COLLISION", partial(repository.get_complete, original.snapshot_id))
+    error("SNAPSHOT_ID_COLLISION", partial(repository.expires_at, original.snapshot_id))
+
+
+def test_session_expiry_is_independent_and_qualified_lookup_never_falls_back() -> None:
+    clock = TestClock()
+    repository = InMemorySnapshotRepository(clock=clock)
+    original = complete()
+    repository.put_complete(original)
+    clock.value += timedelta(seconds=100)
+    reopened = session_snapshot(original, "reopened-session")
+    repository.put_complete(reopened)
+    repository.put_complete(original)
+    assert repository.expires_at(
+        original.snapshot_id, session_id=original.reference.session_id
+    ) == NOW + timedelta(seconds=600)
+    assert repository.expires_at(
+        reopened.snapshot_id, session_id=reopened.reference.session_id
+    ) == NOW + timedelta(seconds=700)
+    clock.value = NOW + timedelta(seconds=600)
+    for lookup in (repository.get_complete, repository.expires_at):
+        error(
+            "SNAPSHOT_EXPIRED",
+            partial(lookup, original.snapshot_id, session_id=original.reference.session_id),
+        )
+    assert repository.get_complete(original.snapshot_id) == reopened
+    assert repository.expires_at(original.snapshot_id) == NOW + timedelta(seconds=700)
+    clock.value = NOW + timedelta(seconds=1500)
+    error(
+        "SNAPSHOT_NOT_FOUND",
+        partial(
+            repository.get_complete, original.snapshot_id, session_id=original.reference.session_id
+        ),
+    )
+    error(
+        "SNAPSHOT_EXPIRED",
+        partial(
+            repository.get_complete, original.snapshot_id, session_id=reopened.reference.session_id
+        ),
+    )
+    error("SNAPSHOT_EXPIRED", partial(repository.get_complete, original.snapshot_id))
+    clock.value = NOW + timedelta(seconds=1600)
+    error("SNAPSHOT_NOT_FOUND", partial(repository.get_complete, original.snapshot_id))
+
+
+@pytest.mark.parametrize("invalid_session", ["unknown-session", False, 1, []])
+@pytest.mark.parametrize("method", ["get_complete", "expires_at"])
+def test_unknown_or_invalid_session_never_returns_another_live_session(
+    invalid_session: object, method: str
+) -> None:
+    repository = InMemorySnapshotRepository(clock=TestClock())
+    original = complete()
+    repository.put_complete(original)
+    error(
+        "SNAPSHOT_NOT_FOUND",
+        partial(getattr(repository, method), original.snapshot_id, session_id=invalid_session),
+    )
+
+
+def test_session_tombstones_share_the_eight_entry_limit() -> None:
+    clock = TestClock()
+    repository = InMemorySnapshotRepository(clock=clock, ttl_seconds=1)
+    original = complete()
+    for index in range(9):
+        repository.put_complete(session_snapshot(original, f"session-{index}"))
+        clock.value += timedelta(seconds=1)
+    error(
+        "SNAPSHOT_NOT_FOUND",
+        partial(repository.get_complete, original.snapshot_id, session_id="session-0"),
+    )
+    for index in range(1, 9):
+        error(
+            "SNAPSHOT_EXPIRED",
+            partial(repository.get_complete, original.snapshot_id, session_id=f"session-{index}"),
+        )
+    live = session_snapshot(original, "current-session")
+    repository.put_complete(live)
+    assert repository.get_complete(original.snapshot_id) == live
+    error(
+        "SNAPSHOT_EXPIRED",
+        partial(repository.get_complete, original.snapshot_id, session_id="session-8"),
+    )
+
+
+def test_cross_session_fact_collisions_reject_without_changing_retained_payloads() -> None:
+    repository = InMemorySnapshotRepository(clock=TestClock())
+    original = complete()
+    reopened = session_snapshot(original, "reopened-session")
+    repository.put_complete(original)
+    repository.put_complete(reopened)
+    forged = session_snapshot(original, "third-session")
+    forged = seal(
+        replace(
+            forged,
+            entities=(
+                replace(
+                    forged.entities[0], layer=replace(forged.entities[0].layer, name="changed")
+                ),
+            ),
+        )
+    )
+    error("SNAPSHOT_ID_COLLISION", partial(repository.put_complete, forged))
+    for value in (original, reopened):
+        assert repository.get_complete(
+            value.snapshot_id, session_id=value.reference.session_id
+        ) == value
+    error(
+        "SNAPSHOT_NOT_FOUND",
+        partial(repository.get_complete, original.snapshot_id, session_id="third-session"),
+    )
+
+
+@pytest.mark.parametrize("capacity", ["count", "bytes"])
+def test_same_id_sessions_share_count_and_byte_capacity(capacity: str) -> None:
+    original = complete()
+    size = len(record_to_json(original).encode())
+    count = 4 if capacity == "count" else 2
+    repository = InMemorySnapshotRepository(
+        clock=TestClock(), max_total_bytes=count * size if capacity == "bytes" else 128 * MIB
+    )
+    values = tuple(session_snapshot(original, f"session-{i}", 42) for i in range(1, count + 1))
+    for value in values:
+        assert len(record_to_json(value).encode()) == size
+        repository.put_complete(value)
+    error(
+        "SNAPSHOT_REPOSITORY_LIMIT",
+        partial(repository.put_complete, session_snapshot(original, "session-5", 42)),
+    )
+    repository.put_complete(values[0])
+    for value in values:
+        assert repository.get_complete(
+            value.snapshot_id, session_id=value.reference.session_id
+        ) == value
+
+
+@pytest.mark.parametrize("capacity", ["count", "bytes"])
+def test_competing_sessions_cannot_claim_the_same_final_capacity(capacity: str) -> None:
+    original = complete()
+    size = len(record_to_json(original).encode())
+    retained_count = 3 if capacity == "count" else 2
+    repository = InMemorySnapshotRepository(
+        clock=TestClock(),
+        max_total_bytes=(retained_count + 1) * size if capacity == "bytes" else 128 * MIB,
+    )
+    for index in range(1, retained_count + 1):
+        repository.put_complete(session_snapshot(original, f"session-{index}", 42))
+    barrier = Barrier(2)
+
+    def insert(index: int) -> str:
+        value = session_snapshot(original, f"session-{index}", 42)
+        barrier.wait(timeout=5)
+        try:
+            repository.put_complete(value)
+            return "stored"
+        except SnapshotRepositoryError as failure:
+            return failure.code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(insert, (4, 5)))
+    assert sorted(results) == ["SNAPSHOT_REPOSITORY_LIMIT", "stored"]

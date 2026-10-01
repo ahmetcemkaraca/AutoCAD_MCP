@@ -40,8 +40,10 @@ class SnapshotRepositoryError(Exception):
 
 class SnapshotRepository(Protocol):
     def put_complete(self, snapshot: DrawingSnapshot) -> None: ...
-    def get_complete(self, snapshot_id: str) -> DrawingSnapshot: ...
-    def expires_at(self, snapshot_id: str) -> datetime: ...
+    def get_complete(
+        self, snapshot_id: str, *, session_id: str | None = None
+    ) -> DrawingSnapshot: ...
+    def expires_at(self, snapshot_id: str, *, session_id: str | None = None) -> datetime: ...
 
 
 def _check_metadata(snapshot: DrawingSnapshot) -> None:
@@ -137,8 +139,8 @@ class InMemorySnapshotRepository:
         self._max_total_bytes = max_total_bytes
         self._max_expired_tombstones = max_expired_tombstones
         self._tombstone_ttl = timedelta(seconds=tombstone_ttl_seconds)
-        self._records: dict[str, tuple[bytes, datetime]] = {}
-        self._tombstones: dict[str, datetime] = {}
+        self._records: dict[tuple[str, str], tuple[bytes, datetime]] = {}
+        self._tombstones: dict[tuple[str, str], datetime] = {}
         # ponytail: one repository lock; finer locks if measured worker contention matters.
         self._lock = Lock()
 
@@ -161,26 +163,42 @@ class InMemorySnapshotRepository:
         self._tombstones = dict(list(self._tombstones.items())[: self._max_expired_tombstones])
         return now
 
-    def _entry(self, identifier: str) -> tuple[bytes, datetime]:
-        if not isinstance(identifier, str):
+    def _entry(self, identifier: str, session_id: str | None) -> tuple[bytes, datetime]:
+        if not isinstance(identifier, str) or (
+            session_id is not None and not isinstance(session_id, str)
+        ):
             raise SnapshotRepositoryError("SNAPSHOT_NOT_FOUND")
-        record = self._records.get(identifier)
-        if record is None:
-            raise SnapshotRepositoryError(
-                "SNAPSHOT_EXPIRED" if identifier in self._tombstones else "SNAPSHOT_NOT_FOUND"
-            )
-        return record
+        matches = [
+            record
+            for (record_id, record_session), record in self._records.items()
+            if record_id == identifier and (session_id is None or record_session == session_id)
+        ]
+        if len(matches) > 1:
+            raise SnapshotRepositoryError("SNAPSHOT_ID_COLLISION")
+        if matches:
+            return matches[0]
+        expired = any(
+            record_id == identifier and (session_id is None or record_session == session_id)
+            for record_id, record_session in self._tombstones
+        )
+        raise SnapshotRepositoryError("SNAPSHOT_EXPIRED" if expired else "SNAPSHOT_NOT_FOUND")
 
     def put_complete(self, snapshot: DrawingSnapshot) -> None:
         with self._lock:
             now = self._purge()
             encoded, validated = _encode_complete(snapshot, self._max_snapshot_bytes)
             identifier = validated.snapshot_id
-            existing = self._records.get(identifier)
-            if existing is not None:
-                retained = snapshot_from_json(json.loads(existing[0]))
-                if snapshot_identity_bytes(retained) != snapshot_identity_bytes(validated):
+            identity = None
+            for (record_id, _), (payload, _) in self._records.items():
+                if record_id != identifier:
+                    continue
+                if identity is None:
+                    identity = snapshot_identity_bytes(validated)
+                retained = snapshot_from_json(json.loads(payload))
+                if snapshot_identity_bytes(retained) != identity:
                     raise SnapshotRepositoryError("SNAPSHOT_ID_COLLISION")
+            key = identifier, validated.reference.session_id
+            if key in self._records:
                 return
             if (
                 len(self._records) >= self._max_snapshots
@@ -188,16 +206,18 @@ class InMemorySnapshotRepository:
                 > self._max_total_bytes
             ):
                 raise SnapshotRepositoryError("SNAPSHOT_REPOSITORY_LIMIT")
-            self._records[identifier] = encoded, now + self._ttl
-            self._tombstones.pop(identifier, None)
+            self._records[key] = encoded, now + self._ttl
+            self._tombstones.pop(key, None)
 
-    def get_complete(self, snapshot_id: str) -> DrawingSnapshot:
+    def get_complete(
+        self, snapshot_id: str, *, session_id: str | None = None
+    ) -> DrawingSnapshot:
         with self._lock:
             self._purge()
-            encoded, _ = self._entry(snapshot_id)
+            encoded, _ = self._entry(snapshot_id, session_id)
             return snapshot_from_json(json.loads(encoded))
 
-    def expires_at(self, snapshot_id: str) -> datetime:
+    def expires_at(self, snapshot_id: str, *, session_id: str | None = None) -> datetime:
         with self._lock:
             self._purge()
-            return self._entry(snapshot_id)[1]
+            return self._entry(snapshot_id, session_id)[1]

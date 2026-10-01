@@ -197,6 +197,15 @@ correction. Keep stable identity exclusions, session retention and byte limits.
 
 **Interfaces:** Exact pure records, `ContextAutoCADAdapter`, provider interfaces, and mapper functions from the spec. Keep the base protocol unchanged. Use the separate native-context-observer prerequisite for trustworthy lifetime/revision witnesses. Read the recorded Task4 preflight report and implement every supported mapping; observer loss fails closed. Add the missing `layer_globs` tuple to `AdapterEntityReadRequest` so public glob filtering happens before paging.
 
+Before mapping, implement the minimal pre-release model/fingerprint guards in
+[decision 0006](../../decisions/0006-context-include-projection.md): nullable
+projected geometry requires its explicit NOT_REQUESTED issue; complete snapshots,
+entity/drawing digest helpers and repository admission reject projected records.
+The mapper produces a complete entity digest from full raw coverage only. Task5
+owns public response projection and requests all-true adapter includes first,
+preserving complete source identity for every public include combination.
+Test these guard boundaries before altering source; no partial-data digest.
+
 - [ ] Test pure protocol/fake bounds and injected Windows-session extraction, revision consistency, required/optional failures and cleanup before implementation.
 - [ ] Implement OCS-to-owner-frame conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.
 - [ ] Verify adapter/mapper tests, import isolation, type checks; commit the frozen extension.

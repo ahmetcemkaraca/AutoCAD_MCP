@@ -326,7 +326,7 @@ class EntityContext:
     space: EntitySpace
     layer: LayerFacts
     style: StyleFacts
-    geometry: GeometryFacts
+    geometry: GeometryFacts | None
     bounds: Bounds3D | None
     block: BlockFacts | None
     text: TextFacts | None
@@ -451,7 +451,7 @@ Every constructed `DrawingSnapshot` has `fingerprint.complete=True` and an empty
 
 No filtered subset or response page is ever passed to `build_drawing_fingerprint`. `analyze_drawing` filters and paginates the already retained `DrawingSnapshot`. `query_entities` is a separate live paginated read: its result carries a revision-token digest and its cursor binds that digest plus normalized filters/order/page size, but it does not emit a `DrawingFingerprint` or `snapshot_id`. This distinction prevents a page digest from being mistaken for whole-drawing stale-state evidence.
 
-Each `EntityContext.state_digest` is `sha256:<64 lowercase hex>` over the canonical version, handle, entity type, owner space, layer, style, geometry, bounding box, block, text, and dimension facts for that entity. It excludes `ObjectID`, relationships to other entities, evidence messages, and semantics. `SnapshotRef` copies the snapshot ID, `DocumentIdentity.document_id`, `DocumentIdentity.session_document_id`, and `DrawingFingerprint.content_digest`; downstream edit and semantic epics consume this compact reference instead of inventing a second snapshot identity.
+Each `EntityContext.state_digest` is `sha256:<64 lowercase hex>` over the canonical version, handle, entity type, owner space, layer, style, geometry, bounding box, block, text, and dimension facts for the complete entity read. It excludes `ObjectID`, relationships to other entities, evidence messages, and semantics. [Decision 0006](../decisions/0006-context-include-projection.md) defines include flags as response projection: services acquire full entity coverage first, preserve the complete source digest, and explicitly mark omitted groups. Nullable response geometry is never admitted to a complete snapshot or fingerprint, and a projected record cannot be used to recompute its complete digest. `SnapshotRef` copies the snapshot ID, `DocumentIdentity.document_id`, `DocumentIdentity.session_document_id`, and `DrawingFingerprint.content_digest`; downstream edit and semantic epics consume this compact reference instead of inventing a second snapshot identity.
 
 ### Fact and semantic evidence separation
 

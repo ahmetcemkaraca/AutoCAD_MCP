@@ -2,7 +2,7 @@
 
 **User objective:** List and complete every remaining task the agent can perform. The user will execute real-application tests after implementation finishes.
 
-**Current baseline:** `599e8a9` on `main`; PRs #1-3 and #5-8 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
+**Current baseline:** `82b85a2` on `main`; PRs #1-3 and #5-9 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
 
 ## Authority and completion boundary
 
@@ -26,9 +26,9 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
 | EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pure service and measured maximum case accepted; tool schema accepted; MCP handler/integration pending |
-| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | All nine renderers and independent validator/service accepted; MCP integration in progress |
+| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Done; PR #9 merged after independent review and hosted Windows/Linux CI |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
-| EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
+| EPIC-09D | Read-only dimension proposals using accepted topology/mechanical facts; no dimension creation | Pending |
 | Final integration | Full portable suite, import/schema/manifest agreement, independent reviews, focused PRs, current docs and a single ordered operator test guide | Pending |
 
 ## Operator-owned execution after implementation
@@ -42,7 +42,7 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
 
 ## Current verified checkpoint
 
-- Main remains `599e8a9`; PRs #1–3 and #5–8 are merged. A fresh GitHub readback
+- Main is `82b85a2`; PRs #1–3 and #5–9 are merged. A fresh GitHub readback
   finds only PR #4 open. It changes the pinned MCP major version and remains a
   separate migration review; it has not been merged into these feature branches.
 - Baseline hosted evidence is Windows 233 passed/3 skipped and Linux 227 passed/
@@ -67,13 +67,13 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
   passes 30 schema/84 affected core+stdio tests and now has independent
   contract/quality acceptance.
   Handler, complete MCP body bound, registration and hosted feature CI remain.
-- EPIC-09C source `cc0d959` is independently accepted at plan `58fcc0a`:
-  84 focused tests and 464 full tests, 9 skips. All nine hand-reviewed goldens
-  and 873 frozen malicious cases preserve their classification. Actual artifact
-  bytes are bounded, with source never executed. MCP integration is active:
-  closed schema, lazy default adapter composition, complete serialized result
-  bound and core-only/no-execution tests. The first 19 red contract tests identify
-  the missing integration; no registered-tool or hosted feature-CI claim yet.
+- EPIC-09C is delivered through [PR #9](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/9),
+  merged as `82b85a2`. All nine templates, independent static validation,
+  default-server isolation and complete 65,536-byte SDK result bound passed
+  independent final review. Hosted Windows: 499 passed/3 skipped; Linux:
+  493 passed/9 skipped. Lint/types/syntax/import checks, CodeQL and GitGuardian
+  passed. Windows CI's long pytest IDs were corrected without shrinking input
+  cases. This track requires no AutoCAD execution; other tracks remain open.
 - Native observer pure state/protocol `b2abd8a` is accepted: 90 native checks,
   69 focused Python/298 full tests, 9 skips, and three locked BCL builds. Actual
   SDK callback compile probes pass for the three pinned runtime profiles. Host

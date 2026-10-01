@@ -736,3 +736,56 @@ def test_max_unicode_layout_handle_and_missing_cursor_boundary():
     with pytest.raises(ContextValidationError) as error:
         adapter.read_entity_page(request(page_size=1, cursor=first.next_cursor))
     assert error.value.code == "INVALID_CURSOR"
+
+
+@pytest.mark.parametrize(
+    "object_name", ["AcDbText", "AcDbMText", "AcDbAttribute", "AcDbAttributeDefinition"]
+)
+@pytest.mark.parametrize(
+    "percent,unicode,expected",
+    [("%%c", r"\U+2205", "\u2205"), ("%%d", r"\U+00B0", "°"), ("%%p", r"\U+00B1", "±")],
+)
+def test_adapter_mapper_equivalent_symbol_encodings_preserve_raw_text(
+    object_name, percent, unicode, expected
+):
+    for raw in (percent + "25", unicode + "25"):
+        adapter, _, _, _, _ = setup(Document((entity(object_name=object_name, TextString=raw),)))
+        mapped = map_entity_context(adapter.entity_facts_by_handles(("10",), ALL)[0])
+        assert mapped.text.plain_text == expected + "25"
+        assert mapped.text.raw_text == raw
+
+
+@pytest.mark.parametrize(
+    "object_name", ["AcDbText", "AcDbMText", "AcDbAttribute", "AcDbAttributeDefinition"]
+)
+@pytest.mark.parametrize("raw", [r"\U+12", r"\U+ZZZZ", r"\U+D800", r"\U+DC00", r"\U+D800\U+0041"])
+def test_malformed_unicode_text_is_required_read_refusal_for_all_text_paths(object_name, raw):
+    adapter, _, _, com, _ = setup(Document((entity(object_name=object_name, TextString=raw),)))
+    with pytest.raises(ContextValidationError) as error:
+        adapter.entity_facts_by_handles(("10",), ALL)
+    assert error.value.code == "UNSUPPORTED_CAPABILITY"
+    assert com.events == ["initialize", "uninitialize"]
+
+
+def test_single_line_unicode_decoder_preserves_ordinary_mtext_like_literal_markup():
+    raw = r"{\C1;literal}\P \U+00E9 \U+D83D\U+DE42"
+    adapter, _, _, _, _ = setup(Document((entity(object_name="AcDbText", TextString=raw),)))
+    mapped = map_entity_context(adapter.entity_facts_by_handles(("10",), ALL)[0])
+    assert mapped.text.plain_text == r"{\C1;literal}\P " + "é 🙂"
+    assert mapped.text.raw_text == raw
+    # MText escaped backslash is literal and must not be reinterpreted as Unicode after parsing.
+    assert _decode_mtext(r"\\U+2205") == r"\U+2205"
+
+
+@pytest.mark.parametrize("shape", ["empty", "empty-model", "model-only"])
+@pytest.mark.parametrize("cursor", [None, "not-a-valid-cursor"])
+def test_definition_wcs_request_refuses_before_cursor_resolution_or_drawing_scan(shape, cursor):
+    doc = Document(()) if shape != "model-only" else Document()
+    doc.Blocks.items = () if shape == "empty" else doc.Blocks.items[:1]
+    adapter, _, _, _, _ = setup(doc)
+    with pytest.raises(ContextValidationError) as error:
+        adapter.read_entity_page(
+            request(spaces=("block_definition",), intersects_wcs=(0, 0, 0, 9, 9, 9), cursor=cursor)
+        )
+    assert error.value.code == "UNSUPPORTED_CAPABILITY"
+    assert not doc.Blocks.reads

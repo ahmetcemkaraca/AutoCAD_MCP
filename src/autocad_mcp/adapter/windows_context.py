@@ -239,16 +239,31 @@ def _items(collection: object) -> Iterator[object]:
             ) from None
 
 
-def _decode_text(value: str) -> str:
+def _decode_percent_codes(value: str) -> str:
     require("%<" not in value, "Text field decoding is unsupported", code="UNSUPPORTED_CAPABILITY")
 
     def replace_code(match: re.Match[str]) -> str:
-        codes = {"d": "°", "p": "±", "c": "⌀", "u": "", "o": "", "%": "%"}
+        codes = {"d": "°", "p": "±", "c": "∅", "u": "", "o": "", "%": "%"}
         code = match.group(1).lower()
         require(code in codes, "Text code decoding is unsupported", code="UNSUPPORTED_CAPABILITY")
         return codes[code]
 
     return re.sub(r"%%(.)", replace_code, value)
+
+
+def _decode_text(value: str) -> str:
+    # Single-line text shares symbol/Unicode encodings, not MText formatting syntax.
+    require(len(value) <= 65536, "Text exceeds bound", code="UNSUPPORTED_CAPABILITY")
+    output = []
+    index = 0
+    while index < len(value):
+        if value.startswith("\\U", index):
+            decoded, index = _unicode_escape(value, index + 2)
+            output.append(decoded)
+        else:
+            output.append(value[index])
+            index += 1
+    return _decode_percent_codes("".join(output))
 
 
 def _unicode_escape(value: str, index: int) -> tuple[str, int]:
@@ -337,7 +352,8 @@ def _decode_mtext(value: str) -> str:
         else:
             output.append(char)
     require(depth == 0, "Invalid MText grouping", code="UNSUPPORTED_CAPABILITY")
-    return _decode_text("".join(output))
+    # Escaped MText backslashes must remain literal after its Unicode parsing.
+    return _decode_percent_codes("".join(output))
 
 
 @dataclass(frozen=True)
@@ -929,6 +945,11 @@ class WindowsContextAutoCADAdapter(WindowsAutoCADAdapter):
 
     def read_entity_page(self, request: AdapterEntityReadRequest) -> AdapterEntityPage:
         require(type(request) is AdapterEntityReadRequest, "Invalid entity read request")
+        require(
+            request.intersects_wcs is None or "block_definition" not in request.spaces,
+            "Definition has no WCS projection",
+            code="UNSUPPORTED_CAPABILITY",
+        )
         return self._read(
             lambda read: self._page(read, request), continuation=request.cursor is not None
         )
@@ -993,11 +1014,6 @@ class WindowsContextAutoCADAdapter(WindowsAutoCADAdapter):
         for block in _items(_required(read.document, "Blocks")):
             owner = self._owner(block)
             if request.intersects_wcs is not None and owner.space_kind == "block_definition":
-                require(
-                    "block_definition" not in filters.spaces,
-                    "Definition has no WCS projection",
-                    code="UNSUPPORTED_CAPABILITY",
-                )
                 if not filters.spaces and not any(
                     issue.capability == "definition_wcs_projection" for issue in state.issues
                 ):

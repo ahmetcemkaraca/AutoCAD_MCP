@@ -108,6 +108,41 @@ candidates and the shared budget; no unbounded all-pairs scan.
 
 **Interfaces:** Consume normalized request/adjacency and frozen cooperative bounds. Produce an immutable candidate layout, not self-approved metrics. Preserve root face, winding and corner/source incidence.
 
+```python
+SOLVER_VERSION = "rigid-triangle-unfolding-v1"
+def solve_layout(
+    mesh: ValidatedMesh, *, budget: WorkBudget
+) -> UnfoldingLayout | BoundedExecutionFailure: ...
+```
+
+Consume the already validated public topology; do not parse or revalidate the
+request, construct another budget, or import verifier/validation private helpers.
+Use deterministic face-ID-sorted traversal of each acyclic island; the requested
+root owns its island and every other root is the minimum face ID. Root placement
+uses the original oriented source corner order: first `(0, 0)`, second positive
+x with y zero, third positive y. Propagation preserves oriented corners and
+shares output indices only through the uncut edge; seam-separated corners may
+repeat source IDs even within an island. Final faces follow global source-ID
+order independently of traversal/strip order. Emit normalized requested cuts.
+
+Only cancellation/deadline return `BoundedExecutionFailure`, preserving its exact
+carrier. Unrepresentable/nonfinite/collapsed numerical output raises existing
+`MeshValidationError("NUMERICAL_FAILURE", fixed_message)`; fixed item/work/result
+limits raise `MeshValidationError("RESOURCE_LIMIT", fixed_message)`. No partial
+candidate, metric, digest, raw value or source content accompanies these errors.
+Check pending interruption before returning success or a numerical/resource
+rejection, so an early limit does not hide cancellation. Every stage consumes
+the supplied budget; the later service owns its final full result serialization.
+
+Verify hand-computable goldens plus every mathematically accepted input fixture
+with the independent public verifier. Report any numerical rejection honestly
+and investigate it; never change frozen classifications or expected outputs.
+Test tiny/large/thin triangles, a non-minimum requested root, within-island seam
+corner duplication, shuffled input, deterministic repeated layout bytes, global
+strip order/gap and unrepresentable separation, cancellation/deadline mid-solve
+and pre-return, fixed-work/item bounds. Include one decode/validate/solve/verify
+run sharing a single budget, rather than only stage-local fresh budgets.
+
 - [ ] Add failing rigid edge-preserving goldens, shuffled input determinism, branched/seamed cases and fixed-work/deadline/cancellation tests.
 - [ ] Implement canonical root placement, deterministic adjacency traversal, and the declared one-pass strip placement; no distortion minimizer, seam optimizer, overlap-driven repositioning, or hidden layout search.
 - [ ] Run independent verifier against fixtures. Do not edit verifier or frozen expectations to make results pass. Commit with evidence.

@@ -75,6 +75,21 @@ class UnfoldingIssue:
 
 
 @dataclass(frozen=True)
+class UnfoldingLayout:
+    solver_version: str
+    vertices_2d: tuple[UnfoldedVertex, ...]
+    faces_2d: tuple[tuple[int, int, int], ...]
+    cut_edges: tuple[tuple[int, int], ...]
+
+
+@dataclass(frozen=True)
+class LayoutVerification:
+    accepted: bool
+    metrics: UnfoldingMetrics | None
+    issues: tuple[UnfoldingIssue, ...]
+
+
+@dataclass(frozen=True)
 class UnfoldingResult:
     request_id: str
     input_digest: str

@@ -1,0 +1,8 @@
+def codegen_iterate_handles():
+    handles = [
+        "ABC",
+    ]
+    last_handle = ""
+    for handle in handles:
+        last_handle = handle
+    return last_handle

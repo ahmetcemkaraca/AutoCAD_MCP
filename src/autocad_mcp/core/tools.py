@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 
+from autocad_mcp.tools.constrained_code_generation import CONSTRAINED_CODE_GENERATION_TOOL
 from mcp.types import Tool
 
 from .models import (
@@ -33,6 +34,7 @@ TOOL_DEFINITIONS: tuple[Tool, ...] = (
             "additionalProperties": False,
         },
     ),
+    CONSTRAINED_CODE_GENERATION_TOOL,
 )
 
 
@@ -74,6 +76,9 @@ def parse_tool_input(name: str, arguments: Mapping[str, object] | None) -> Basic
         tool_name = ToolName(name)
     except ValueError as error:
         raise UnknownToolName(name) from error
+
+    if tool_name is ToolName.GENERATE_CONSTRAINED_CODE:
+        raise UnknownToolName(name)
 
     checked_arguments = _validated_arguments(name, arguments)
     if tool_name is ToolName.SERVER_STATUS:

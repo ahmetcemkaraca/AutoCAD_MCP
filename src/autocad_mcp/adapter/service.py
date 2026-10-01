@@ -15,6 +15,7 @@ from autocad_mcp.core.models import (
     ServerStatusInput,
     ToolError,
     ToolFailure,
+    ToolName,
     ToolResponse,
     ToolSuccess,
 )
@@ -64,7 +65,7 @@ def _status_data(connection: ConnectionInfo) -> dict[str, JsonValue]:
         "version": connection.version,
         "release_hint": connection.release_hint,
         "read_only": connection.read_only,
-        "tools_available": 3,
+        "tools_available": len(ToolName),
         "transport": "stdio",
         "capabilities": [
             cast(JsonValue, capability.value)

@@ -7,7 +7,15 @@ from collections.abc import Mapping
 
 import mcp.types as types
 from autocad_mcp import __version__
-from autocad_mcp.core.models import ToolResponse, response_json
+from autocad_mcp.advanced.codegen import service as codegen_service
+from autocad_mcp.core.models import (
+    ErrorCode,
+    ToolError,
+    ToolFailure,
+    ToolName,
+    ToolResponse,
+    response_json,
+)
 from autocad_mcp.core.service import BasicToolService, dispatch_tool
 from autocad_mcp.core.tools import TOOL_DEFINITIONS
 from autocad_mcp.runtime import create_tool_service
@@ -30,6 +38,23 @@ def _text_response(response: ToolResponse) -> list[types.TextContent]:
     return [types.TextContent(type="text", text=response_json(response))]
 
 
+def _code_result(response: ToolResponse) -> types.CallToolResult:
+    """Bound the C SDK body separately from the unchanged basic transport path."""
+    result = types.CallToolResult(
+        content=[*_text_response(response)], isError=isinstance(response, ToolFailure)
+    )
+    # Match the SDK stdio writer's alias/None serialization on the actual result body.
+    if (
+        len(result.model_dump_json(by_alias=True, exclude_none=True).encode("utf-8"))
+        > codegen_service.MAX_ARTIFACT_BYTES
+    ):
+        failure = ToolFailure(
+            ToolError(ErrorCode.PAYLOAD_LIMIT, "Code generation result body limit exceeded")
+        )
+        return types.CallToolResult(content=[*_text_response(failure)], isError=True)
+    return result
+
+
 def create_server(service: BasicToolService) -> Server:
     """Create the only active MCP registration surface around an injected service."""
     mcp_server = Server("autocad-mcp")
@@ -41,8 +66,11 @@ def create_server(service: BasicToolService) -> Server:
     @mcp_server.call_tool(validate_input=False)
     async def call_tool(
         name: str, arguments: Mapping[str, object] | None
-    ) -> list[types.TextContent]:
-        return _text_response(await dispatch_tool(service, name, arguments))
+    ) -> list[types.TextContent] | types.CallToolResult:
+        response = await dispatch_tool(service, name, arguments)
+        if name != ToolName.GENERATE_CONSTRAINED_CODE:
+            return _text_response(response)
+        return _code_result(response)
 
     @mcp_server.list_resources()
     async def list_resources() -> list[types.Resource]:
@@ -76,9 +104,7 @@ def create_server(service: BasicToolService) -> Server:
         ]
 
     @mcp_server.get_prompt()
-    async def get_prompt(
-        name: str, arguments: dict[str, str] | None
-    ) -> types.GetPromptResult:
+    async def get_prompt(name: str, arguments: dict[str, str] | None) -> types.GetPromptResult:
         if name != _HELP_PROMPT_NAME:
             raise ValueError("Unknown prompt")
         return types.GetPromptResult(

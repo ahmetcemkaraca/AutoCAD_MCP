@@ -28,6 +28,7 @@ def test_models_expose_the_three_immutable_request_types() -> None:
         ToolName.SERVER_STATUS,
         ToolName.LIST_ENTITIES,
         ToolName.GET_ENTITY_INFO,
+        ToolName.GENERATE_CONSTRAINED_CODE,
     )
     assert ToolName.SERVER_STATUS.value == "server_status"
     assert ServerStatusInput.tool_name is ToolName.SERVER_STATUS
@@ -115,4 +116,9 @@ def test_error_codes_are_the_canonical_redacted_values() -> None:
         ErrorCode.ENTITY_NOT_FOUND,
         ErrorCode.AUTOCAD_OPERATION_FAILED,
         ErrorCode.INTERNAL_ERROR,
+        ErrorCode.UNSUPPORTED_TARGET,
+        ErrorCode.UNSUPPORTED_TEMPLATE,
+        ErrorCode.UNSUPPORTED_TEMPLATE_VERSION,
+        ErrorCode.PAYLOAD_LIMIT,
+        ErrorCode.STATIC_VALIDATION_FAILED,
     )

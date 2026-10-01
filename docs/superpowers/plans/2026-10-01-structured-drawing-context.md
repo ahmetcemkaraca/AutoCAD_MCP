@@ -216,6 +216,19 @@ canonical entity_sort_key, all other cursor bindings, HMAC/expiry and2,048 bytes
 
 ### Task 4: Additive context adapters and fact mapping (CTX-03)
 
+Execute as two reviewable pieces:4A owns pure context_protocol/fake_context/
+adapter_reader, pure exports and their fixture/tests;4B owns Windows extraction,
+injected session/native witness tests and delayed provider integration.4B
+consumes the accepted4A records and native observer contracts; it does not
+replace either. Keep the overall CTX-03 gate incomplete until both pass.
+
+Canonical services request full adapter coverage. The fake and Windows adapter
+may return full facts for smaller internal include sets, as decision0006 allows;
+only public services project responses. A mapper refuses raw NOT_REQUESTED
+omissions before generating state_digest. This avoids inventing a nullable raw
+geometry or an unsupported-geometry claim for an unrequested group.
+
+
 **Files:** The CTX-C paths enumerated by the spec, including `context_protocol.py`, `fake_context.py`, `windows_context.py`, `context/adapter_reader.py`, their tests, and raw entity fixture.
 
 **Interfaces:** Exact pure records, `ContextAutoCADAdapter`, provider interfaces, and mapper functions from the spec. Keep the base protocol unchanged. Use the separate native-context-observer prerequisite for trustworthy lifetime/revision witnesses. Read the recorded Task4 preflight report and implement every supported mapping; observer loss fails closed. Add the missing `layer_globs` tuple to `AdapterEntityReadRequest` so public glob filtering happens before paging.

@@ -248,6 +248,20 @@ change shared files during Track C's integration window.
 
 ### Task 4: Serialized MCP integration and final acceptance (E09-U04)
 
+The reviewed public tool is `unfold_surface`; success contains `result` with the
+exact pure result payload. Use one service invocation and cooperative thread
+cancellation so numerical work does not block stdio. Domain deadline/cancellation
+failures return no partial geometry; transport cancellation signals the worker
+and preserves SDK cancellation semantics. No subprocess or hard-kill mechanism.
+
+Measure the complete SDK `CallToolResult` body against4MiB including text escaping.
+A shared body helper now has two actual consumers; retain C's existing limit,
+message and wire bytes. The frozen U serialization stress vector measures
+3,417,137 bytes inside this wrapper. Metadata/handler/catalog/docs must agree on
+five tools, with default C/U startup and calls importing no AutoCAD/context module.
+The accepted algorithms/service/bounds/corpus are read-only during integration.
+
+
 **Files:** `tests/performance/measure_unfolding.py`, immutable numerical evidence, `advanced/unfolding/service.py`, `tools/surface_unfolding.py`, MCP tests; controller-owned server/runtime/catalog/manifest/docs during an exclusive integration window.
 
 - [ ] Measure 500/2,000/4,000-face cases in-process with seed 9041, recording host/wall time/RSS outside results/digests. Publish rejected numerical cases honestly.

@@ -173,3 +173,65 @@ def test_deeply_nested_and_cyclic_nonjson_input_is_rejected_without_recursion():
                 )
             )
         assert caught.value.code == "INVALID_ARGUMENT"
+
+
+def mixed_number_request(long_coordinate_count):
+    coordinates = [
+        -1.2345678901234567e-100 if index < long_coordinate_count else 10**15
+        for index in range(384)
+    ]
+    return request(
+        "literal_geometry",
+        {
+            "lines": [
+                {"start": coordinates[index : index + 3], "end": coordinates[index + 3 : index + 6]}
+                for index in range(0, 384, 6)
+            ],
+            "circles": [{"center": [10**15] * 3, "radius": 10**15} for _ in range(64)],
+        },
+    )
+
+
+def test_recipe_rejects_number_normalization_that_exceeds_byte_limit():
+    models = api()
+    payload = mixed_number_request(240)
+    original_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    assert len(original_bytes) == 15623
+    with pytest.raises(models.CodeGenerationError) as caught:
+        models.decode_recipe(payload)
+    assert caught.value.code == "PAYLOAD_LIMIT"
+
+
+def test_admitted_near_limit_normalized_recipe_roundtrips():
+    models = api()
+    recipe = models.decode_recipe(mixed_number_request(233))
+    canonical = models.canonical_recipe_bytes(recipe)
+    assert len(canonical) == 16381
+    exported = models.recipe_payload(recipe)
+    assert models.canonical_recipe_bytes(models.decode_recipe(exported)) == canonical
+
+
+def test_original_input_overflow_rejects_even_when_normalized_payload_would_fit():
+    models = api()
+    facts = [
+        {
+            "handle": "a",
+            "object_name": "x",
+            "layer": "x",
+            "properties": {f"k{i}": "x" * (990 if i == 0 else 1000) for i in range(16)},
+        },
+        {"handle": "b", "object_name": "x", "layer": "x", "properties": {"zero": -0.0}},
+    ]
+    payload = request("serialize_entity_facts", {"facts": facts})
+    assert len(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()) == 16385
+    with pytest.raises(models.CodeGenerationError) as caught:
+        models.decode_recipe(payload)
+    assert caught.value.code == "PAYLOAD_LIMIT"
+    facts[1]["properties"]["zero"] = 0.0
+    recipe = models.decode_recipe(payload)
+    canonical = models.canonical_recipe_bytes(recipe)
+    assert len(canonical) == 16384
+    assert (
+        models.canonical_recipe_bytes(models.decode_recipe(models.recipe_payload(recipe)))
+        == canonical
+    )

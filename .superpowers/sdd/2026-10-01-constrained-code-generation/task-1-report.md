@@ -74,8 +74,9 @@ normalizes handles/numbers, and freezes all nested mappings/lists as mapping
 proxies/tuples. `JsonValue` retains the exact epic wire annotation; the codec
 thaws immutable storage into fresh JSON lists/dictionaries. Existing immutable
 storage is not an alternative JSON input format. Caller strings remain literal
-data, including injection-looking words. The input limit counts original compact
-JSON UTF-8 bytes, before number/case normalization. The artifact constructor
+data, including injection-looking words. After review round 1, the input limit
+counts both original compact JSON UTF-8 bytes before number/case normalization
+and normalized compact JSON bytes before freezing. The artifact constructor
 rejects `executed != False` or a changed mandatory warning and detaches findings
 into a tuple. It does not perform source validation or response-envelope sizing.
 
@@ -117,7 +118,7 @@ import autocad_mcp.core.models
 class RejectRuntimeImports(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         forbidden = (
-            'pythoncom', 'win32com', 'pyautocad', 'autocad_mcp.adapters',
+            'pythoncom', 'win32com', 'pyautocad', 'autocad_mcp.adapter',
             'autocad_mcp.context', 'autocad_mcp.capture', 'autocad_mcp.editing',
             'subprocess', 'socket', 'urllib', 'requests',
         )
@@ -133,7 +134,7 @@ recipe = decode_recipe(dict(
 ))
 assert b'ABC' in canonical_recipe_bytes(recipe)
 assert not any(name.startswith((
-    'pythoncom', 'win32com', 'pyautocad', 'autocad_mcp.adapters',
+    'pythoncom', 'win32com', 'pyautocad', 'autocad_mcp.adapter',
     'autocad_mcp.context', 'autocad_mcp.capture', 'autocad_mcp.editing',
 )) for name in sys.modules)
 allowed = {
@@ -176,3 +177,83 @@ not evidence of full future service/MCP zero-call file/process spies.
 - Review must accept these contracts and fixed corpus before Task 2; later authors
   must preserve rejection classifications and prove escaping or explicitly reject
   target-unrepresentable literal data without hiding injection failures.
+
+## Independent review fix round 1
+
+Base: `77fb586`. The controller's independent review required two fixes; the
+amended plan explicitly bounds both original and normalized recipes. No rendering,
+validation, MCP, or core source was changed. Added ownership of `.gitattributes`
+is limited to `tests/fixtures/codegen/** -text`. Both published hashes, all fixture
+bytes, stable IDs, and corpus classifications are unchanged.
+
+The shared recipe constructor now checks normalized JSON with the same 16,384-byte
+limit after retaining the original-input check, before freezing. A 15,623-byte
+mixed-number input previously admitted a 16,423-byte normalized export; the new
+regression rejects it with `PAYLOAD_LIMIT`. A 16,381-byte normalized mixed-number
+recipe round-trips deterministically. A separate case rejects 16,385 original
+bytes even when negative-zero normalization would shrink it to 16,384 bytes;
+its already-normalized 16,384-byte form is admitted and round-trips. Every one of
+the 576 admitted frozen corpus cases also checks bounded canonical round-trip
+identity. Public fields and interfaces are unchanged.
+
+| Fresh command/check | Result |
+| --- | --- |
+| `.venv/bin/python -m pytest tests/unit/advanced/codegen/test_models.py -q -k 'normalization_that_exceeds or near_limit_normalized' --tb=short` (red) | 1 failed, 1 passed, 6 deselected: oversized normalization did not raise. |
+| Same narrow command (green) | 2 passed, 6 deselected in 1.31s. |
+| `.venv/bin/python -m pytest tests/unit/advanced/codegen/test_models.py tests/unit/advanced/codegen/test_contract_rejections.py -q` | 28 passed in 1.15s. |
+| `.venv/bin/python -m pytest -q` (once for this fix) | 280 passed, 9 skipped in 13.47s. |
+| `.venv/bin/ruff check src/autocad_mcp/advanced/codegen/models.py tests/unit/advanced/codegen` | All checks passed; exit 0. |
+| `.venv/bin/mypy src/autocad_mcp/advanced/codegen` | No issues found in 2 source files; exit 0. |
+| `.venv/bin/python -m compileall -q src tests` | No output; exit 0. |
+| `git diff --check` | No output; exit 0. |
+| Guarded import/source command above, corrected to singular `autocad_mcp.adapter` | Guarded codegen import, source import allowlist, and normalized recipe check passed. |
+| `git check-attr text -- tests/fixtures/codegen/catalogue.json tests/fixtures/codegen/malicious-corpus.json` | Both `text: unset`. |
+
+The first trial of the narrow tests had two failures: the overflow regression
+correctly failed, while a near-limit test initially assumed 236 long coordinates
+would produce 16,383 bytes. It actually produced 16,399 bytes; the fixture was
+corrected to 233 long coordinates and the independently measured 16,381-byte
+expectation before the definitive red/green runs above. Existing Ruff deprecation
+and mypy unused-Windows-override notes remain unchanged.
+
+The real Git checkout diagnostic below was run before and after the attribute
+change. Before the fix, its equality assertion failed: catalogue checkout hash
+`ec49226080f2cba3a05331007f9307a039277624321756f91e3fcc5fb5644a6b` and corpus checkout
+hash `cc98b3a0281fadfb0c50a2a9660681d713589d8f81d24dbc45c70a559f74abec` differed from
+published LF bytes. After the fix, both byte-equality assertions passed and the
+checkout hashes exactly matched the unchanged published hashes above.
+
+```bash
+.venv/bin/python - <<'PY'
+import hashlib
+import subprocess
+import tempfile
+from pathlib import Path
+
+paths = [
+    'tests/fixtures/codegen/catalogue.json',
+    'tests/fixtures/codegen/malicious-corpus.json',
+]
+with tempfile.TemporaryDirectory(prefix='codegen-autocrlf-') as directory:
+    subprocess.run([
+        'git', '-c', 'core.autocrlf=true', 'checkout-index',
+        '--prefix=' + directory + '/', '--', *paths,
+    ], check=True)
+    for name in paths:
+        source = Path(name).read_bytes()
+        checkout = (Path(directory) / name).read_bytes()
+        print(name, 'source', hashlib.sha256(source).hexdigest(),
+              'checkout', hashlib.sha256(checkout).hexdigest(),
+              'byte-identical', source == checkout)
+    assert all(
+        Path(name).read_bytes() == (Path(directory) / name).read_bytes()
+        for name in paths
+    )
+PY
+```
+
+This is actual Git checkout conversion evidence under `core.autocrlf=true` on
+Linux, not a Windows CI run or an AutoCAD integration test. Existing root-package
+metadata initialization is still preloaded for the scoped import guard, as
+previously documented. Task 2 remains pending independent scoped re-review;
+this fix report is evidence, not a self-acceptance decision.

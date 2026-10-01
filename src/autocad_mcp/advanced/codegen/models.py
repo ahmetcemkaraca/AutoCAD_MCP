@@ -221,6 +221,8 @@ class CodeRecipe:
         }
         if len(_json_bytes(original)) > MAX_RECIPE_BYTES:
             raise CodeGenerationError("PAYLOAD_LIMIT")
+        if len(_json_bytes({**original, "literals": normalized})) > MAX_RECIPE_BYTES:
+            raise CodeGenerationError("PAYLOAD_LIMIT")
         object.__setattr__(self, "target", target)
         object.__setattr__(self, "literals", _freeze(normalized))
 

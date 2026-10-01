@@ -92,6 +92,9 @@ def test_frozen_catalogue_and_corpus_are_unique_content_addressed_contracts():
             recipe = models.decode_recipe(case["payload"])
             exported = models.recipe_payload(recipe)
             assert exported["literals"] == case["payload"]["literals"], case["id"]
+            canonical = models.canonical_recipe_bytes(recipe)
+            assert len(canonical) <= 16384, case["id"]
+            assert models.canonical_recipe_bytes(models.decode_recipe(exported)) == canonical
             assert case["classification"] == "literal-data"
 
 

@@ -26,11 +26,16 @@ No AutoCAD release is currently marked verified.
 
 ## Python
 
-`pyproject.toml` declares Python 3.12 or newer and the committed `uv.lock`
-supports a frozen Linux development sync. The first real-device smoke requires
-64-bit CPython 3.12 exactly and records that interpreter in its local evidence
-log. A Windows frozen sync has not yet been recorded, so this does not claim
-Windows dependency-installation verification.
+`pyproject.toml` declares Python 3.12 or newer. The committed `uv.lock` passed
+clean frozen development installation with uv 0.12.7 on 64-bit CPython 3.12.3
+on hosted Ubuntu and 3.12.10 on hosted Windows Server 2025 in
+[CI run 36884274057](https://github.com/ahmetcemkaraca/AutoCAD_MCP/actions/runs/36884274057).
+The same run passed 227 portable tests on Ubuntu and 233 portable/Windows API
+tests on Windows, plus active lint/types, syntax, manifest, and delayed COM
+import checks. This verifies dependency installation and the named automated
+boundaries; it does not verify an AutoCAD release. The first real-device smoke
+requires 64-bit CPython 3.12 exactly and records that interpreter in its local
+evidence log. Other Python versions remain unverified.
 
 ## Capability policy
 

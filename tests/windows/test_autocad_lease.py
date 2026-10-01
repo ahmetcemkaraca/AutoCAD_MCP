@@ -13,7 +13,7 @@ import sys
 import textwrap
 import time
 from pathlib import Path
-from types import TracebackType
+from types import SimpleNamespace, TracebackType
 from typing import get_type_hints
 
 import pytest
@@ -291,6 +291,88 @@ def test_guard_acl_flag_rules_accept_effective_inherited_and_reject_inherit_only
     assert module._guard_ace_is_effective(8, inherit_only_flag=8) is False
 
 
+def test_new_path_acl_sets_current_user_owner_and_protected_dacl(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    module = _lease_module()
+    calls: list[tuple[object, ...]] = []
+    dacl = SimpleNamespace(AddAccessAllowedAceEx=lambda *args: None)
+    security = SimpleNamespace(
+        ACL=lambda: dacl,
+        ACL_REVISION=2,
+        ConvertStringSidToSid=lambda sid: sid,
+        OWNER_SECURITY_INFORMATION=1,
+        DACL_SECURITY_INFORMATION=4,
+        PROTECTED_DACL_SECURITY_INFORMATION=0x80000000,
+        SE_FILE_OBJECT=1,
+        SetNamedSecurityInfo=lambda *args: calls.append(("named", *args)),
+    )
+    bindings = {
+        "ntsecuritycon": SimpleNamespace(FILE_ALL_ACCESS=0x1F01FF),
+        "win32security": security,
+    }
+    monkeypatch.setattr(module.importlib, "import_module", bindings.__getitem__)
+
+    module._set_private_acl(tmp_path / "new", "S-1-5-21-100")
+
+    assert calls == [
+        ("named", str(tmp_path / "new"), 1, 0x80000005, "S-1-5-21-100", None, dacl, None),
+    ]
+
+
+def test_existing_foreign_paths_are_rejected_without_repair(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    module = _lease_module()
+    directory = tmp_path / "foreign-directory"
+    directory.mkdir()
+    file_path = tmp_path / "foreign-file"
+    file_path.write_bytes(b"foreign evidence")
+    repairs: list[object] = []
+    monkeypatch.setattr(module, "_require_windows", lambda: None)
+    monkeypatch.setattr(module, "_current_user_sid", lambda: "S-1-5-21-100")
+    monkeypatch.setattr(module, "_set_private_acl", lambda *args, **kwargs: repairs.append(args))
+
+    def reject_foreign_owner(path: Path, sid: str) -> None:
+        raise module.AutoCADLeaseError("Windows lease path owner is not the current user")
+
+    monkeypatch.setattr(module, "_verify_lease_acl", reject_foreign_owner)
+    with pytest.raises(module.AutoCADLeaseError, match="owner"):
+        module._create_private_directory(directory, "S-1-5-21-100")
+    with pytest.raises(module.AutoCADLeaseError, match="owner"):
+        module._create_private_file(file_path, "S-1-5-21-100")
+    with pytest.raises(module.AutoCADLeaseError, match="already exists"):
+        module.create_guard_run_directory(directory)
+    assert repairs == []
+    assert file_path.read_bytes() == b"foreign evidence"
+
+
+@pytest.mark.parametrize(
+    "wait_result, expected", ((0, "dead"), (258, "live"), (0xFFFFFFFF, "indeterminate"))
+)
+def test_owner_liveness_queries_process_termination_even_with_retained_handle(
+    monkeypatch: pytest.MonkeyPatch, wait_result: int, expected: str
+) -> None:
+    module = _lease_module()
+    calls: list[tuple[object, ...]] = []
+
+    def process_times(handle: int, created: object, *args: object) -> bool:
+        created._obj.dwLowDateTime = 456
+        return True
+
+    kernel32 = SimpleNamespace(
+        OpenProcess=lambda *args: calls.append(("open", *args)) or 1234,
+        GetProcessTimes=process_times,
+        WaitForSingleObject=lambda *args: calls.append(("wait", *args)) or wait_result,
+        CloseHandle=lambda *args: calls.append(("close", *args)),
+    )
+    monkeypatch.setattr(module, "_kernel32", lambda: kernel32)
+    owner = SimpleNamespace(pid=123, process_created_at_100ns=456)
+
+    assert module._owner_liveness(owner) == expected
+    assert calls == [("open", 0x101000, False, 123), ("wait", 1234, 0), ("close", 1234)]
+
+
 def test_enter_unlocks_if_ownership_assertion_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _lease_module()
     lease = object.__new__(module.AutoCADLease)
@@ -385,15 +467,24 @@ def test_lease_root_uses_the_known_folder_api_not_an_environment_override() -> N
 )
 def test_guard_temp_root_and_task15_style_child_are_current_user_system_only() -> None:
     module = _lease_module()
+    from drawing_copy_guard import DrawingCopyGuard
+
     directory = module.create_guard_run_temp_root()
-    child = directory / "autocad-mcp-child"
+    source = directory / "source.dwg"
+    source.write_bytes(b"disposable fixture")
+    guard = None
     try:
         module.assert_guard_run_current_user_system_acl(directory)
-        child.mkdir()
-        module.assert_guard_run_current_user_system_acl(child)
+        guard = DrawingCopyGuard.prepare(
+            source,
+            temp_root=directory,
+            create_run_directory=module.create_guard_run_directory,
+        )
+        module.assert_guard_run_current_user_system_acl(guard.copy_path.parent)
     finally:
-        if child.exists():
-            child.rmdir()
+        if guard is not None:
+            guard.finalize(preserve=False, reason="ACL test completed")
+        source.unlink()
         directory.rmdir()
 
 

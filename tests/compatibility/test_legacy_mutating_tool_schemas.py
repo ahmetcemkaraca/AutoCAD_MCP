@@ -9,7 +9,12 @@ from autocad_mcp.core.tools import TOOL_DEFINITIONS
 LEGACY_MUTATING_TOOL_NAMES = frozenset(
     {"draw_line", "draw_circle", "extrude_profile", "revolve_profile"}
 )
-ACTIVE_TOOL_NAMES = ("server_status", "list_entities", "get_entity_info")
+ACTIVE_TOOL_NAMES = (
+    "server_status",
+    "list_entities",
+    "get_entity_info",
+    "generate_constrained_code",
+)
 PROJECT_ROOT = Path(__file__).parents[2]
 FIXTURE_PATH = (
     Path(__file__).parents[1]

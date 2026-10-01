@@ -1,0 +1,8 @@
+# Preserve the verbatim compatibility record, including its frozen byte hash.
+tests/fixtures/compatibility/legacy-mutating-tool-schemas.json -text
+
+# Preserve the frozen code-generation catalogue and adversarial corpus bytes.
+tests/fixtures/codegen/** -text
+
+# Preserve content-addressed immutable advanced evidence on every checkout.
+docs/advanced/evidence/** -text

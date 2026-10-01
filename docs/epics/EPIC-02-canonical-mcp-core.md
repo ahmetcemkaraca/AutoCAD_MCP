@@ -20,7 +20,7 @@ The server advertises exactly these three non-mutating tools:
 2. `list_entities`
 3. `get_entity_info`
 
-Each active tool has a closed JSON Schema, explicit semantic validation, deterministic JSON success output, and a structured error envelope. The core accepts an injected `BasicToolService`, so it can be contract-tested without AutoCAD. Normal logs and tracebacks go to standard error; standard output remains exclusively owned by the MCP stdio transport.
+Each active tool has a closed JSON Schema, explicit semantic validation, deterministic JSON success output, and a structured error envelope. The core accepts an injected `BasicToolService`, so it can be contract-tested without AutoCAD. Redacted diagnostic logs go to standard error; standard output remains exclusively owned by the MCP stdio transport.
 
 The four observed legacy mutating schemas—`draw_line`, `draw_circle`, `extrude_profile`, and `revolve_profile`—are copied verbatim into a compatibility decision/test fixture and are absent from runtime definitions, registrations, `mcp.json`, and the help prompt. EPIC-06 later owns approved line/circle and other constrained editing through its review and authorization controls. Extrusion and revolution remain unregistered until a separately reviewed 3D edit-primitive extension exists.
 
@@ -259,7 +259,7 @@ or:
 
 `response_payload()` merges `ToolSuccess.data` into the top level after reserving `success`; attempts to supply a `success` data key raise `ValueError`. JSON uses `json.dumps(..., ensure_ascii=False, separators=(",", ":"), sort_keys=True, allow_nan=False)` so tests and clients receive deterministic, valid JSON.
 
-`INTERNAL_ERROR` responses contain a generated `incident_id` in `details`, not the exception string. The full traceback and the same incident ID go to stderr logging.
+`INTERNAL_ERROR` responses contain a generated `incident_id` in `details`, not the exception string. Stderr diagnostics retain the operation, exception class, and same incident ID, without raw exception strings or tracebacks. This 2026-10-01 correction follows the repository prohibition on logging private paths, credentials, or proprietary drawing content; public-response redaction alone was insufficient.
 
 ### Validation and schema interface
 
@@ -447,7 +447,7 @@ At module scope, `server = create_server(create_tool_service())` supports the ad
    - each valid tool reaches the service with the correct immutable input type;
    - missing and malformed arguments return `INVALID_ARGUMENT` without calling the service;
    - an unknown tool returns `UNKNOWN_TOOL`;
-   - a raised `RuntimeError("secret COM detail")` logs the traceback and returns `INTERNAL_ERROR` without the secret text;
+   - a raised `RuntimeError("secret COM detail")` records its class and incident ID and returns `INTERNAL_ERROR`, with the secret absent from both diagnostics and tool output;
    - every legacy mutating name returns `UNKNOWN_TOOL` without calling the service;
    - `UnavailableToolService` returns `AUTOCAD_UNAVAILABLE`, reports three tools, and never imports COM modules.
 
@@ -609,7 +609,7 @@ The default unavailable service is an honest intermediate composition. EPIC-03 r
 - Every schema is closed with `additionalProperties: false` and expresses the applicable bounds.
 - Success JSON preserves `success` and existing top-level status/query fields.
 - All failures use the structured `ToolError` envelope and stable `ErrorCode` values.
-- Unexpected exceptions are logged with an incident ID to stderr; raw exception details are absent from tool output.
+- Unexpected exceptions are logged by class with an incident ID to stderr; raw exception details and traceback content are absent from diagnostics and tool output.
 - Importing `autocad_mcp.server`, `src.server`, and all `autocad_mcp.core` modules on Linux and Windows does not load any COM package.
 - A subprocess client initializes, lists tools/resources/prompts, reads status, and shuts down without non-protocol stdout.
 - `src/mcp_server.py` and the two Flask-oriented test files are deleted only after E02-G4 and their decision record identifies replacement evidence.
@@ -625,7 +625,7 @@ The default unavailable service is an honest intermediate composition. EPIC-03 r
 | Consolidation breaks clients that parse current read-only/status fields | Preserve top-level `success`, `count`, `entities`, `entity`, and status fields; snapshot them before deletion. |
 | A legacy mutating tool is accidentally re-registered | Keep its schema only in a test fixture, define no runtime input model, and assert exclusion from definitions, dispatch, manifest, prompt, and stdio results. |
 | Safety reduction surprises a client using legacy mutations | Record the intentional incompatibility, return `UNKNOWN_TOOL`, route future constrained edits to EPIC-06, and do not preserve an unsafe executable shim. |
-| Error standardization leaks COM paths or drawing data | Redact unexpected messages, expose stable public messages, and correlate stderr tracebacks with generated incident IDs. |
+| Error standardization leaks COM paths or drawing data | Expose stable public messages and correlate redacted operation/class diagnostics with generated incident IDs; never log raw exception text or tracebacks. |
 | Startup logs corrupt MCP stdout | Remove `print()`, configure stderr explicitly, and exercise a real subprocess through the SDK client. |
 | A type-only import reintroduces COM at runtime | Core types are defined in `autocad_mcp.core`; use no adapter import in core and assert `sys.modules` after import. |
 | Package migration breaks the EPIC-01 command before consumers move | Keep `src.server` as a subprocess-tested delegation shim and change `mcp.json` only after both entry forms pass. |

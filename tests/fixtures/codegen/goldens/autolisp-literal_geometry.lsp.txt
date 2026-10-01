@@ -1,0 +1,9 @@
+(defun codegen_geometry (/ lines circles)
+  (setq lines (list
+    (list (list 0.0 0.0 0.0) (list 1.0 2.0 3.0))
+  ))
+  (setq circles (list
+    (list (list 0.0 0.0 0.0) 1.0)
+  ))
+  (list lines circles)
+)

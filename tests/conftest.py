@@ -17,6 +17,7 @@ from tests.windows.autocad_lease import (
     AutoCADLease,
     assert_guard_run_current_user_system_acl,
     build_autocad_lease_key,
+    create_guard_run_directory,
     create_guard_run_temp_root,
 )
 from tests.windows.drawing_copy_guard import DrawingCopyGuard
@@ -79,7 +80,11 @@ def autocad_smoke_session(request: pytest.FixtureRequest) -> AutoCADSmokeSession
     try:
         lease.assert_owned()
         guard_root = create_guard_run_temp_root()
-        guard = DrawingCopyGuard.prepare(source_path, temp_root=guard_root)
+        guard = DrawingCopyGuard.prepare(
+            source_path,
+            temp_root=guard_root,
+            create_run_directory=create_guard_run_directory,
+        )
         assert_guard_run_current_user_system_acl(guard.copy_path.parent)
         lease.assert_owned()
         yield AutoCADSmokeSession(source_path, installation_path, lease, guard)

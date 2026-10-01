@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from types import SimpleNamespace
 
@@ -44,6 +45,23 @@ def connected_application(
         Version="24.3",
         ActiveDocument=SimpleNamespace(Name="drawing.dwg", ReadOnly=read_only, ModelSpace=entities),
     )
+
+
+def test_optional_property_failure_is_redacted_even_in_debug_logs(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    class PrivateEntity(Entity):
+        def __getattribute__(self, name: str) -> object:
+            if name == "Radius":
+                raise RuntimeError("private entity property")
+            return super().__getattribute__(name)
+
+    manager, _ = manager_for(connected_application(entities=(PrivateEntity(),)))
+    with caplog.at_level(logging.DEBUG):
+        details = WindowsAutoCADAdapter(session_manager=manager).get_entity_info(7)
+    assert "radius" not in details.properties
+    assert caplog.records
+    assert "private entity property" not in caplog.text
 
 
 def test_adapter_uses_injected_manager_for_each_operation() -> None:

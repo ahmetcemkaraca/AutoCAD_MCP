@@ -14,9 +14,10 @@ MCP client
 autocad_mcp.server
     |-- closed schemas and structured errors
     |-- server_status / list_entities / get_entity_info
+    |-- generate_constrained_code -> pure recipe/render/independent-validation pipeline
     |-- autocad://server-status resource and autocad-help prompt
     v
-AdapterToolService -> delayed Windows adapter provider
+Lazy basic service -> AdapterToolService -> delayed Windows adapter provider
     |-- transient COM only during an adapter operation
     v
 Full AutoCAD when an operator has started it; structured unavailable otherwise
@@ -29,19 +30,22 @@ server is the sole registration owner. Its pure schema, dispatch, adapter
 contract, and stdio contracts are tested without COM on Linux; this does not
 prove a connection to AutoCAD or support for Linux as an AutoCAD runtime.
 
-The active catalog contains only `server_status`, `list_entities`, and
-`get_entity_info`. The historical mutation schemas are retained as compatibility
+The active catalog contains `server_status`, `list_entities`, `get_entity_info`,
+and output-only `generate_constrained_code`. Code-generation calls bypass the
+basic service and do not import adapter/context/capture/edit/COM modules. The
+default runtime defers all adapter imports until a validated basic call. The
+historical mutation schemas are retained as compatibility
 evidence and are excluded from runtime, metadata, and help. EPIC-06 owns any
 future constrained edits.
 
-Two non-canonical directions remain outside the active server surface:
+Historical directions outside the active server surface:
 
 - `src/mcp_integration/enhanced_mcp_server.py` remains experimental and
   unconnected. It is neither launched nor advertised by the canonical core.
-- The root Docker and Compose artifacts name an unsupported historical Linux
-  HTTP direction. Their disposition is recorded in
-  [decision 0001](decisions/0001-container-artifact-disposition.md); this
-  document does not authorize their repair or removal.
+- The unsupported root Docker and Compose artifacts were removed after the
+  maintainer-authorized disposition in
+  [decision 0001](decisions/0001-container-artifact-disposition.md). They remain
+  recoverable in Git history and are not a product deployment option.
 
 The retired FastMCP duplicate and Flask-oriented tests are documented in
 [decision 0002](decisions/0002-canonical-server-consolidation.md). Their
@@ -89,6 +93,17 @@ opt-in AutoCAD 2026 smoke procedure is prepared, but no real connection,
 disposable-DWG, or release verification record exists. It detects connected
 capabilities at runtime rather than assuming identical behavior across six
 releases. Pure data and MCP modules remain importable without COM.
+
+### Output-only constrained code generation
+
+One pure handler admits the exact closed recipe, renders one of nine reviewed
+definitions and invokes an independently authored static validator. It returns
+the exact artifact in the `artifact` field of the successful response, with a deterministic metadata
+digest, static findings, mandatory warning and `executed=False`. Nothing saves,
+imports, evaluates or applies the generated text. The server bounds the actual
+SDK `CallToolResult` body to 65,536 UTF-8 bytes after nested JSON escaping;
+JSON-RPC request IDs remain transport metadata outside that body. See the
+[C decision record](advanced/constrained-code-generation-decision.md).
 
 ### Structured drawing context
 

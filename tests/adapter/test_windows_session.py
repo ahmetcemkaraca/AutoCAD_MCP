@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from autocad_mcp.adapter import windows_session
 from autocad_mcp.adapter.protocol import AdapterError, AdapterErrorCode
 from autocad_mcp.adapter.windows_session import ComModules, WindowsSessionManager
 
@@ -98,14 +99,16 @@ def test_session_balances_com_on_consumer_error() -> None:
 def test_cleanup_failure_does_not_mask_consumer_error(caplog: pytest.LogCaptureFixture) -> None:
     """A cleanup failure must not replace the exception the caller needs to handle."""
     manager, pythoncom, _ = make_manager(application())
-    pythoncom.uninitialize_error = RuntimeError("cleanup failed")
+    pythoncom.uninitialize_error = RuntimeError("private cleanup detail")
 
     with pytest.raises(RuntimeError, match="consumer"):
         with manager.session(require_document=False):
-            raise RuntimeError("consumer")
+            raise RuntimeError("private consumer detail")
 
     assert pythoncom.events == ["initialize", "uninitialize"]
     assert "AutoCAD COM cleanup failed after a primary error" in caplog.text
+    assert "private cleanup detail" not in caplog.text
+    assert "private consumer detail" not in caplog.text
 
 
 def test_cleanup_failure_is_classified_after_success() -> None:
@@ -121,9 +124,9 @@ def test_cleanup_failure_is_classified_after_success() -> None:
     assert pythoncom.events == ["initialize", "uninitialize"]
 
 
-def test_session_balances_com_on_connection_error() -> None:
+def test_session_balances_com_on_connection_error(caplog: pytest.LogCaptureFixture) -> None:
     """An attachment failure after initialization must be paired with cleanup."""
-    manager, pythoncom, _ = make_manager(RuntimeError("not running"))
+    manager, pythoncom, _ = make_manager(RuntimeError("private connection detail"))
 
     with pytest.raises(AdapterError) as raised:
         with manager.session(require_document=False):
@@ -131,6 +134,22 @@ def test_session_balances_com_on_connection_error() -> None:
 
     assert raised.value.code is AdapterErrorCode.AUTOCAD_UNAVAILABLE
     assert pythoncom.events == ["initialize", "uninitialize"]
+    assert "private connection detail" not in caplog.text
+
+
+def test_loader_diagnostics_do_not_expose_import_exception_text(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
+) -> None:
+    def fail_import(name: str) -> None:
+        raise ImportError("private dependency path")
+
+    monkeypatch.setattr(windows_session, "sys", SimpleNamespace(platform="win32"))
+    monkeypatch.setattr(windows_session, "importlib", SimpleNamespace(import_module=fail_import))
+    with pytest.raises(AdapterError) as raised:
+        windows_session.load_com_modules()
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_UNAVAILABLE
+    assert caplog.records
+    assert "private dependency path" not in caplog.text
 
 
 def test_session_balances_com_on_document_error() -> None:

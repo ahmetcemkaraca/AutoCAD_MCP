@@ -11,12 +11,18 @@ An experimental Model Context Protocol bridge for automating full AutoCAD on Win
 ## Project direction
 
 The canonical stdio server is `autocad_mcp.server`. Its active catalog is the
-three non-mutating tools `server_status`, `list_entities`, and
-`get_entity_info`; `src.server` is a protocol-safe compatibility shim, not a
+four non-mutating tools `server_status`, `list_entities`, `get_entity_info`, and
+`generate_constrained_code`; `src.server` is a protocol-safe compatibility shim, not a
 second implementation. The pure MCP contract has Linux automated evidence
 with unavailable or injected services. It is not evidence of a Windows COM or
 AutoCAD connection. See the [roadmap](docs/roadmap.md) for acceptance criteria
 and delivery order.
+
+`generate_constrained_code` returns reviewed Python, AutoLISP or VBA source from
+bounded literal recipes. It never executes or saves that text and needs no
+AutoCAD connection. The complete SDK `CallToolResult` body is limited to 65,536
+UTF-8 bytes, including nested JSON text escaping. See the
+[code-generation decision and usage](docs/advanced/constrained-code-generation-decision.md).
 
 ## Current limitations
 

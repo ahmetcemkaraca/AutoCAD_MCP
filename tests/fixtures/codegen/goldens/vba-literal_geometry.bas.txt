@@ -1,0 +1,12 @@
+Option Explicit
+Option Base 0
+
+Public Function CodegenGeometry() As Variant
+    Dim lines As Variant
+    Dim circles As Variant
+    ReDim lines(0 To 0)
+    lines(0) = Array(Array(0.0#, 0.0#, 0.0#), Array(1.0#, 2.0#, 3.0#))
+    ReDim circles(0 To 0)
+    circles(0) = Array(Array(0.0#, 0.0#, 0.0#), 1.0#)
+    CodegenGeometry = Array(lines, circles)
+End Function

@@ -41,6 +41,11 @@ services and verify:
 
 The fake adapter should implement only the contract needed by active tools. It should not attempt to emulate the complete AutoCAD object model.
 
+Full stdio protocol checks inject `UnavailableToolService` in a test subprocess
+before executing each entry module with `runpy`. They assert that no COM module
+loads. Separate `python -m` startup/catalog checks exercise the production module
+entry commands without invoking the adapter or attaching to a drawing.
+
 ## Real AutoCAD tests
 
 Real integration tests run only on Windows with full AutoCAD. Each result must record:
@@ -55,6 +60,18 @@ Real integration tests run only on Windows with full AutoCAD. Each result must r
 Use a disposable copy of every DWG. Mutation tests should group created entities for Undo cleanup and avoid deletion by default.
 
 AutoCAD 2026 is the first planned validation environment. Earlier targeted releases remain unverified until the same documented contract checks pass on a real installation.
+
+The neutral drawing guard pins the original source, copy, and marker file
+identities until cleanup or the guard object's lifetime ends. This prevents
+reused file numbers from validating a replacement while permitting intentional
+in-place copy edits. Windows identity handles allow read, write, and delete
+sharing. Preparation failures close all pins after recording preservation
+evidence; successful cleanup closes them before removing the run directory.
+The real Windows fixture supplies the lease module's exclusive directory
+creator, which sets the current user as owner and applies a protected
+current-user/SYSTEM ACL only to new paths. Existing foreign paths are rejected.
+This infrastructure is covered by portable and Windows API tests; AutoCAD
+opening, saving, and shutdown behavior still require the opted-in real run.
 
 The prepared opt-in command is documented in
 [the Windows AutoCAD 2026 smoke guide](windows-testing-guide.md). Before any

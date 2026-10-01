@@ -5,6 +5,7 @@ import importlib
 import json
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 
 import anyio
@@ -132,9 +133,22 @@ def test_registered_catalog_resource_prompt_and_errors_share_the_core_contract()
 
 
 async def _exercise_stdio_entrypoint(module_name: str) -> tuple[dict[str, object], str]:
+    bootstrap = textwrap.dedent(
+        """
+        import runpy
+        import sys
+        import autocad_mcp.runtime as runtime
+        from autocad_mcp.core.service import UnavailableToolService
+
+        runtime.create_tool_service = UnavailableToolService
+        runpy.run_module(sys.argv[1], run_name="__main__")
+        assert not {"pythoncom", "win32com", "win32com.client", "pyautocad"} & set(sys.modules)
+        sys.stderr.write("Portable stdio completed without COM\\n")
+        """
+    )
     parameters = StdioServerParameters(
         command=sys.executable,
-        args=["-m", module_name],
+        args=["-c", bootstrap, module_name],
         cwd=PROJECT_ROOT,
     )
     with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as diagnostics:
@@ -188,3 +202,24 @@ def test_stdio_entrypoints_expose_only_the_canonical_protocol_catalog(module_nam
     assert _help_tool_names(result["help"]) == ACTIVE_TOOL_NAMES
     assert not any(name in result["help"] for name in LEGACY_MUTATING_TOOL_NAMES)
     assert "Starting AutoCAD MCP stdio server" in diagnostics
+    assert "Portable stdio completed without COM" in diagnostics
+
+
+async def _exercise_production_catalog(module_name: str) -> list[str]:
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", module_name],
+        cwd=PROJECT_ROOT,
+    )
+    async with stdio_client(parameters) as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            return [tool.name for tool in tools.tools]
+
+
+@pytest.mark.parametrize("module_name", ("autocad_mcp.server", "src.server"))
+def test_production_module_entrypoints_start_and_list_tools_without_invoking_autocad(
+    module_name: str,
+) -> None:
+    assert anyio.run(_exercise_production_catalog, module_name) == list(ACTIVE_TOOL_NAMES)

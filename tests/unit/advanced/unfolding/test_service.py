@@ -31,7 +31,7 @@ before = set(sys.modules)
 import autocad_mcp.advanced.unfolding.service
 added = set(sys.modules) - before
 forbidden = ('mcp', 'autocad_mcp.core', 'autocad_mcp.context',
-             'autocad_mcp.adapters', 'pythoncom', 'win32com', 'pyautocad',
+             'autocad_mcp.adapter', 'pythoncom', 'win32com', 'pyautocad',
              'subprocess', 'socket')
 assert not {name for name in added
             if any(name == prefix or name.startswith(prefix + '.')

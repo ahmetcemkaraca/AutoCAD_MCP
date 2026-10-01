@@ -191,7 +191,10 @@ def _entity_details(entity: object) -> EntityDetails:
         try:
             properties[key] = _json_value(getattr(entity, member))
         except Exception as error:
-            logger.debug("Optional AutoCAD property is unavailable", exc_info=error)
+            logger.debug(
+                "Optional AutoCAD property is unavailable; member=%s; error_type=%s",
+                member, type(error).__name__,
+            )
             continue
     return EntityDetails(
         summary.object_id, summary.handle, summary.object_name, summary.layer, properties

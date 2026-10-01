@@ -257,7 +257,7 @@ def _decode_text(value: str) -> str:
     output = []
     index = 0
     while index < len(value):
-        if value.startswith("\\U", index):
+        if value.startswith("\\U+", index):
             decoded, index = _unicode_escape(value, index + 2)
             output.append(decoded)
         else:

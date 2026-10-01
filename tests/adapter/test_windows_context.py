@@ -789,3 +789,11 @@ def test_definition_wcs_request_refuses_before_cursor_resolution_or_drawing_scan
         )
     assert error.value.code == "UNSUPPORTED_CAPABILITY"
     assert not doc.Blocks.reads
+
+
+@pytest.mark.parametrize("object_name", ["AcDbText", "AcDbAttribute", "AcDbAttributeDefinition"])
+@pytest.mark.parametrize("raw", [r"Synthetic\Upper", r"C:\Users\synthetic", r"\U is literal"])
+def test_ordinary_backslash_u_labels_are_literal_without_unicode_introducer(object_name, raw):
+    adapter, _, _, _, _ = setup(Document((entity(object_name=object_name, TextString=raw),)))
+    mapped = map_entity_context(adapter.entity_facts_by_handles(("10",), ALL)[0])
+    assert mapped.text.plain_text == raw and mapped.text.raw_text == raw

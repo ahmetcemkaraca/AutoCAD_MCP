@@ -539,7 +539,7 @@ Lock contention, corrupt metadata, an unprotected metadata path, indeterminate o
    uv run pytest tests/adapter/test_windows_imports.py tests/adapter/test_windows_session.py tests/adapter/test_windows.py -q
    ```
 
-5. Implement the delayed loader and `WindowsSessionManager` first, then inject it into `WindowsAutoCADAdapter` and implement the capability detector, identity/property helpers, public-property allowlist, and four protocol methods. No extension imports a private method from `WindowsAutoCADAdapter`. Log internal COM exceptions with `logger.exception`; return public messages through `AdapterError`.
+5. Implement the delayed loader and `WindowsSessionManager` first, then inject it into `WindowsAutoCADAdapter` and implement the capability detector, identity/property helpers, public-property allowlist, and four protocol methods. No extension imports a private method from `WindowsAutoCADAdapter`. Log only static operation descriptions and exception classes to stderr, without raw exception strings or tracebacks; return public messages through `AdapterError`.
 6. Run focused tests on Linux and Windows without AutoCAD:
 
    ```powershell
@@ -784,7 +784,7 @@ A release-year branch, passing fake test, successful import, user anecdote, or h
 | A process crash leaves the disposable copy open | Never open the source, close the read-only copy without saving when possible, preserve its path for diagnosis, and verify the source hash independently. |
 | Full AutoCAD 2026 pass is generalized to all releases/features | Scope wording to the canonical smoke, retain the matrix, and require per-release/per-feature records. |
 | Fake adapter grows into a misleading AutoCAD emulator | Store only contract values, reject new object-graph features, and require real integration evidence for COM behavior. |
-| Internal COM errors leak machine paths or drawing content | Log only to stderr, return public error messages/details, redact personal path components in committed evidence. |
+| Internal COM errors leak machine paths or drawing content | Keep raw exception strings and tracebacks out of stderr diagnostics and public results; retain operation/class diagnostics and redact personal path components in committed evidence. |
 | Active document changes between read-only calls | Every operation reacquires the active document; the harness asserts the exact disposable full path and fingerprint before and after both MCP sessions. |
 | Two verification controllers drive the same interactive AutoCAD installation | Require the current-user `AutoCADLease` in every runner and fail closed with owner metadata on contention. |
 | A stale lease is stolen from a live or PID-reused owner | Recover only after owning the OS lock and conclusively checking PID plus process-creation time; corrupt or indeterminate state remains blocked. |

@@ -29,6 +29,10 @@ Passing them proves only the tested platform-independent behavior. Linux is not 
 
 ## MCP contract tests
 
+Failure tests also assert that raw COM/import/cleanup/property exception text is
+absent from diagnostics, including debug logs. Incident IDs and exception class
+names remain available; redacting only the public tool envelope is insufficient.
+
 Contract tests start the canonical server with unavailable or focused injected
 services and verify:
 

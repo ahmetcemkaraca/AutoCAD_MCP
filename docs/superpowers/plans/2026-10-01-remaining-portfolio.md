@@ -2,7 +2,7 @@
 
 **User objective:** List and complete every remaining task the agent can perform. The user will execute real-application tests after implementation finishes.
 
-**Baseline:** `52448cb` on `main`; PRs #1, #2, and #3 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
+**Current baseline:** `599e8a9` on `main`; PRs #1-3 and #5-8 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
 
 ## Authority and completion boundary
 
@@ -18,14 +18,14 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Done agent work; clean Windows/Linux evidence and PRs #6/#7 merged |
 | EPIC-02 | Keep the accepted canonical core and its regression suite passing as tools are added; record merged evidence | Implemented; documentation pending |
 | EPIC-03 | Preserve adapter contracts and guarded smoke, consolidate operator handoff and evidence collection | Implementation present; handoff audit pending |
-| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | In progress |
+| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | In progress: models/identity accepted; repository session amendment and native observer underway |
 | EPIC-05 | Explicit capture service/adapters, projection/overlay metadata, bounded image transport, restoration/failure tests and Windows runner | Pending |
 | EPIC-06 | Preview, trusted non-MCP human approval broker, bounded mutation primitives, preflight, one-use approval, Undo/recovery, evidence and Windows runner | Pending |
 | EPIC-07A | Evidence-based read-only architectural hypotheses, corpus/evaluation, MCP integration and Windows runner | Pending |
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Contracts/validation/corpus accepted; independent verifier in progress |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Contracts/validation/corpus accepted; independent verifier implemented and under review |
 | EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Pending |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
@@ -56,3 +56,29 @@ Inspect this ledger, Git worktrees, branch history, each active epic plan, and t
 - EPIC-04 Task 1 accepted after two review findings were fixed: exact dict/Mapping serializer interface and structured UTC overflow errors. Task 2 implementation `94e8a95` has 62 focused / 121 context / 336 full portable tests passing with 9 expected skips, and is awaiting independent reviews.
 - EPIC-09U contracts, strict topology, cooperative bounds and 19 input fixtures are accepted after a structured-recursion-error fix. Main integrated into its separate worktree: 319 portable tests passed / 9 skipped. The verifier is being implemented independently before the solver. Global output overlap checks remain required; the initial proposal to check only per-island frames was explicitly rejected.
 - All capture, edit approval/recovery, architectural/general/mechanical semantics, remaining recovery tracks, final catalog integration, and complete operator handoff remain in scope and unfinished. This checkpoint does not complete the goal.
+
+## Latest checkpoint: session and native observer prerequisites
+
+- Main `599e8a9` includes PR #8: private raw exception details removed from active
+  core/adapter diagnostic logs, with regression and hosted Linux/Windows checks.
+- EPIC-04 identity/cursors are accepted. Repository implementation `8166e57`
+  passed 63 focused / 411 full portable tests with 9 expected skips. Decision
+  0003 corrects pre-release ID-only retention to preserve old/new sessions under
+  stable saved-drawing identity; amendment and independent review are pending.
+- Decision 0005 corrects block-definition coordinate ownership before adapters:
+  existing EntitySpace discriminates model/paper/owner-local frames. Domain field
+  changes, adapter extraction and downstream projection checks remain pending.
+- A separate native observer plan supplies trustworthy session/revision metadata
+  to COM extraction. Real official Autodesk reference compilation is available;
+  pure observer state/protocol implementation is underway. No native-host or
+  AutoCAD acceptance is claimed. This prerequisite preserves the full requested
+  context guarantee instead of substituting a state hash for change history.
+- EPIC-09U verifier `6184181`: 50 focused / 142 advanced / 369 full tests passed,
+  9 expected skips. Independent controller quality review passed; separate
+  contract review is underway. Solver, combined-budget/performance evidence,
+  service and MCP integration are still pending.
+- PR #4 remains a separate major MCP SDK migration review. It is not merged
+  into the frozen runtime stack and is not counted as portfolio completion.
+- EPIC-05/06/07A/07B/08A/08B/09C/09P/09D, final integration and the ordered
+  operator test handoff remain unfinished and authorized. Do not mark the goal
+  complete after these prerequisites alone.

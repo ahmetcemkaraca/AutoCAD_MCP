@@ -45,9 +45,77 @@
 
 **Files:** `context/identity.py`, `context/fingerprint.py`, `context/pagination.py`; corresponding tests.
 
-**Interfaces:** Exact identity/digest functions and `CursorCodec` from spec; define the missing `PageCursor` request-value details in the task brief before implementation, preserving distinct snapshot/live kinds. Inject clock and secret.
+**Interfaces:** Exact identity/digest functions and `CursorCodec` from spec, plus these frozen helper contracts:
 
-- [ ] Add failing identity/privacy/NFC/handle, complete-set digest invariance, content vs presentation, signed cursor tamper/expiry/context-binding tests from CTX-02.
+```python
+# pagination.py: shared clock re-exported by repository.py in Task 3
+class Clock(Protocol):
+    def now(self) -> datetime: ...
+class SystemClock:
+    def now(self) -> datetime: ...  # aware UTC
+
+@dataclass(frozen=True, slots=True)
+class PageCursor:
+    kind: Literal["snapshot", "live_query"]
+    document_id: str
+    session_id: str
+    filter_digest: str
+    page_size: int
+    last_sort_key: tuple[int, str, int, str] | None
+    issued_at: datetime
+    expires_at: datetime
+    snapshot_id: str | None = None
+    revision_token_digest: str | None = None
+    adapter_cursor: str | None = None
+
+class CursorCodec:
+    def __init__(self, *, clock: Clock, secret: bytes) -> None: ...
+    def encode(self, cursor: PageCursor) -> str: ...
+    def decode(self, value: str) -> PageCursor: ...
+
+def entity_sort_key(entity: EntityContext) -> tuple[int, str, int, str]: ...
+def normalize_filters(filters: EntityQueryFilters) -> EntityQueryFilters: ...
+def filter_digest(filters: EntityQueryFilters, include: Mapping[str, bool]) -> str: ...
+# fingerprint.py
+def canonical_bytes(value: object) -> bytes: ...
+def entity_state_digest(entity: EntityContext) -> str: ...
+def snapshot_id(document: DocumentIdentity, fingerprint: DrawingFingerprint) -> str: ...
+def snapshot_identity_bytes(snapshot: DrawingSnapshot) -> bytes: ...
+```
+
+`identity.py` normalizes handles by re-exporting the existing validated helper.
+Its `build_document_identity` consumes the specified pure adapter identity by
+structural attributes until Task 4 creates `context_protocol.py`; use a local
+typing protocol (no Windows import or duplicate runtime record). A saved path
+must be an absolute Windows drive/UNC path, normalize extended-path prefixes,
+separators, dot segments, NFC and case folding, and never return/log the raw
+path. Normalize GUIDs with `uuid.UUID`. An unsaved identity requires the adapter's
+UUID; it is not synthesized from a proxy or ObjectID. Tests use a small
+`SimpleNamespace` fixture matching the frozen adapter fields.
+
+Snapshot cursors require a snapshot ID and no live revision/adapter cursor;
+live cursors require a revision digest and no snapshot ID. Require a secret of
+at least 32 bytes. Bound cursor UTF-8 to 2,048 bytes, reject unknown fields,
+invalid base64/signature/shape as `INVALID_CURSOR`, and expire at `now >= expires_at`
+as `CURSOR_EXPIRED`. Issued/expiry times are aware UTC; lifetime is positive and
+at most 600 seconds for snapshot cursors or 900 for live cursors. The service
+later bounds snapshot expiry to the repository insertion expiry. Decode never
+queries AutoCAD/repository; service owns distinct `STALE_CURSOR`/repository
+errors on comparing the decoded binding to current state.
+
+`canonical_bytes` emits NFC strings/keys, sorted object keys, compact UTF-8 JSON,
+finite float tokens using `.17g` (negative zero is `0`), and rejects normalization
+key collisions. Boolean tokens remain booleans. Filter normalization sorts and
+deduplicates equivalent set-like selectors; layer globs support only literal
+characters, `*` and `?` when later matched. Canonical filter/include digests
+preserve case-sensitive layer matching and do not include page size (cursor
+binds it separately). Fingerprint and snapshot identity exclusions follow the
+epic exactly; `snapshot_identity_bytes` excludes captured time and revision but
+retains complete normalized observed facts using the same identity exclusions
+as the content/presentation fingerprint (including ObjectID and session IDs),
+so a forged same-ID different fact object can be rejected by the repository.
+
+- [ ] Add failing identity/privacy/NFC/handle, complete-set digest invariance, content vs presentation, signed cursor tamper/expiry/context-binding tests from CTX-02. Include Windows path case/slash/prefix equivalence; GUID precedence; unsaved session changes; schema/session/ObjectID/pagination exclusion; duplicate NFC object keys; nested entity fact changes; cursor kind mixing, 2,048-byte boundary, overlong/unknown fields, future issue time and exact expiry.
 - [ ] Implement numeric canonicalization, stable entity order and snapshot IDs; no page-derived fingerprints.
 - [ ] Verify focused tests and stable digests over shuffled inputs, then commit.
 

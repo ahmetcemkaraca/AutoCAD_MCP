@@ -85,7 +85,7 @@ One controller agent owns the epic branch and coordinates work packages. It must
 - keep at most one agent editing a shared registration, schema-export, or documentation index file;
 - require each implementation lane to return exact test output and changed paths;
 - run an integration review after every wave; and
-- stop the epic when an acceptance gate requires real AutoCAD, human approval infrastructure, or maintainer authority that is unavailable.
+- leave acceptance pending when a gate requires unavailable real AutoCAD evidence, human approval infrastructure, or maintainer authority; continue authorized portable implementation and test-harness preparation without exercising or signing that gate.
 
 ### Implementation-agent responsibilities
 

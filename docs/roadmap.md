@@ -136,6 +136,11 @@ real installation. AutoCAD 2021-2026 remains targeted, not verified.
 
 **Candidate areas:** surface unfolding, automatic dimensioning, pattern optimization, and constrained code generation.
 
+The U integration branch registers caller-supplied `unfold_surface` after its
+separate pure/numerical gates. Its [decision record](advanced/surface-unfolding-decision.md)
+keeps immutable performance evidence and pending independent final-review/CI
+gates separate from real AutoCAD evidence or other Stage 7 candidates.
+
 The canonical server has a portably tested output-only `generate_constrained_code`
 integration. Its [separate decision](advanced/constrained-code-generation-decision.md)
 records immutable static/core evidence, passed independent final review and

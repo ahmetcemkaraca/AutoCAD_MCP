@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 
 from autocad_mcp.tools.constrained_code_generation import CONSTRAINED_CODE_GENERATION_TOOL
+from autocad_mcp.tools.surface_unfolding import SURFACE_UNFOLDING_TOOL
 from mcp.types import Tool
 
 from .models import (
@@ -35,6 +36,7 @@ TOOL_DEFINITIONS: tuple[Tool, ...] = (
         },
     ),
     CONSTRAINED_CODE_GENERATION_TOOL,
+    SURFACE_UNFOLDING_TOOL,
 )
 
 
@@ -77,7 +79,7 @@ def parse_tool_input(name: str, arguments: Mapping[str, object] | None) -> Basic
     except ValueError as error:
         raise UnknownToolName(name) from error
 
-    if tool_name is ToolName.GENERATE_CONSTRAINED_CODE:
+    if tool_name in (ToolName.GENERATE_CONSTRAINED_CODE, ToolName.UNFOLD_SURFACE):
         raise UnknownToolName(name)
 
     checked_arguments = _validated_arguments(name, arguments)

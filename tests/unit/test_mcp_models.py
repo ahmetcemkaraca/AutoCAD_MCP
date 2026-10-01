@@ -29,6 +29,7 @@ def test_models_expose_the_three_immutable_request_types() -> None:
         ToolName.LIST_ENTITIES,
         ToolName.GET_ENTITY_INFO,
         ToolName.GENERATE_CONSTRAINED_CODE,
+        ToolName.UNFOLD_SURFACE,
     )
     assert ToolName.SERVER_STATUS.value == "server_status"
     assert ServerStatusInput.tool_name is ToolName.SERVER_STATUS
@@ -121,4 +122,18 @@ def test_error_codes_are_the_canonical_redacted_values() -> None:
         ErrorCode.UNSUPPORTED_TEMPLATE_VERSION,
         ErrorCode.PAYLOAD_LIMIT,
         ErrorCode.STATIC_VALIDATION_FAILED,
+        ErrorCode.RESOURCE_LIMIT,
+        ErrorCode.INVALID_FACE,
+        ErrorCode.INVALID_SEAM,
+        ErrorCode.DEGENERATE_FACE,
+        ErrorCode.NON_MANIFOLD_EDGE,
+        ErrorCode.NON_MANIFOLD_VERTEX,
+        ErrorCode.INCONSISTENT_WINDING,
+        ErrorCode.DISCONNECTED_MESH,
+        ErrorCode.CYCLIC_ISLAND,
+        ErrorCode.SELF_INTERSECTION,
+        ErrorCode.NUMERICAL_FAILURE,
+        ErrorCode.VERIFICATION_FAILED,
+        ErrorCode.CANCELLED,
+        ErrorCode.DEADLINE_EXCEEDED,
     )

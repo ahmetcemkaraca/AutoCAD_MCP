@@ -9,12 +9,15 @@ source-code presence, automated core evidence, and real AutoCAD verification.
 
 - `mcp.json` selects `uv run python -m autocad_mcp.server` as the canonical stdio command.
 - `autocad_mcp.server` is the sole registration owner for `server_status`,
-  `list_entities`, `get_entity_info`, and `generate_constrained_code`, one status resource, and one help prompt.
+  `list_entities`, `get_entity_info`, `generate_constrained_code`, and `unfold_surface`, one status resource, and one help prompt.
 - `src.server` is a protocol-safe compatibility shim with no registrations.
 - Default startup and code-generation requests import no adapter/context/capture/edit/COM module.
   The basic runtime retains its existing adapter service after the first validated basic call.
 - Constrained code generation returns independently validated educational text
   from nine fixed target/template pairs; it has no execution or persistence path.
+- Surface unfolding uses a caller-supplied mesh and explicit seams. Its accepted
+  pure service and independent verifier are registered through a cooperative
+  thread handler with a 4 MiB SDK result-body gate; final U review/CI is pending.
 - The frozen four mutation schemas remain only in compatibility evidence.
 - The active dependency source is `pyproject.toml` plus `uv.lock`. The inactive
   Poetry lock and unsupported root container files are retired after clean
@@ -63,7 +66,7 @@ selection are not real-AutoCAD evidence.
 - AutoCAD COM connection lifecycle and reconnection
 - Any drawing mutation against a disposable DWG
 - Extrusion and revolution argument compatibility with AutoCAD COM
-- Surface unfolding, dimensioning, pattern optimization, legacy code-generation, or enterprise-oriented modules
+- AutoCAD surface extraction, dimensioning, pattern optimization, legacy code-generation, or enterprise-oriented modules
 - Full AutoCAD 2021, 2022, 2023, 2024, 2025, or 2026 compatibility
 
 ## Next validation gate

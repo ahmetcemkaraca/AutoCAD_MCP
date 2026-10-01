@@ -26,6 +26,7 @@ def test_catalog_has_no_execution_or_mutation_companion() -> None:
         "list_entities",
         "get_entity_info",
         "generate_constrained_code",
+        "unfold_surface",
     }
     assert not {"exec", "execute", "run", "eval", "repl", "shell", "apply", "SendCommand"} & names
 
@@ -120,7 +121,7 @@ async def exercise_default_stdio() -> str:
         async with stdio_client(parameters, errlog=diagnostics) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
-                assert len((await session.list_tools()).tools) == 4
+                assert len((await session.list_tools()).tools) == 5
                 for pair in PAIRS:
                     result = await session.call_tool("generate_constrained_code", pair["example"])
                     payload = json.loads(result.content[0].text)

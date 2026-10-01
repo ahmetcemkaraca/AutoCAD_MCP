@@ -60,7 +60,7 @@ async def test_status_maps_connection_and_capabilities() -> None:
             "version": "contract",
             "release_hint": "contract",
             "read_only": True,
-            "tools_available": 4,
+            "tools_available": 5,
             "transport": "stdio",
             "capabilities": [
                 "active_document",
@@ -110,7 +110,7 @@ async def test_status_maps_structured_capability_issues(
             "version": "contract",
             "release_hint": "contract",
             "read_only": True,
-            "tools_available": 4,
+            "tools_available": 5,
             "transport": "stdio",
             "capabilities": ["connection"],
             "capability_issues": [

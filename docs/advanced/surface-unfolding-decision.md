@@ -1,8 +1,9 @@
 # Surface unfolding decision
 
-Status: **contract_frozen**; pure service implementation and named-host numerical
-measurements accepted. MCP contract, registration, final review and hosted CI are
-pending. This track is not yet advertised by the canonical server.
+Status: **integration_candidate**; pure service implementation and named-host
+numerical measurements accepted. `unfold_surface` is registered in the current
+integration branch. Portable MCP checks pass; independent final review and
+hosted Windows/Linux CI remain pending before PR/merge.
 
 The contract is [EPIC-09 Track U](../epics/EPIC-09-validated-advanced-feature-recovery.md#track-u-surface-unfolding).
 The implementation plan is [surface unfolding](../superpowers/plans/2026-10-01-surface-unfolding.md).
@@ -64,11 +65,64 @@ always derives the first 500/2,000/4,000 canonical faces of the frozen maximum
 torus, retains referenced vertices, cuts all actual edges and fixes seed 9041.
 It creates new content-addressed evidence and never overwrites prior outcomes.
 
-## Remaining registration gate
+## MCP integration evidence and remaining gates
+
+The public `unfold_surface` tool accepts the direct seven-field request and
+returns successful JSON with sibling `success: true` and `result` fields. The
+result is the exact accepted payload: bare 64-hex input digest, request ID,
+units, solver/verifier versions, geometry, metrics, warnings and issues. There
+are no elapsed-time/RSS fields. Fixed mesh/resource/verification failures use
+structured core codes and bounded diagnostics; deadline/cancellation failures
+preserve their code/completed work without geometry, metrics or digest.
+
+One stdlib `asyncio.to_thread` call invokes the accepted service. A
+`threading.Event`-backed probe connects transport cancellation to its existing
+cooperative budget. Cancelling the awaiting MCP call signals the worker and
+prevents late result publication; it does not hard-kill a thread or promise a
+domain response after the SDK cancels the request. A real stdio cancellation
+notification stopped a controlled worker while a concurrent C request remained
+responsive. Request-scoped effect guards permit standard thread dispatch and
+AST-only C parsing, and reject file/process/network/environment/execution calls.
+
+The actual serialized SDK `CallToolResult` body is bounded to 4,194,304 UTF-8
+bytes, including nested JSON TextContent escaping and isError. Client JSON-RPC
+IDs are transport metadata outside that body. Exact/one-over controlled guard
+vectors accept 4,194,304 and reject 4,194,305; these are serialization checks,
+not admitted physical results. The actual maximum service result occupies
+1,333,254 bytes. The frozen worst-case vector occupies 3,417,137 bytes and is
+explicitly serialization-only. Overflow yields fixed PAYLOAD_LIMIT without a
+result. C retains its exact 65,536-byte body bound, refusal text/206-byte heavy
+quote error and all nine accepted body digests.
+
+[Immutable MCP evidence](evidence/unfolding/mcp/1bc9da8768f1b482842dcdcd815e2536104f64f96129ea51ad591d6ac35934a5.json)
+has SHA-256 `1bc9da8768f1b482842dcdcd815e2536104f64f96129ea51ad591d6ac35934a5`.
+It records four actual service cases through the default registered handler,
+body/input hashes and metrics, the five-tool snapshot, shared size/cancellation
+contracts and unchanged C evidence. It stores no drawing/source geometry.
+
+The current catalog is exactly three basic tools plus C and U. Basic service
+injection and lazy adapter composition are preserved; both pure calls bypass
+the basic port, and invalid/unknown calls do not initialize it. Default server
+imports remain free of adapter/context/capture/edit/COM modules. No execute,
+apply, shell, interpreter, custom executor or task registry was added.
+
+Fresh Linux integration checks passed **155 focused U/C/core/stdio tests in
+27.23s** and one full run passed **742 tests, 9 skipped, in 82.06s**. Scoped Ruff,
+mypy (nine source files), syntax and Bandit passed. The skip/platform limits
+remain unchanged. These results are not Windows/AutoCAD evidence. Accepted
+solver/verifier/models/service/bounds and frozen numerical inputs/measurement
+records were not edited during integration.
+
+Complete independent whole-U review, hosted Windows/Linux CI and a focused PR
+before merge. Existing C has its own accepted release/CI record; U does not
+promote its AutoCAD compatibility or complete another advanced track.
+
+### Reproducible integration gate
 
 Expose only the exact caller-supplied mesh schema. Test the real MCP result-body
 byte limit including nested text escaping, structured failure mapping, default
 server import isolation, stdout integrity and absence of drawing/file/process
 calls. Preserve the existing catalogue and other accepted tracks. Then complete
 independent final review, hosted Windows/Linux CI and a focused pull request.
-The shared integration window follows Track C's in-progress core changes.
+The serialized integration window builds on Track C's merged core; its wire
+contract and effect guards remain covered.

@@ -8,6 +8,7 @@ from collections.abc import Mapping
 import mcp.types as types
 from autocad_mcp import __version__
 from autocad_mcp.advanced.codegen import service as codegen_service
+from autocad_mcp.advanced.unfolding import service as unfolding_service
 from autocad_mcp.core.models import (
     ErrorCode,
     ToolError,
@@ -27,6 +28,16 @@ from mcp.server.stdio import stdio_server
 logger = logging.getLogger(__name__)
 _STATUS_RESOURCE_URI = "autocad://server-status"
 _HELP_PROMPT_NAME = "autocad-help"
+_RESULT_LIMITS = {
+    ToolName.GENERATE_CONSTRAINED_CODE.value: (
+        codegen_service.MAX_ARTIFACT_BYTES,
+        "Code generation result body limit exceeded",
+    ),
+    ToolName.UNFOLD_SURFACE.value: (
+        unfolding_service.MAX_ADVANCED_RESULT_BYTES,
+        "Unfolding result body limit exceeded",
+    ),
+}
 
 
 def _help_text() -> str:
@@ -38,19 +49,14 @@ def _text_response(response: ToolResponse) -> list[types.TextContent]:
     return [types.TextContent(type="text", text=response_json(response))]
 
 
-def _code_result(response: ToolResponse) -> types.CallToolResult:
-    """Bound the C SDK body separately from the unchanged basic transport path."""
+def _bounded_result(response: ToolResponse, limit: int, message: str) -> types.CallToolResult:
+    """Bound actual SDK bodies for the two pure tools, preserving basic transport."""
     result = types.CallToolResult(
         content=[*_text_response(response)], isError=isinstance(response, ToolFailure)
     )
     # Match the SDK stdio writer's alias/None serialization on the actual result body.
-    if (
-        len(result.model_dump_json(by_alias=True, exclude_none=True).encode("utf-8"))
-        > codegen_service.MAX_ARTIFACT_BYTES
-    ):
-        failure = ToolFailure(
-            ToolError(ErrorCode.PAYLOAD_LIMIT, "Code generation result body limit exceeded")
-        )
+    if len(result.model_dump_json(by_alias=True, exclude_none=True).encode("utf-8")) > limit:
+        failure = ToolFailure(ToolError(ErrorCode.PAYLOAD_LIMIT, message))
         return types.CallToolResult(content=[*_text_response(failure)], isError=True)
     return result
 
@@ -68,9 +74,10 @@ def create_server(service: BasicToolService) -> Server:
         name: str, arguments: Mapping[str, object] | None
     ) -> list[types.TextContent] | types.CallToolResult:
         response = await dispatch_tool(service, name, arguments)
-        if name != ToolName.GENERATE_CONSTRAINED_CODE:
-            return _text_response(response)
-        return _code_result(response)
+        if name in _RESULT_LIMITS:
+            limit, message = _RESULT_LIMITS[name]
+            return _bounded_result(response, limit, message)
+        return _text_response(response)
 
     @mcp_server.list_resources()
     async def list_resources() -> list[types.Resource]:

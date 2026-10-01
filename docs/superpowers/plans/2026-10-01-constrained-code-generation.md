@@ -60,7 +60,9 @@ Do not apply source deny-word matching to literal content.
 
 `handles` is a list of1-256 unique normalized handles under the same rule.
 Input object keys, target, template and version use exact closed schemas.
-Bound the actual compact JSON recipe to16KiB UTF-8 before rendering. This
+Bound both the original and normalized compact JSON recipe to16KiB UTF-8
+before rendering, so accepted canonical exports round-trip through the same
+admission boundary. This
 per-track input limit is below the shared server ceiling. Unsupported target,
 template and version have distinct fixed private errors; unknown/malformed
 fields are invalid arguments. Oversized input/output is a payload-limit error.

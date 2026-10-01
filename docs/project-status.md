@@ -14,6 +14,9 @@ source-code presence, automated core evidence, and real AutoCAD verification.
 - The core runtime composes a Windows adapter provider without importing COM
   packages until a Windows adapter operation begins.
 - The frozen four mutation schemas remain only in compatibility evidence.
+- The active dependency source is `pyproject.toml` plus `uv.lock`. The inactive
+  Poetry lock and unsupported root container files are retired after clean
+  Windows/Linux frozen-install evidence and the maintainer's remaining-work authorization.
 - Geometry, surface-unfolding, pattern-optimization, code-generation, inspection, mock, interactive, security, monitoring, and enterprise-oriented modules are present in the tree.
 - `src/testing/mock_autocad.py` contains an extensive mock object model.
 
@@ -25,7 +28,6 @@ Source presence does not prove that a module is connected to the root server, fu
 | --- | --- | --- |
 | Windows adapter | The delayed Windows COM adapter, fake contracts, lease, copy guard, and read-only harness are in the canonical runtime; no real adapter connection is recorded. | Execute the guarded AutoCAD 2026 smoke and review its evidence before making a real-AutoCAD claim. |
 | Unconnected advanced server | `src/mcp_integration/enhanced_mcp_server.py` remains a large separate system not started by `mcp.json`. | It remains experimental and must not be advertised as root-server functionality. |
-| Historical deployment artifacts | Docker and Compose describe a Linux HTTP direction that names the experimental enhanced server. | They are not a supported deployment; [decision 0001](decisions/0001-container-artifact-disposition.md) records their status without authorizing removal. |
 
 ## Automated core evidence
 

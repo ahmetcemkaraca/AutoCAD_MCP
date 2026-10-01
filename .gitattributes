@@ -1,2 +1,3 @@
-# Preserve content-addressed mathematical fixtures across platform checkouts.
+# Preserve content-addressed fixtures across platform checkouts.
+tests/fixtures/compatibility/legacy-mutating-tool-schemas.json -text
 tests/fixtures/unfolding/** -text

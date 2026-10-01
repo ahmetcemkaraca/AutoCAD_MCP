@@ -137,7 +137,9 @@ Before retirement, the active `mcp.json` parsed successfully and contained no
 `src.mcp_integration.enhanced_mcp_server` for an unsupported historical Linux
 HTTP direction; [decision 0001](0001-container-artifact-disposition.md)
 classifies it as neither an active MCP configuration nor a supported deployment.
-The experimental enhanced module remains untouched and unadvertised.
+The experimental enhanced module remains untouched and unadvertised. This was
+the retirement-time observation; the unsupported container files were later
+removed on 2026-10-01 under decision 0001.
 
 ## Consequences
 

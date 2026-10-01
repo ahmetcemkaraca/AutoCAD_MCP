@@ -156,6 +156,13 @@ def assert_guard_run_current_user_system_acl(path: Path) -> None:
     _verify_guard_run_acl(candidate, _current_user_sid())
 
 
+def create_guard_run_directory(path: Path) -> None:
+    """Exclusively create a guard child with current-user ownership and private ACLs."""
+    _require_windows()
+    if not _create_guard_temp_root(Path(path), _current_user_sid()):
+        raise AutoCADLeaseError("Windows guard run directory already exists")
+
+
 class AutoCADLease:
     """A non-blocking OS-file-lock lease with auditable owner metadata."""
 
@@ -574,10 +581,13 @@ def _set_private_acl(path: Path, user_sid: str, *, inheritable: bool = False) ->
             security.ConvertStringSidToSid(_SYSTEM_SID),
         )
         descriptor = security.SECURITY_DESCRIPTOR()
+        descriptor.SetSecurityDescriptorOwner(security.ConvertStringSidToSid(user_sid), False)
         descriptor.SetSecurityDescriptorDacl(True, dacl, False)
         security.SetFileSecurity(
             str(path),
-            security.DACL_SECURITY_INFORMATION | security.PROTECTED_DACL_SECURITY_INFORMATION,
+            security.OWNER_SECURITY_INFORMATION
+            | security.DACL_SECURITY_INFORMATION
+            | security.PROTECTED_DACL_SECURITY_INFORMATION,
             descriptor,
         )
     except (ImportError, OSError, AttributeError) as error:

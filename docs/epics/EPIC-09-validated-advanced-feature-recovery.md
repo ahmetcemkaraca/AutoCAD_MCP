@@ -275,6 +275,19 @@ UnfoldingResponse = UnfoldingResult | BoundedExecutionFailure
 
 The solver places a root triangle and propagates adjacent triangles by rigid edge-preserving transforms. It returns overlap as an explicit metric/failure; it does not move islands heuristically to conceal overlaps. Canonical results are deterministic for the same normalized input, seam set, root, and solver version.
 
+Version-1 layout clarification (2026-10-01): all returned points share a global
+2D frame. Disconnected rigid charts receive one deterministic initial horizontal
+strip placement, with the requested-root island first and the others ordered by
+minimum source face ID. The first root anchor is preserved; subsequent chart
+bounds are placed after the preceding maximum x with a positive scale-relative
+gap and minimum y at zero. This initial placement is not sheet nesting or an
+overlap-driven retry. The independent verifier checks all triangles globally,
+including distinct islands; rejected layouts are never repositioned to conceal
+an overlap. `faces_2d` is ordered by source face ID and indexes `vertices_2d`;
+indexed source vertex IDs preserve each original oriented face. Seam cuts may
+produce multiple output corners with the same source vertex/island identity,
+distinguished by output vertex index.
+
 ### Track U gates
 
 - Published fixtures include planar grids, cylinders/prisms, cones/frusta, branched strips, multiple islands, reversed faces, non-manifold edges, degeneracies, overlaps, and unsupported curved surfaces.

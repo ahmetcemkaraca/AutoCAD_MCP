@@ -25,7 +25,7 @@
 
 - `faces_2d` is ordered by ascending caller `face_id`; each triple contains zero-based indices into `vertices_2d`. The indexed source vertex IDs must exactly match that source face's oriented `vertex_ids`. Thus caller face/vertex identity remains recoverable without another ambiguous index convention.
 - A source vertex may occur more than once in the same island when cutting seams separates corners. Output vertex indices, not `(source_vertex_id, island_id)`, identify those separate corners.
-- Independent islands have independent local coordinate frames rooted at their canonical root face. Overlap is checked within each island; the tool performs no sheet placement/nesting or heuristic island repositioning. Metadata/docs must state these local frames explicitly. This clarification requires independent contract review before solver work.
+- All islands share one global output coordinate frame. Build rigid island charts, then perform one deterministic initial horizontal-strip placement: the requested-root island first (preserving its root anchor), remaining islands by minimum source face ID. Place each subsequent island's minimum x after the previous maximum x using a positive scale-relative gap, and align its minimum y to zero. The independent verifier checks overlaps globally. Do not reposition or retry after a verifier rejection; in-island overlaps always reject. This is initial chart placement, not sheet nesting, layout optimization, or a reduced within-island overlap claim.
 - Text bounds: `request_id` 1–128 Unicode code points and `units_label` 1–64, no control characters. IDs are non-Boolean nonnegative integers at most 2**53-1, unique within their collection. Root face must exist; seams are unique canonical undirected edges present in the mesh.
 
 ## Review Focus
@@ -55,8 +55,8 @@
 **Interfaces:** Takes the normalized original request plus candidate pure layout; recomputes edge/area/angle/overlap/reconstruction metrics without importing solver internals. Returns acceptance/rejection with exact metrics/issues or typed bounded failure.
 
 - [ ] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping, incomplete, misindexed, and incorrectly joined seam layouts.
-- [ ] Implement independent numeric checks and bounded overlap candidates; test cancellation and byte limits.
-- [ ] Verify and commit before dispatching solver implementation. Contract review must resolve the local-island-frame clarification explicitly.
+- [ ] Implement independent numeric checks and bounded global overlap candidates, including overlapping distinct islands; test cancellation and byte limits.
+- [ ] Verify and commit before dispatching solver implementation. Review global-frame and canonical face-index mapping explicitly.
 
 ### Task 3: Rigid unfolding solver (E09-U02)
 
@@ -65,7 +65,7 @@
 **Interfaces:** Consume normalized request/adjacency and frozen cooperative bounds. Produce an immutable candidate layout, not self-approved metrics. Preserve root face, winding and corner/source incidence.
 
 - [ ] Add failing rigid edge-preserving goldens, shuffled input determinism, branched/seamed cases and fixed-work/deadline/cancellation tests.
-- [ ] Implement canonical root placement and deterministic adjacency traversal; no distortion minimizer, seam optimizer, or hidden island placement.
+- [ ] Implement canonical root placement, deterministic adjacency traversal, and the declared one-pass strip placement; no distortion minimizer, seam optimizer, overlap-driven repositioning, or hidden layout search.
 - [ ] Run independent verifier against fixtures. Do not edit verifier or frozen expectations to make results pass. Commit with evidence.
 
 ### Task 4: Measurements, service and serialized MCP integration (E09-U03/U04)

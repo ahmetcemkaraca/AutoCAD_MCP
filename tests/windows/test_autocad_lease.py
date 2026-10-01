@@ -347,6 +347,32 @@ def test_existing_foreign_paths_are_rejected_without_repair(
     assert file_path.read_bytes() == b"foreign evidence"
 
 
+@pytest.mark.parametrize(
+    "wait_result, expected", ((0, "dead"), (258, "live"), (0xFFFFFFFF, "indeterminate"))
+)
+def test_owner_liveness_queries_process_termination_even_with_retained_handle(
+    monkeypatch: pytest.MonkeyPatch, wait_result: int, expected: str
+) -> None:
+    module = _lease_module()
+    calls: list[tuple[object, ...]] = []
+
+    def process_times(handle: int, created: object, *args: object) -> bool:
+        created._obj.dwLowDateTime = 456
+        return True
+
+    kernel32 = SimpleNamespace(
+        OpenProcess=lambda *args: calls.append(("open", *args)) or 1234,
+        GetProcessTimes=process_times,
+        WaitForSingleObject=lambda *args: calls.append(("wait", *args)) or wait_result,
+        CloseHandle=lambda *args: calls.append(("close", *args)),
+    )
+    monkeypatch.setattr(module, "_kernel32", lambda: kernel32)
+    owner = SimpleNamespace(pid=123, process_created_at_100ns=456)
+
+    assert module._owner_liveness(owner) == expected
+    assert calls == [("open", 0x101000, False, 123), ("wait", 1234, 0), ("close", 1234)]
+
+
 def test_enter_unlocks_if_ownership_assertion_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _lease_module()
     lease = object.__new__(module.AutoCADLease)

@@ -901,7 +901,7 @@ def _process_created_at_100ns(pid: int) -> int:
 
 def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate"]:
     kernel32 = _kernel32()
-    process = kernel32.OpenProcess(0x1000, False, owner.pid)
+    process = kernel32.OpenProcess(0x1000 | 0x100000, False, owner.pid)  # query + SYNCHRONIZE
     if not process:
         return "dead" if ctypes.get_last_error() == 87 else "indeterminate"
     try:
@@ -918,7 +918,12 @@ def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate
         ):
             return "indeterminate"
         observed = (int(created.dwHighDateTime) << 32) | int(created.dwLowDateTime)
-        return "live" if observed == owner.process_created_at_100ns else "dead"
+        if observed != owner.process_created_at_100ns:
+            return "dead"
+        state = kernel32.WaitForSingleObject(process, 0)
+        if state == 0:  # WAIT_OBJECT_0: exited process, including a retained process handle
+            return "dead"
+        return "live" if state == 258 else "indeterminate"  # WAIT_TIMEOUT
     finally:
         kernel32.CloseHandle(process)
 
@@ -929,6 +934,8 @@ def _kernel32() -> ctypes.WinDLL:
     kernel32.OpenProcess.restype = ctypes.c_void_p
     kernel32.CloseHandle.argtypes = (ctypes.c_void_p,)
     kernel32.CloseHandle.restype = ctypes.c_int
+    kernel32.WaitForSingleObject.argtypes = (ctypes.c_void_p, ctypes.c_uint32)
+    kernel32.WaitForSingleObject.restype = ctypes.c_uint32
     kernel32.ProcessIdToSessionId.argtypes = (ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32))
     kernel32.ProcessIdToSessionId.restype = ctypes.c_int
     kernel32.GetComputerNameW.argtypes = (ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint32))

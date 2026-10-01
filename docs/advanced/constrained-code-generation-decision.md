@@ -2,7 +2,7 @@
 
 **Scope:** EPIC-09C only. Portable implementation and authored core checks pass;
 independent final integration review passed through `8ad8421`; hosted
-Windows/Linux CI is pending.
+Windows/Linux CI passed on `7549f04`.
 This decision does not complete other advanced tracks or establish AutoCAD
 compatibility. Earlier independent controller reviews accepted the strict
 contract, all nine renderer goldens and the independently authored validator.
@@ -105,8 +105,15 @@ integration task report for final review.
 The independent final review and scoped re-review passed after whole-atom
 AutoLISP validation and Windows checkout evidence preservation were repaired.
 Post-fix checks passed 247 affected tests and 493 full tests with 9 skips;
-all frozen source/evidence bytes remained unchanged. The integration remains
-a branch candidate until hosted CI and PR handoff pass. No AutoCAD gate is required for C, and no real AutoCAD release
+all frozen source/evidence bytes remained unchanged.
+
+[Hosted CI run 36933156290](https://github.com/ahmetcemkaraca/AutoCAD_MCP/actions/runs/36933156290)
+passed on `7549f04`: Windows 499 passed/3 skipped and Linux 493 passed/9 skipped,
+with active Ruff, mypy (26 source files), syntax, manifest and import checks green.
+CodeQL and GitGuardian checks also passed. The first Windows run exposed overly
+long pytest parameter IDs; short IDs fixed test setup while preserving the exact
+65,536/65,537-character inputs. [PR #9](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/9)
+contains the focused delivery and review history. No AutoCAD gate is required for C, and no real AutoCAD release
 was tested or promoted. See [testing](../testing.md),
 [threat boundary](codegen-threat-model.md), [architecture](../architecture.md)
 and [compatibility](../compatibility.md). Merge/publication and any new

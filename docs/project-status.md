@@ -68,9 +68,9 @@ selection are not real-AutoCAD evidence.
 
 ## Next validation gate
 
-The current C integration branch adds portable output-only code generation.
+The canonical server includes portable output-only code generation.
 Its [decision record](advanced/constrained-code-generation-decision.md) records
-the separate static/core evidence, passed final review and pending hosted CI; no AutoCAD
+the separate static/core evidence, passed final review and hosted Windows/Linux CI; no AutoCAD
 or other advanced-track verification follows from it.
 
 EPIC-03 must execute and document the prepared read-only smoke test on full

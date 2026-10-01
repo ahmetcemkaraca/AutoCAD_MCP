@@ -212,7 +212,7 @@ content-addressed security evidence before final review and hosted CI.
   stdio/core tests must prove output-only behavior and no execute companion.
 - [x] Register only after independent contract/pure/security gates. Preserve
   existing tools and record the Track C decision and content-addressed evidence.
-- [ ] Run full portable/Windows-CI checks as applicable, independent final review
+- [x] Run full portable/Windows-CI checks as applicable, independent final review
   and focused PR. No AutoCAD compatibility or other-epic completion claim.
 
 ## Preflight dependencies

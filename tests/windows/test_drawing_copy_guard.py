@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -17,6 +18,14 @@ def _source_dwg(tmp_path: Path, name: str = "fixture.dwg") -> Path:
     source = tmp_path / name
     source.write_bytes(b"safe fake DWG bytes\x00\x01")
     return source
+
+
+def _replace_pinned_path(replacement: Path, target: Path) -> None:
+    """Replace the name without Windows replacement-over-open-target semantics."""
+    displaced = replacement.with_name(f"{replacement.name}.displaced")
+    target.rename(displaced)
+    os.replace(replacement, target)
+    displaced.unlink()
 
 
 def test_prepare_creates_unique_guid_copy(tmp_path: Path) -> None:
@@ -209,7 +218,9 @@ def test_prepare_detects_source_change_during_copy_and_preserves_evidence(
     source = _source_dwg(tmp_path)
     real_copy = drawing_copy_guard._copy_source_to_new_file
 
-    def copy_then_change_source(source_path: Path, copy_path: Path) -> tuple[int, int]:
+    def copy_then_change_source(
+        source_path: Path, copy_path: Path
+    ) -> drawing_copy_guard._FileIdentity:
         identity = real_copy(source_path, copy_path)
         source.write_bytes(b"source changed during copy")
         return identity
@@ -287,10 +298,11 @@ def test_prepare_rejects_post_close_copy_replacement_before_ownership(
     source = _source_dwg(tmp_path)
     real_copy = drawing_copy_guard._copy_source_to_new_file
 
-    def copy_then_replace(source_path: Path, copy_path: Path) -> tuple[int, int]:
+    def copy_then_replace(source_path: Path, copy_path: Path) -> drawing_copy_guard._FileIdentity:
         identity = real_copy(source_path, copy_path)
-        copy_path.unlink()
-        copy_path.write_bytes(b"replacement")
+        replacement = tmp_path / "replacement-copy.dwg"
+        replacement.write_bytes(b"replacement")
+        _replace_pinned_path(replacement, copy_path)
         return identity
 
     monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", copy_then_replace)
@@ -308,10 +320,11 @@ def test_prepare_rejects_post_close_marker_replacement_before_ownership(
     source = _source_dwg(tmp_path)
     real_write_marker = drawing_copy_guard._write_private_token
 
-    def write_then_replace_marker(path: Path, token: str) -> tuple[int, int]:
+    def write_then_replace_marker(path: Path, token: str) -> drawing_copy_guard._FileIdentity:
         identity = real_write_marker(path, token)
-        path.unlink()
-        path.write_text("replacement", encoding="utf-8")
+        replacement = tmp_path / "replacement-marker"
+        replacement.write_text("replacement", encoding="utf-8")
+        _replace_pinned_path(replacement, path)
         return identity
 
     monkeypatch.setattr(drawing_copy_guard, "_write_private_token", write_then_replace_marker)
@@ -400,13 +413,14 @@ def test_latched_violation_reports_replaced_copy_as_unavailable(tmp_path: Path) 
     guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
     with pytest.raises(DrawingCopyViolation):
         guard.assert_active_full_name(str(tmp_path / "unexpected.dwg"))
-    guard.copy_path.unlink()
     sentinel = tmp_path / "unrelated.txt"
     sentinel.write_text("must survive", encoding="utf-8")
     try:
-        guard.copy_path.symlink_to(sentinel)
+        alias = tmp_path / "replacement-alias"
+        alias.symlink_to(sentinel)
     except OSError as error:
         pytest.skip(f"symlinks unavailable: {error}")
+    _replace_pinned_path(alias, guard.copy_path)
 
     evidence = guard.finalize(preserve=False, reason="completed")
     assert evidence.preserved is False
@@ -420,13 +434,14 @@ def test_finalize_revalidates_copy_immediately_before_unlink(
     real_same_file = drawing_copy_guard._same_private_regular_file
     copy_checks = 0
 
-    def replace_on_sink_check(path: Path, identity: tuple[int, int]) -> bool:
+    def replace_on_sink_check(path: Path, identity: drawing_copy_guard._FileIdentity) -> bool:
         nonlocal copy_checks
         if path == guard.copy_path:
             copy_checks += 1
             if copy_checks == 2:
-                path.unlink()
-                path.write_bytes(b"late replacement")
+                replacement = tmp_path / "late-copy.dwg"
+                replacement.write_bytes(b"late replacement")
+                _replace_pinned_path(replacement, path)
         return real_same_file(path, identity)
 
     monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)
@@ -439,6 +454,77 @@ def test_finalize_revalidates_copy_immediately_before_unlink(
     assert guard.copy_path.read_bytes() == b"late replacement"
 
 
+@pytest.mark.parametrize("name", ("drawing-copy.dwg", ".drawing-copy-guard-token"))
+def test_cleanup_rejects_reused_file_numbers_deterministically(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    target = guard.copy_path.parent / name
+    original = target.lstat()
+    original_bytes = target.read_bytes()
+    replacement = tmp_path / "replacement"
+    replacement.write_bytes(original_bytes)
+    _replace_pinned_path(replacement, target)
+    real_lstat = Path.lstat
+
+    # Model immediate reuse of the original inode, independent of filesystem allocation.
+    monkeypatch.setattr(
+        Path,
+        "lstat",
+        lambda path, **kwargs: original if path == target else real_lstat(path, **kwargs),
+    )
+
+    with pytest.raises(DrawingCopyViolation, match="cleanup refused"):
+        guard.finalize(preserve=False, reason="completed")
+    assert target.read_bytes() == original_bytes
+
+
+def test_neutral_guard_allows_in_place_copy_changes_before_cleanup(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    guard.copy_path.write_bytes(b"copy intentionally changed by policy")
+
+    evidence = guard.finalize(preserve=False, reason="policy completed")
+
+    assert evidence.cleanup_succeeded is True
+    assert evidence.copy_sha256_before != evidence.copy_sha256_after
+
+
+def test_preparation_failure_closes_all_original_file_pins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    identities: list[drawing_copy_guard._FileIdentity] = []
+    real_pin = drawing_copy_guard._pin_file
+
+    def record_pin(path: Path, descriptor: int) -> drawing_copy_guard._FileIdentity:
+        identity = real_pin(path, descriptor)
+        identities.append(identity)
+        return identity
+
+    def fail_transfer(*args: object, **kwargs: object) -> None:
+        raise OSError("transfer failed")
+
+    monkeypatch.setattr(drawing_copy_guard, "_pin_file", record_pin)
+    monkeypatch.setattr(drawing_copy_guard.shutil, "copyfileobj", fail_transfer)
+
+    with pytest.raises(DrawingCopyViolation) as raised:
+        DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+
+    assert raised.value.evidence.preserved is True
+    assert identities
+    assert all(identity.descriptor == -1 for identity in identities)
+
+
+def test_successful_cleanup_closes_all_original_file_pins(tmp_path: Path) -> None:
+    guard = DrawingCopyGuard.prepare(_source_dwg(tmp_path), temp_root=tmp_path / "runs")
+    ownership = guard._ownership
+
+    guard.finalize(preserve=False, reason="completed")
+
+    assert ownership.copy_identity.descriptor == -1
+    assert ownership.marker_identity.descriptor == -1
+    assert ownership.source_identity.descriptor == -1
+
+
 def test_finalize_revalidates_marker_immediately_before_unlink(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -447,13 +533,14 @@ def test_finalize_revalidates_marker_immediately_before_unlink(
     real_same_file = drawing_copy_guard._same_private_regular_file
     marker_checks = 0
 
-    def replace_on_sink_check(path: Path, identity: tuple[int, int]) -> bool:
+    def replace_on_sink_check(path: Path, identity: drawing_copy_guard._FileIdentity) -> bool:
         nonlocal marker_checks
         if path == marker:
             marker_checks += 1
             if marker_checks == 2:
-                path.unlink()
-                path.write_text("late replacement", encoding="utf-8")
+                replacement = tmp_path / "late-marker"
+                replacement.write_text("late replacement", encoding="utf-8")
+                _replace_pinned_path(replacement, path)
         return real_same_file(path, identity)
 
     monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)

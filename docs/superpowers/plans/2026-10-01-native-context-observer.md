@@ -71,6 +71,13 @@ Use C#/.NET BCL only for native production code, existing Python pytest for
 Python checks. A console assertion runner needs no new test framework. Link
 pure source into a net10.0 test executable rather than loading Autodesk SDK
 assemblies on Linux. No native host/Windows transport implementation yet.
+Keep production pure source compatible with net48, net8.0 and net10.0 so the
+observer preserves the existing 2021-2026 target range. Do not accidentally
+require a new runtime JSON dependency on older hosts. A strict bounded reader
+using the common BCL JSON reader APIs is preferable to a custom general parser;
+fixed validated ASCII response fields also need no general serializer framework.
+Microsoft .NET Framework reference assemblies are permitted as pinned
+build-only inputs for cross-compilation, never shipped runtime libraries.
 
 Freeze `RevisionWitness(bridge_id, session_id, epoch, database_guid)` as a
 frozen Python dataclass and `NativeRevisionSource.witness(document_hwnd)` as
@@ -98,10 +105,15 @@ Do not invent an MCP result or duplicate domain identity.
 - [ ] Inspect existing Windows session/lease ctypes helpers before adding any
   equivalent. Keep COM imports inside the existing session manager; the new
   transport uses bounded Win32 pipe calls and consumes a supplied HWND only.
-- [ ] Compile actual host APIs against pinned official references. Build
-  net8.0-windows with AutoCAD.NET.Core `[25.1.0]` and net10.0-windows with
-  `[25.1.1]`; if full AutoCAD.NET is needed for modal notifications, use the
-  same exact version and document the reason. Locked restores required.
+- [ ] Compile actual host APIs against pinned official references in three
+  profiles: net48 with AutoCAD.NET.Core `[24.0.0]`, net8.0-windows with
+  `[25.0.0]`, and net10.0-windows with `[25.0.2]`. Pin matching Model references
+  explicitly where the older package has a version range. Autodesk's cited
+  application compatibility table allows 2021 APIs for 2021-2024 and 2025 APIs
+  for 2025-2026 in the corresponding runtime. If full AutoCAD.NET is needed
+  for modal notifications, use the same exact version and document the reason.
+  Locked restores required. Detect missing capabilities without pretending
+  compile evidence is actual host compatibility.
 - [ ] Register existing/new documents and event subscriptions once. Native
   lifetime objects exist only to unsubscribe/reconcile. Mutation/open-for-modify,
   undo/redo, sysvar, view, command, activation and lock transitions advance the
@@ -115,7 +127,7 @@ Do not invent an MCP result or duplicate domain identity.
   fake-host local Windows roundtrip, wrong PID/SID/session, wrong nonce,
   first-instance collision, truncated/oversized/slow peer, timeout, shutdown and
   handle cleanup. Linux runs injected protocol/state checks only.
-- [ ] Build both real SDK profiles; run focused/native/Windows-compatible tests,
+- [ ] Build all three real SDK profiles; run focused/native/Windows-compatible tests,
   lint/type/import checks. Commit/report independent reviews before integration.
 
 ## Task 3: Reproducible builds and operator evidence
@@ -142,5 +154,7 @@ Task2 supplies the callable witness consumed later by EPIC-04 adapters; Task3
 packages those exact implementations. Transport owns no entity cache or fact
 schema. Context adapter tests use the protocol seam, never claim fake witnesses
 prove native coverage. The controller serializes shared CI/docs integration.
-Older releases remain targeted; matching reference profiles and host acceptance
-must precede any broader observer compatibility claim.
+Older releases remain targeted; compile the declared profiles now, with host
+acceptance still required before any observer compatibility claim. Package each
+runtime profile separately so bundle auto-loading cannot select incompatible
+assemblies by year alone.

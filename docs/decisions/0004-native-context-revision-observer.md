@@ -64,11 +64,14 @@ real-host tests show ordinary read-only COM getters invalidate every witness,
 the acceptance gate requires a scoped native locked-read implementation; it
 does not permit suppressing writer signals or claiming the thin path works.
 
-First build profiles cover AutoCAD 2026 before/after its managed-runtime
-update, using pinned real Autodesk references. Older releases remain targeted
-and require matching compiled profiles and real-host acceptance; the product
-support table is not promoted by this decision. No SDK stubs count as build
-evidence. User-run tests cover unchanged reads, unseen change/revert, undo/redo,
+Build profiles cover the three supported runtime generations: .NET Framework
+4.8 using the 2021 API, .NET 8 using the 2025 API, and .NET 10 using the updated
+2025 API. Autodesk's compatibility table permits those API generations in the
+corresponding later releases. Compile actual references for all three; select
+the profile from the observed host runtime, not just its release year. Older
+releases remain targeted until real-host acceptance; the product support table
+is not promoted by compilation. No SDK stubs count as build evidence.
+User-run tests cover unchanged reads, unseen change/revert, undo/redo,
 modal/modeless writes, close cancellation, reopen/window reuse, process/plugin
 restart/loss, and unchanged drawing bytes on disposable copies.
 
@@ -83,3 +86,7 @@ state checks unreliable and is rejected.
 - [Database events](https://help.autodesk.com/cloudhelp/2026/ENU/OARX-DevGuide-Managed/files/GUID-E30279D1-E4B5-48A4-A3D8-9CEC83BD0967.htm)
 - [Document locking](https://help.autodesk.com/cloudhelp/2026/ENU/OARX-DevGuide-Managed/files/GUID-A2CD7540-69C5-4085-BCE8-2A8ACE16BFDD.htm)
 - [Managed runtime compatibility](https://help.autodesk.com/cloudhelp/2026/ENU/AutoCAD-Customization/files/GUID-A6C680F2-DE2E-418A-A182-E4884073338A.htm)
+- [Application/API compatibility](https://help.autodesk.com/cloudhelp/2026/ENU/AutoCAD-Customization/files/GUID-D54B0935-1638-4F97-8B37-1EC3635A1E71.htm)
+- [2021 API references](https://www.nuget.org/packages/AutoCAD.NET.Core/24.0.0)
+- [2025 .NET 8 references](https://www.nuget.org/packages/AutoCAD.NET.Core/25.0.0)
+- [Updated 2025 .NET 10 references](https://www.nuget.org/packages/AutoCAD.NET.Core/25.0.2)

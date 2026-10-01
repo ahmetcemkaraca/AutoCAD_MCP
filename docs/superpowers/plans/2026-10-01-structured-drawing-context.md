@@ -203,14 +203,14 @@ projected entities, while response records preserve their complete source digest
 Replace private PageCursor.last_sort_key with normalized last_handle. Keep
 canonical entity_sort_key, all other cursor bindings, HMAC/expiry and2,048 bytes.
 
-- [ ] Add red tests for projection roundtrip/marker validation, full-model and
+- [x] Add red tests for projection roundtrip/marker validation, full-model and
   entity/drawing/repository refusal, including omitted nongeometry groups; valid
   complete entities still hash/store unchanged. Add maximum-handle and Unicode
   layout/nested-live cursor checks, invalid handles and obsolete field rejection.
-- [ ] Implement the minimum shared completeness guard and cursor field change;
+- [x] Implement the minimum shared completeness guard and cursor field change;
   update affected old cursor tests to the unreleased contract without weakening
   signature, time or byte-boundary checks. No compression/cache or partial digest.
-- [ ] Run focused changed tests (expect pass), the context/full suites, scoped
+- [x] Run focused changed tests (expect pass), the context/full suites, scoped
   lint/types/syntax/import checks. Record commands/results and commit. Independent
   review is required; Task4/5 must consume these exact guards and boundary rules.
 

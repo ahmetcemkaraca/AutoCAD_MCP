@@ -1,0 +1,4 @@
+def codegen_facts():
+    facts_json = ""
+    facts_json = facts_json + "[{\"handle\":\"A\",\"layer\":\"Layer\",\"object_name\":\"Entity\",\"properties\":{\"value\":\"data\"}}]"
+    return facts_json

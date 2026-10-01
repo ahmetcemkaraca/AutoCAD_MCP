@@ -1,0 +1,10 @@
+(defun codegen_iterate_handles (/ handles handle last_handle)
+  (setq handles (list
+    "ABC"
+  ))
+  (setq last_handle "")
+  (foreach handle handles
+    (setq last_handle handle)
+  )
+  last_handle
+)

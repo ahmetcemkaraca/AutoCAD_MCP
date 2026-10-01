@@ -1,5 +1,16 @@
 # Testing
 
+## Constrained code-generation contracts
+
+Run `uv run pytest tests/unit/advanced/codegen tests/contract/test_constrained_code_generation_tool.py tests/contract/test_no_execution_tools.py tests/contract/test_server_tool_catalog.py tests/contract/test_stdio_server.py -q`.
+These checks cover all nine pairs, frozen malicious classifications, closed
+schemas, preserved basic-service injection, adapter-free default startup, real
+stdio C calls, request-scoped effect spies and actual SDK body byte limits.
+They parse generated text statically and never execute it. Source/artifact size
+checks alone cannot prove the complete 65,536-byte `CallToolResult` body bound.
+The [C decision](advanced/constrained-code-generation-decision.md) records
+content-addressed evidence and pending independent/hosted CI gates.
+
 AutoCAD MCP requires separate evidence for pure Python behavior, MCP protocol behavior, and real AutoCAD behavior. Evidence from one layer must not be reported as proof of another.
 
 ## Current core evidence

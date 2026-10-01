@@ -158,19 +158,19 @@ stages, but one shared budget needs 1,123,782 work: decode114,049,
 validation325,628, solver81,996, verifier602,109. The immutable ceiling is
 1,000,000. This is an integration gap, not an accepted maximum-case refusal.
 
-- [ ] First add a failing exact-max public decode/validate/solve/verify test
+- [x] First add a failing exact-max public decode/validate/solve/verify test
   using one unchanged WorkBudget and the frozen torus fixture. A fixed injected
   clock isolates fixed-work accounting; real host timing remains Task4.
-- [ ] Replace duplicate/per-token verifier serialization work with exact,
+- [x] Replace duplicate/per-token verifier serialization work with exact,
   bounded per-record size accounting using standard-library encoding. Preserve
   every shape/connectivity/numerical/global-overlap check, actual UTF-8 bytes,
   diagnostic bounds, envelope reservations and interruption priority. All
   explicit potentially long loops must honor the caller's checkpoint interval;
   bounded native record encoding is not an unaccounted whole-layout scan.
-- [ ] Do not reset/increase budgets, change policy, skip verification, modify
+- [x] Do not reset/increase budgets, change policy, skip verification, modify
   solver/validation/frozen corpus, add xfails or relabel accepted input. Reject
   genuine resource overflow without partial metrics/candidate/digest.
-- [ ] Prove measured bytes against independent full JSON serialization at exact
+- [x] Prove measured bytes against independent full JSON serialization at exact
   boundaries, with Unicode/escapes, metrics and diagnostics. Keep the existing
   true4MiB overflow and late cancellation regressions. Verify exact-max shared
   acceptance plus focused/full regression, publish final stage counters, and

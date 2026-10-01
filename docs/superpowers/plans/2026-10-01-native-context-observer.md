@@ -110,9 +110,12 @@ Do not invent an MCP result or duplicate domain identity.
   `[25.0.0]`, and net10.0-windows with `[25.0.2]`. Pin matching Model references
   explicitly where the older package has a version range. Autodesk's cited
   application compatibility table allows 2021 APIs for 2021-2024 and 2025 APIs
-  for 2025-2026 in the corresponding runtime. If full AutoCAD.NET is needed
-  for modal notifications, use the same exact version and document the reason.
-  Locked restores required. Detect missing capabilities without pretending
+  for 2025-2026 in the corresponding runtime. Full AutoCAD.NET is required for
+  Application.EnterModal/LeaveModal: pin `[24.0.0]` on net48, `[25.0.1]` on
+  net8, and `[25.0.2]` on net10. The net8 full package25.0.1 correctly depends
+  on Core25.0.0; full25.0.0 has an unavailable prerelease dependency and must
+  not be substituted or bypassed with warning suppression. Locked restores
+  required. Detect missing capabilities without pretending
   compile evidence is actual host compatibility.
 - [ ] Register existing/new documents and event subscriptions once. Native
   lifetime objects exist only to unsubscribe/reconcile. Mutation/open-for-modify,

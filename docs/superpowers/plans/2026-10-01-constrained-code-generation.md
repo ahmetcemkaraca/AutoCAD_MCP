@@ -110,6 +110,18 @@ exceptions. Parsing receives JSON-compatible mappings, not source code.
 **Own:** `templates.py`, `render.py`, golden/escaping/determinism tests and
 synthetic golden source/digest fixtures. No service/runtime registration.
 
+Public handoff: `render_recipe(recipe: CodeRecipe) -> str` returns source only.
+It consumes the accepted immutable recipe, uses only the fixed catalogue and
+version, and rejects a rendered source above65,536 UTF-8 bytes with the existing
+private payload-limit error. Later service/MCP owners must also bound the full
+artifact/envelope; this source ceiling is not sufficient by itself. Encoding
+helpers stay private unless an actual second consumer needs them. No source
+execution, interpreter/compiler invocation or artifact persistence is allowed.
+Use fixed local variable/procedure names, never AutoCAD command or auto-run
+macro entry points. Generated iteration works only on supplied literal handles.
+Source-language grammar/escape assumptions must be checked against primary
+language documentation before freezing each target's goldens.
+
 - [ ] Freeze hand-reviewed expected output for every pair before rendering.
   Use fixed local identifiers and only bounded literal encoders. Prefer ordinary
   quoted strings; where a target needs a safe code-unit constructor for control

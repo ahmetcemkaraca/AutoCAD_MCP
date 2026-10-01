@@ -1,0 +1,79 @@
+# Pure Surface Unfolding Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Complete the agent-owned EPIC-09U candidate, including independent numerical validation and bounded pure-data MCP integration.
+
+**Architecture:** Validate a caller-supplied triangular mesh and explicit seams, unfold its acyclic face islands by rigid triangle propagation, and admit outputs only after an independently implemented verifier. Reuse the core envelopes; never acquire AutoCAD/context/capture/edit services.
+
+**Tech Stack:** Python 3.12, standard library, existing locked NumPy/SciPy only if a measured numerical need justifies use, pytest, canonical MCP core.
+
+**Spec:** `docs/epics/EPIC-09-validated-advanced-feature-recovery.md`, shared contracts and Track U. This implements an already-approved portfolio under the maintainer's 2026-10-01 instruction to finish agent work before application testing.
+
+## Global Constraints
+
+- No AutoCAD/context/capture/mutation, arbitrary execution, subprocess, new dependency, or filesystem staging in production code.
+- Preserve the exact request/result/failure dataclasses in the epic. Unknown fields, non-finite values, invalid topology, and excessive policy/request/result bounds fail explicitly, never clamp.
+- Shared bounds: 200,000 items, 1,000,000 iterations, 30-second cooperative deadline, at most 1,024 work items between cancellation checks, 1 MiB request, 4 MiB result.
+- Mesh bounds: 3–2,000 vertices and 1–4,000 faces; connected orientable two-manifold; consistent winding; no duplicates, degeneracies, intersections, or non-manifold vertex links; seams leave an acyclic face-adjacency forest.
+- Success is deterministic from canonical input/version/seed/fixed work. Deadline/cancellation produces only typed failure with no partial layout or digest.
+- Numerical acceptance comes from an independent verifier: edge/area relative error and angle error at most 1e-9, no accepted overlaps, reversible edge lengths.
+- Solver authors never edit verifier implementations, frozen expected results, or reference labels.
+- Each implementer owns only its task files, writes a report, commits tested changes, and dispatches no agents. Shared server registration occurs only after controller authorization.
+
+## Contract clarifications for review
+
+- `faces_2d` is ordered by ascending caller `face_id`; each triple contains zero-based indices into `vertices_2d`. The indexed source vertex IDs must exactly match that source face's oriented `vertex_ids`. Thus caller face/vertex identity remains recoverable without another ambiguous index convention.
+- A source vertex may occur more than once in the same island when cutting seams separates corners. Output vertex indices, not `(source_vertex_id, island_id)`, identify those separate corners.
+- Independent islands have independent local coordinate frames rooted at their canonical root face. Overlap is checked within each island; the tool performs no sheet placement/nesting or heuristic island repositioning. Metadata/docs must state these local frames explicitly. This clarification requires independent contract review before solver work.
+- Text bounds: `request_id` 1–128 Unicode code points and `units_label` 1–64, no control characters. IDs are non-Boolean nonnegative integers at most 2**53-1, unique within their collection. Root face must exist; seams are unique canonical undirected edges present in the mesh.
+
+## Review Focus
+
+1. Bow-tie vertices, duplicate/reversed faces and disconnected shells that pass simple edge-count checks must fail validation.
+2. Adjacent triangles sharing a legitimate edge/vertex must not be misclassified as self-intersections; excess coplanar overlap must fail.
+3. Tiny/large or nearly degenerate finite triangles must never yield non-finite output or a falsely accepted layout.
+4. Seams can duplicate corners within one island; face/source identity must survive that duplication.
+5. Cancellation/deadline during validation, solver or verification must not leak an incumbent success or a cacheable digest.
+
+### Task 1: Shared cooperative bounds and strict mesh contract (E09-0/U01)
+
+**Files:** `src/autocad_mcp/advanced/__init__.py`, `advanced/bounds.py`, `advanced/unfolding/__init__.py`, `advanced/unfolding/models.py`, `advanced/unfolding/validation.py`; `tests/unit/advanced/test_bounds.py`, `tests/unit/advanced/unfolding/test_models.py`, `test_validation.py`; `tests/fixtures/unfolding/**`.
+
+**Interfaces:** Exact `BoundedExecutionPolicy`, `MonotonicClock`, `CancellationProbe`, `BoundedFailureCode`, `BoundedExecutionFailure` and immutable ceiling constants from the epic. Exact Track U dataclasses. Produce a strict request decoder/normalizer and mesh validator returning immutable canonical adjacency/edge records; publish helper signatures in the report before the next task.
+
+- [ ] Write failing tests for strict types/fields/text/ID bounds, finite points, all mesh support rules, request policy ceilings, cancellation/deadline using injected fake clocks, and exact request byte/item boundaries.
+- [ ] Independently freeze at least ten accepted/rejected fixtures spanning planar grids, cylinders/prisms, cones/frusta, branched strips, islands, reversed/non-manifold/degenerate/intersecting inputs, plus maximum-size serialization vectors. Expected classifications are mathematical input facts, not solver outputs.
+- [ ] Run the three focused files and record red evidence before source implementation.
+- [ ] Implement bounded contracts and validation only. Check resource budget within potentially large validation loops. Do not build the solver, metrics verifier, or alter core registrations.
+- [ ] Run focused/full portable tests, scoped Ruff/mypy, compile/import checks. Commit and return exact signatures, fixed fixture digest inventory, results, and any remaining ambiguities.
+
+### Task 2: Independent numerical verifier (E09-U03 verifier portion)
+
+**Files:** `advanced/unfolding/metrics.py`, `tests/unit/advanced/unfolding/test_metrics.py`, `test_verifier_adversarial.py`.
+
+**Interfaces:** Takes the normalized original request plus candidate pure layout; recomputes edge/area/angle/overlap/reconstruction metrics without importing solver internals. Returns acceptance/rejection with exact metrics/issues or typed bounded failure.
+
+- [ ] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping, incomplete, misindexed, and incorrectly joined seam layouts.
+- [ ] Implement independent numeric checks and bounded overlap candidates; test cancellation and byte limits.
+- [ ] Verify and commit before dispatching solver implementation. Contract review must resolve the local-island-frame clarification explicitly.
+
+### Task 3: Rigid unfolding solver (E09-U02)
+
+**Files:** `advanced/unfolding/solver.py`, solver/golden/property/bounds tests only.
+
+**Interfaces:** Consume normalized request/adjacency and frozen cooperative bounds. Produce an immutable candidate layout, not self-approved metrics. Preserve root face, winding and corner/source incidence.
+
+- [ ] Add failing rigid edge-preserving goldens, shuffled input determinism, branched/seamed cases and fixed-work/deadline/cancellation tests.
+- [ ] Implement canonical root placement and deterministic adjacency traversal; no distortion minimizer, seam optimizer, or hidden island placement.
+- [ ] Run independent verifier against fixtures. Do not edit verifier or frozen expectations to make results pass. Commit with evidence.
+
+### Task 4: Measurements, service and serialized MCP integration (E09-U03/U04)
+
+**Files:** `tests/performance/measure_unfolding.py`, immutable numerical evidence, `advanced/unfolding/service.py`, `tools/surface_unfolding.py`, MCP tests; controller-owned server/runtime/catalog/manifest/docs during an exclusive integration window.
+
+- [ ] Measure 500/2,000/4,000-face cases in-process with seed 9041, recording host/wall time/RSS outside results/digests. Publish rejected numerical cases honestly.
+- [ ] Test that malformed/over-budget input never reaches solver, verifier rejection never reaches success, interrupted work returns no geometry, and result ceilings are enforced.
+- [ ] Prove zero context/COM/capture/edit/file/process access and strict schema/envelope/stdout behavior.
+- [ ] Record an independent per-track contract/pure/environment/registration decision. Integrate only this passing track, preserving other tools through the serial catalog owner.
+- [ ] Run full portable regression, active lint/types/syntax/import/manifest checks, independent review, and focused PR. Update portfolio ledger without claiming completion of other tracks.

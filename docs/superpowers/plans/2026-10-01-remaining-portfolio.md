@@ -14,8 +14,8 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 
 | Delivery | Remaining implementation and evidence | State |
 | --- | --- | --- |
-| EPIC-00 | Read back merged PR/protection state, validate canonical links/archive audit, update closure record | Pending |
-| EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Pending |
+| EPIC-00 | Read back merged PR/protection state, validate canonical links/archive audit, update closure record | Done; PR #5 merged |
+| EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Done agent work; clean Windows/Linux evidence and PRs #6/#7 merged |
 | EPIC-02 | Keep the accepted canonical core and its regression suite passing as tools are added; record merged evidence | Implemented; documentation pending |
 | EPIC-03 | Preserve adapter contracts and guarded smoke, consolidate operator handoff and evidence collection | Implementation present; handoff audit pending |
 | EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | In progress |
@@ -25,7 +25,7 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pending |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Contracts/validation/corpus accepted; independent verifier in progress |
 | EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Pending |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
@@ -48,3 +48,11 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
 ## Recovery after interruption
 
 Inspect this ledger, Git worktrees, branch history, each active epic plan, and that plan's SDD progress file before dispatching work. Resume the first incomplete task. A running agent must be polled or messaged, not duplicated. Completion requires checking every delivery above against code, portable test results, review records, and the operator handoff; a completed first epic is not completion of this objective.
+
+## 2026-10-01 implementation checkpoint
+
+- Main is `9d7ec0e`: PR #5 closes stewardship records; PR #6 adds clean Windows/Linux CI and repairs file identity, Windows ACL/process-liveness, exact fixture bytes and COM-free protocol tests; PR #7 retires the inactive Poetry lock and unsupported container files. Every PR had independent review and green applicable checks.
+- Fresh foundation matrix: Windows 233 passed/3 expected skips; Linux 227 passed/9 expected skips. These are dependency/portable/Windows-API results, not AutoCAD execution.
+- EPIC-04 Task 1 accepted after two review findings were fixed: exact dict/Mapping serializer interface and structured UTC overflow errors. Task 2 implementation `94e8a95` has 62 focused / 121 context / 336 full portable tests passing with 9 expected skips, and is awaiting independent reviews.
+- EPIC-09U contracts, strict topology, cooperative bounds and 19 input fixtures are accepted after a structured-recursion-error fix. Main integrated into its separate worktree: 319 portable tests passed / 9 skipped. The verifier is being implemented independently before the solver. Global output overlap checks remain required; the initial proposal to check only per-island frames was explicitly rejected.
+- All capture, edit approval/recovery, architectural/general/mechanical semantics, remaining recovery tracks, final catalog integration, and complete operator handoff remain in scope and unfinished. This checkpoint does not complete the goal.

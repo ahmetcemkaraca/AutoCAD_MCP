@@ -148,6 +148,19 @@ async def _exercise_stdio_entrypoint(module_name: str) -> tuple[dict[str, object
                 help_result = await session.get_prompt("autocad-help")
                 status_call = await session.call_tool("server_status", {})
                 legacy_call = await session.call_tool("draw_line", {})
+                for name, arguments in (
+                    ("get_entity_info", {"entity_id": -1}),
+                    ("get_entity_info", {"entity_id": "1"}),
+                    ("get_entity_info", {"entity_id": True}),
+                    ("get_entity_info", {}),
+                    ("server_status", {"extra": "private-value"}),
+                    ("list_entities", {"extra": "private-value"}),
+                ):
+                    invalid_call = await session.call_tool(name, arguments)
+                    failure = json.loads(invalid_call.content[0].text)
+                    assert failure["success"] is False
+                    assert failure["error"]["code"] == "INVALID_ARGUMENT"
+                    assert "private-value" not in invalid_call.content[0].text
 
         diagnostics.seek(0)
         return {

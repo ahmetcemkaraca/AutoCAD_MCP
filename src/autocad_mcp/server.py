@@ -38,7 +38,7 @@ def create_server(service: BasicToolService) -> Server:
     async def list_tools() -> list[types.Tool]:
         return list(TOOL_DEFINITIONS)
 
-    @mcp_server.call_tool()
+    @mcp_server.call_tool(validate_input=False)
     async def call_tool(
         name: str, arguments: Mapping[str, object] | None
     ) -> list[types.TextContent]:

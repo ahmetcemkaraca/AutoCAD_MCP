@@ -11,7 +11,12 @@ from autocad_mcp.context.fingerprint import (
     snapshot_id,
     snapshot_identity_bytes,
 )
-from autocad_mcp.context.models import CadFactEvidence, CapabilityIssue, RelationshipFact
+from autocad_mcp.context.models import (
+    CadFactEvidence,
+    CapabilityIssue,
+    EntitySpace,
+    RelationshipFact,
+)
 from autocad_mcp.context.validation import ContextValidationError
 
 from tests.unit.context.fixtures import snapshot
@@ -97,7 +102,7 @@ def test_nested_facts_change_content_and_entity_state_but_metadata_does_not():
     for changed in (
         replace(
             entity,
-            geometry=replace(entity.geometry, end_wcs=replace(entity.geometry.end_wcs, x=99)),
+            geometry=replace(entity.geometry, end=replace(entity.geometry.end, x=99)),
         ),
         replace(entity, block=replace(entity.block, attribute_values={"KEY": "changed"})),
         replace(entity, layer=replace(entity.layer, is_locked=True)),
@@ -126,7 +131,7 @@ def test_relationship_order_affects_content_not_entity_state():
     changed_evidence = replace(
         entity,
         fact_evidence=(
-            CadFactEvidence("/geometry/start_wcs", "autocad_com", "StartPoint", "unavailable"),
+            CadFactEvidence("/geometry/start", "autocad_com", "StartPoint", "unavailable"),
         ),
     )
     assert fingerprint(complete, (changed_evidence,)) != fingerprint(complete)
@@ -210,8 +215,8 @@ def test_all_nested_covered_entity_facts_and_units_tolerance_change_content():
         replace(entity, dimension=DimensionFacts(5.0, None, None, None)),
         replace(
             entity,
-            bounding_box_wcs=replace(
-                entity.bounding_box_wcs, maximum=replace(entity.bounding_box_wcs.maximum, z=1)
+            bounds=replace(
+                entity.bounds, maximum=replace(entity.bounds.maximum, z=1)
             ),
         ),
         replace(
@@ -235,3 +240,22 @@ def test_all_nested_covered_entity_facts_and_units_tolerance_change_content():
     assert snapshot_identity_bytes(replace(complete, active_context=shifted_context)) != (
         snapshot_identity_bytes(complete)
     )
+
+
+def test_equal_coordinates_in_distinct_owner_frames_have_distinct_fact_identities():
+    complete = snapshot()
+    entity = complete.entities[0]
+    frames = (
+        EntitySpace("model", None, None),
+        EntitySpace("paper", "Layout A", None),
+        EntitySpace("paper", "Layout B", None),
+        EntitySpace("block_definition", None, "B1"),
+        EntitySpace("block_definition", None, "B2"),
+    )
+    values = tuple(replace(entity, space=space) for space in frames)
+    assert all(value.geometry == entity.geometry for value in values)
+    assert len({entity_state_digest(value) for value in values}) == len(frames)
+    assert len({fingerprint(complete, (value,)).content_digest for value in values}) == len(frames)
+    assert len(
+        {snapshot_identity_bytes(replace(complete, entities=(value,))) for value in values}
+    ) == len(frames)

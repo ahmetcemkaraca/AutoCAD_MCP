@@ -84,10 +84,10 @@ def snapshot_payload():
                 },
                 "geometry": {
                     "kind": "line",
-                    "start_wcs": {"x": 0, "y": 0, "z": 0},
-                    "end_wcs": {"x": 5, "y": 6, "z": 0},
+                    "start": {"x": 0, "y": 0, "z": 0},
+                    "end": {"x": 5, "y": 6, "z": 0},
                 },
-                "bounding_box_wcs": {
+                "bounds": {
                     "minimum": {"x": 0, "y": 0, "z": 0},
                     "maximum": {"x": 5, "y": 6, "z": 0},
                 },
@@ -102,7 +102,7 @@ def snapshot_payload():
                 "relationships": [],
                 "fact_evidence": [
                     {
-                        "fact_path": "/geometry/start_wcs",
+                        "fact_path": "/geometry/start",
                         "source": "autocad_com",
                         "member": "StartPoint",
                         "status": "observed",

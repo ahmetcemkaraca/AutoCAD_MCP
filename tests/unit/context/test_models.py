@@ -8,6 +8,7 @@ from autocad_mcp.context.models import (
     Bounds3D,
     EntityIdentity,
     EntityQueryFilters,
+    EntitySpace,
     GeometrySummary,
     LayerSummary,
     PageInfo,
@@ -54,7 +55,7 @@ def test_nested_input_is_copied_and_frozen():
     vertices = [Point3D(0, 0, 0)]
     geometry = PolylineGeometry("polyline", vertices, [0.0], False)
     vertices.clear()
-    assert geometry.vertices_wcs == (Point3D(0, 0, 0),)
+    assert geometry.vertices == (Point3D(0, 0, 0),)
     with pytest.raises(FrozenInstanceError):
         geometry.closed = True
     assert not hasattr(geometry, "__dict__")
@@ -64,7 +65,7 @@ def test_nested_input_is_copied_and_frozen():
 def test_vertex_limit_is_inclusive(count):
     if count == 10000:
         assert (
-            len(PolylineGeometry("polyline", (Point3D(0, 0, 0),) * count, (), False).vertices_wcs)
+            len(PolylineGeometry("polyline", (Point3D(0, 0, 0),) * count, (), False).vertices)
             == count
         )
     else:
@@ -86,7 +87,7 @@ def test_filters_reject_duplicates_and_enforce_cardinality_and_length():
 
 def test_confirmation_inference_unknown_and_fact_pointer_rules():
     confirmation = SemanticEvidenceRef("user-1", "user_confirmation", None, "confirmed")
-    fact = SemanticEvidenceRef("cad-1", "cad_fact", "/entities/A1/geometry/start_wcs", None)
+    fact = SemanticEvidenceRef("cad-1", "cad_fact", "/entities/A1/geometry/start", None)
     accepted = SemanticInterpretation(
         "i-1", ("a1",), "candidate", "confirmed", None, (confirmation,)
     )
@@ -172,7 +173,7 @@ def test_optional_payload_limit_preserves_structured_error():
         "style_name": None,
         "height": None,
         "rotation_radians": None,
-        "insertion_wcs": None,
+        "insertion": None,
     }
     with pytest.raises(ContextValidationError) as error:
         record_from_payload(EntityContext, payload)
@@ -266,3 +267,43 @@ def test_model_does_not_retain_nested_json_containers():
     assert len(result.entities) == 1
     assert result.entities[0].block.attribute_values["KEY"] == "VALUE"
     assert result.entities[0].style.true_color_rgb == (12, 34, 56)
+
+
+@pytest.mark.parametrize(
+    "kind, layout, owner",
+    [
+        ("model", None, None),
+        ("model", "Modèle", "a1"),
+        ("paper", "Layout A", None),
+        ("paper", "Layout A", "a1"),
+        ("block_definition", None, "a1"),
+    ],
+)
+def test_owner_space_accepts_observed_layouts_and_normalized_ownership(kind, layout, owner):
+    space = EntitySpace(kind, layout, owner)
+    assert space.layout_name == layout
+    assert space.owner_block_handle == (owner.upper() if owner else None)
+
+
+@pytest.mark.parametrize(
+    "kind, layout, owner",
+    [
+        ("paper", None, None),
+        ("paper", "", "A1"),
+        ("block_definition", None, None),
+        ("block_definition", "Layout A", "A1"),
+        ("block_definition", "", "A1"),
+    ],
+)
+@pytest.mark.parametrize("decode", [False, True])
+def test_owner_space_rejects_missing_or_conflicting_frame_identity(kind, layout, owner, decode):
+    from autocad_mcp.context.validation import record_from_payload
+
+    with pytest.raises(ContextValidationError) as error:
+        if decode:
+            record_from_payload(
+                EntitySpace, {"kind": kind, "layout_name": layout, "owner_block_handle": owner}
+            )
+        else:
+            EntitySpace(kind, layout, owner)
+    assert error.value.code == "INVALID_ARGUMENT"

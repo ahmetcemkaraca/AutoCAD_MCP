@@ -152,6 +152,8 @@ class EntityIdentity(_Validated):
 
 @dataclass(frozen=True, slots=True)
 class EntitySpace(_Validated):
+    """Entity frame: model WCS, named paper-layout WCS, or owner-block local coordinates."""
+
     kind: Literal["model", "paper", "block_definition"]
     layout_name: str | None
     owner_block_handle: str | None
@@ -179,23 +181,23 @@ class StyleFacts(_Validated):
 @dataclass(frozen=True, slots=True)
 class LineGeometry(_Validated):
     kind: Literal["line"]
-    start_wcs: Point3D
-    end_wcs: Point3D
+    start: Point3D
+    end: Point3D
 
 
 @dataclass(frozen=True, slots=True)
 class CircleGeometry(_Validated):
     kind: Literal["circle"]
-    center_wcs: Point3D
-    normal_wcs: Point3D
+    center: Point3D
+    normal: Point3D
     radius: float
 
 
 @dataclass(frozen=True, slots=True)
 class ArcGeometry(_Validated):
     kind: Literal["arc"]
-    center_wcs: Point3D
-    normal_wcs: Point3D
+    center: Point3D
+    normal: Point3D
     radius: float
     start_angle_radians: float
     end_angle_radians: float
@@ -204,7 +206,7 @@ class ArcGeometry(_Validated):
 @dataclass(frozen=True, slots=True)
 class PolylineGeometry(_Validated):
     kind: Literal["lwpolyline", "polyline"]
-    vertices_wcs: tuple[Point3D, ...]
+    vertices: tuple[Point3D, ...]
     bulges: tuple[float, ...]
     closed: bool
 
@@ -212,14 +214,14 @@ class PolylineGeometry(_Validated):
 @dataclass(frozen=True, slots=True)
 class PointGeometry(_Validated):
     kind: Literal["point"]
-    position_wcs: Point3D
+    position: Point3D
 
 
 @dataclass(frozen=True, slots=True)
 class BlockReferenceGeometry(_Validated):
     kind: Literal["block_reference"]
-    insertion_wcs: Point3D
-    normal_wcs: Point3D
+    insertion: Point3D
+    normal: Point3D
     rotation_radians: float
     scale_xyz: Point3D
 
@@ -256,7 +258,7 @@ class TextFacts(_Validated):
     style_name: str | None
     height: float | None
     rotation_radians: float | None
-    insertion_wcs: Point3D | None
+    insertion: Point3D | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,7 +266,7 @@ class DimensionFacts(_Validated):
     measurement: float | None
     dimension_text: str | None
     style_name: str | None
-    text_position_wcs: Point3D | None
+    text_position: Point3D | None
 
 
 RelationshipKind = Literal[
@@ -296,7 +298,7 @@ class EntityContext(_Validated):
     layer: LayerFacts
     style: StyleFacts
     geometry: GeometryFacts
-    bounding_box_wcs: Bounds3D | None
+    bounds: Bounds3D | None
     block: BlockFacts | None
     text: TextFacts | None
     dimension: DimensionFacts | None
@@ -406,7 +408,7 @@ class EntitySummary(_Validated):
     space: EntitySpace
     layer: LayerSummary
     geometry: GeometrySummary
-    bounding_box_wcs: Bounds3D | None
+    bounds: Bounds3D | None
     state_digest: str
     capability_issues: tuple[CapabilityIssue, ...]
 

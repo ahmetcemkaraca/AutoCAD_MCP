@@ -237,11 +237,11 @@ def _geometry(record: Any) -> None:
                 getattr(record.minimum, axis) <= getattr(record.maximum, axis)
                 for axis in ("x", "y", "z")
             ),
-            "Inverted WCS bounds",
+            "Inverted bounds",
         )
     if type(record).__name__ == "PolylineGeometry":
-        require(len(record.vertices_wcs) <= MAX_VERTICES, "Too many vertices", code="PAYLOAD_LIMIT")
-        require(len(record.bulges) in (0, len(record.vertices_wcs)), "Bulges must match vertices")
+        require(len(record.vertices) <= MAX_VERTICES, "Too many vertices", code="PAYLOAD_LIMIT")
+        require(len(record.bulges) in (0, len(record.vertices)), "Bulges must match vertices")
 
 
 def _filters(record: Any) -> None:
@@ -352,6 +352,14 @@ def _collection(record: Any) -> None:
 
 def _additional(record: Any) -> None:
     name = type(record).__name__
+    if name == "EntitySpace":
+        if record.kind == "paper":
+            require(bool(record.layout_name), "Paper entities require a layout name")
+        elif record.kind == "block_definition":
+            require(
+                record.owner_block_handle is not None and record.layout_name is None,
+                "Block definition entities require an owner handle and no layout",
+            )
     if name == "DrawingFingerprint":
         require(
             not record.incomplete_reasons, "Complete fingerprint cannot have incomplete reasons"

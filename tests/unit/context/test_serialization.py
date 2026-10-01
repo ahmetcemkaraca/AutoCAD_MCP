@@ -6,15 +6,43 @@ from datetime import UTC, datetime, timedelta, timezone
 from types import MappingProxyType
 
 import pytest
-from autocad_mcp.context.models import AnalyzeDrawingResult, EntityQueryFilters, PageInfo
+from autocad_mcp.context.models import (
+    AnalyzeDrawingResult,
+    ArcGeometry,
+    BlockReferenceGeometry,
+    CircleGeometry,
+    DimensionFacts,
+    EntityQueryFilters,
+    EntitySummary,
+    GeometrySummary,
+    LayerSummary,
+    LineGeometry,
+    PageInfo,
+    Point3D,
+    PointGeometry,
+    PolylineGeometry,
+    TextFacts,
+)
 from autocad_mcp.context.serialization import (
     analyze_result_to_json,
     snapshot_from_json,
     snapshot_to_json,
 )
-from autocad_mcp.context.validation import ContextValidationError
+from autocad_mcp.context.validation import ContextValidationError, record_from_payload
 
 from tests.unit.context.fixtures import CAPTURED_AT, snapshot, snapshot_payload
+
+_ENTITY_COORDINATE_RENAMES = {
+    "start_wcs": "start",
+    "end_wcs": "end",
+    "center_wcs": "center",
+    "normal_wcs": "normal",
+    "vertices_wcs": "vertices",
+    "position_wcs": "position",
+    "insertion_wcs": "insertion",
+    "text_position_wcs": "text_position",
+    "bounding_box_wcs": "bounds",
+}
 
 
 def test_exact_round_trip_and_utc_millisecond_wire_time():
@@ -109,8 +137,8 @@ def test_analyze_page_serialization_keeps_facts_and_interpretations_separate():
             "circle",
             {
                 "kind": "circle",
-                "center_wcs": {"x": 1, "y": 2, "z": 0},
-                "normal_wcs": {"x": 0, "y": 0, "z": 1},
+                "center": {"x": 1, "y": 2, "z": 0},
+                "normal": {"x": 0, "y": 0, "z": 1},
                 "radius": 3,
             },
         ),
@@ -118,8 +146,8 @@ def test_analyze_page_serialization_keeps_facts_and_interpretations_separate():
             "arc",
             {
                 "kind": "arc",
-                "center_wcs": {"x": 1, "y": 2, "z": 0},
-                "normal_wcs": {"x": 0, "y": 0, "z": 1},
+                "center": {"x": 1, "y": 2, "z": 0},
+                "normal": {"x": 0, "y": 0, "z": 1},
                 "radius": 3,
                 "start_angle_radians": 0,
                 "end_angle_radians": 1.5,
@@ -129,18 +157,18 @@ def test_analyze_page_serialization_keeps_facts_and_interpretations_separate():
             "lwpolyline",
             {
                 "kind": "lwpolyline",
-                "vertices_wcs": [{"x": 1, "y": 2, "z": 0}],
+                "vertices": [{"x": 1, "y": 2, "z": 0}],
                 "bulges": [0.5],
                 "closed": True,
             },
         ),
-        ("point", {"kind": "point", "position_wcs": {"x": 1, "y": 2, "z": 0}}),
+        ("point", {"kind": "point", "position": {"x": 1, "y": 2, "z": 0}}),
         (
             "block_reference",
             {
                 "kind": "block_reference",
-                "insertion_wcs": {"x": 1, "y": 2, "z": 0},
-                "normal_wcs": {"x": 0, "y": 0, "z": 1},
+                "insertion": {"x": 1, "y": 2, "z": 0},
+                "normal": {"x": 0, "y": 0, "z": 1},
                 "rotation_radians": 0.5,
                 "scale_xyz": {"x": 1, "y": -1, "z": 1},
             },
@@ -173,7 +201,7 @@ def test_missing_fields_and_unknown_geometry_discriminator_fail():
     for operation in ("missing", "unknown_kind"):
         payload = snapshot_payload()
         if operation == "missing":
-            del payload["entities"][0]["geometry"]["start_wcs"]
+            del payload["entities"][0]["geometry"]["start"]
         else:
             payload["entities"][0]["geometry"]["kind"] = "made_up"
         with pytest.raises(ContextValidationError):
@@ -331,3 +359,124 @@ def test_analysis_mapping_output_accepts_exact_byte_limit():
     with pytest.raises(ContextValidationError) as error:
         analyze_result_to_json(oversized)
     assert error.value.code == "PAYLOAD_LIMIT"
+
+
+@pytest.mark.parametrize(
+    "record_type, arguments, expected_fields",
+    [
+        (LineGeometry, ("line", Point3D(0, 0, 0), Point3D(1, 0, 0)), {"kind", "start", "end"}),
+        (
+            CircleGeometry,
+            ("circle", Point3D(0, 0, 0), Point3D(0, 0, 1), 1),
+            {"kind", "center", "normal", "radius"},
+        ),
+        (
+            ArcGeometry,
+            ("arc", Point3D(0, 0, 0), Point3D(0, 0, 1), 1, 0, 1),
+            {"kind", "center", "normal", "radius", "start_angle_radians", "end_angle_radians"},
+        ),
+        (
+            PolylineGeometry,
+            ("lwpolyline", (Point3D(0, 0, 0), Point3D(1, 0, 0)), (0, 0), False),
+            {"kind", "vertices", "bulges", "closed"},
+        ),
+        (
+            PolylineGeometry,
+            ("polyline", (Point3D(0, 0, 0), Point3D(1, 0, 0)), (), False),
+            {"kind", "vertices", "bulges", "closed"},
+        ),
+        (PointGeometry, ("point", Point3D(0, 0, 0)), {"kind", "position"}),
+        (
+            BlockReferenceGeometry,
+            ("block_reference", Point3D(0, 0, 0), Point3D(0, 0, 1), 0, Point3D(1, 1, 1)),
+            {"kind", "insertion", "normal", "rotation_radians", "scale_xyz"},
+        ),
+        (
+            TextFacts,
+            ("text", None, None, 1, 0, Point3D(0, 0, 0)),
+            {"plain_text", "raw_text", "style_name", "height", "rotation_radians", "insertion"},
+        ),
+        (
+            DimensionFacts,
+            (1, None, None, Point3D(0, 0, 0)),
+            {"measurement", "dimension_text", "style_name", "text_position"},
+        ),
+    ],
+)
+def test_entity_coordinate_records_emit_exact_neutral_fields_and_reject_legacy_keys(
+    record_type, arguments, expected_fields
+):
+    from autocad_mcp.context.serialization import record_to_payload
+
+    record = record_type(*arguments)
+    payload = record_to_payload(record)
+    assert payload.keys() == expected_fields
+    assert record_from_payload(record_type, payload) == record
+    obsolete = {new: old for old, new in _ENTITY_COORDINATE_RENAMES.items()}
+    legacy = {obsolete.get(key, key): value for key, value in payload.items()}
+    with pytest.raises(ContextValidationError) as error:
+        record_from_payload(record_type, legacy)
+    assert error.value.code == "INVALID_ARGUMENT"
+
+
+def test_entity_bounds_and_fact_pointers_use_neutral_fields_without_redundant_frame():
+    from autocad_mcp.context.serialization import record_to_payload
+
+    entity = snapshot().entities[0]
+    payload = record_to_payload(entity)
+    assert "bounds" in payload and "bounding_box_wcs" not in payload
+    assert payload["fact_evidence"][0]["fact_path"] == "/geometry/start"
+    assert payload["space"].keys() == {"kind", "layout_name", "owner_block_handle"}
+    assert "coordinate_frame" not in payload
+    summary = EntitySummary(
+        entity.identity, entity.space, LayerSummary(entity.layer.name),
+        GeometrySummary(entity.geometry.kind), entity.bounds, entity.state_digest,
+        entity.capability_issues,
+    )
+    for record in (entity, summary):
+        payload = record_to_payload(record)
+        assert "bounds" in payload
+        assert record_from_payload(type(record), payload) == record
+        payload["bounding_box_wcs"] = payload.pop("bounds")
+        with pytest.raises(ContextValidationError):
+            record_from_payload(type(record), payload)
+
+
+def test_document_wcs_and_query_filter_bounds_remain_explicit():
+    from autocad_mcp.context.serialization import record_to_payload
+
+    complete = snapshot()
+    context = snapshot_to_json(complete)["active_context"]
+    assert context["ucs"].keys() == {
+        "name", "origin_wcs", "x_axis_wcs", "y_axis_wcs", "is_orthonormal"
+    }
+    assert context["view"].keys() == {
+        "center_ucs", "target_wcs", "direction_wcs", "width", "height",
+        "twist_radians", "projection", "visual_style",
+    }
+    filters = EntityQueryFilters((), (), (), (), (), (), complete.entities[0].bounds)
+    assert record_to_payload(filters)["intersects_wcs"] == record_to_payload(
+        complete.entities[0].bounds
+    )
+
+
+@pytest.mark.parametrize(
+    "kind, layout, owner",
+    [
+        ("model", None, None),
+        ("model", "Modèle", "A1"),
+        ("paper", "Layout A", "A1"),
+        ("block_definition", None, "B1"),
+    ],
+)
+def test_complete_snapshot_roundtrip_preserves_owner_coordinates(kind, layout, owner):
+    payload = snapshot_payload()
+    payload["entities"][0]["space"] = {
+        "kind": kind, "layout_name": layout, "owner_block_handle": owner,
+    }
+    decoded = snapshot_from_json(payload)
+    assert decoded.entities[0].geometry.start == Point3D(0, 0, 0)
+    assert decoded.entities[0].geometry.end == Point3D(5, 6, 0)
+    assert decoded.entities[0].bounds.minimum == Point3D(0, 0, 0)
+    assert snapshot_to_json(decoded) == payload
+    assert snapshot_from_json(snapshot_to_json(decoded)) == decoded

@@ -1,0 +1,233 @@
+{
+  "schema_version": "1",
+  "pairs": [
+    {
+      "target": "python",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "iterate_handles",
+        "template_version": "1.0.0",
+        "target": "python",
+        "literals": {
+          "handles": [
+            "ABC"
+          ]
+        }
+      }
+    },
+    {
+      "target": "python",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "literal_geometry",
+        "template_version": "1.0.0",
+        "target": "python",
+        "literals": {
+          "lines": [
+            {
+              "start": [
+                0,
+                0,
+                0
+              ],
+              "end": [
+                1,
+                2,
+                3
+              ]
+            }
+          ],
+          "circles": [
+            {
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "target": "python",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "serialize_entity_facts",
+        "template_version": "1.0.0",
+        "target": "python",
+        "literals": {
+          "facts": [
+            {
+              "handle": "A",
+              "object_name": "Entity",
+              "layer": "Layer",
+              "properties": {
+                "value": "data"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "target": "autolisp",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "iterate_handles",
+        "template_version": "1.0.0",
+        "target": "autolisp",
+        "literals": {
+          "handles": [
+            "ABC"
+          ]
+        }
+      }
+    },
+    {
+      "target": "autolisp",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "literal_geometry",
+        "template_version": "1.0.0",
+        "target": "autolisp",
+        "literals": {
+          "lines": [
+            {
+              "start": [
+                0,
+                0,
+                0
+              ],
+              "end": [
+                1,
+                2,
+                3
+              ]
+            }
+          ],
+          "circles": [
+            {
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "target": "autolisp",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "serialize_entity_facts",
+        "template_version": "1.0.0",
+        "target": "autolisp",
+        "literals": {
+          "facts": [
+            {
+              "handle": "A",
+              "object_name": "Entity",
+              "layer": "Layer",
+              "properties": {
+                "value": "data"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "target": "vba",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "iterate_handles",
+        "template_version": "1.0.0",
+        "target": "vba",
+        "literals": {
+          "handles": [
+            "ABC"
+          ]
+        }
+      }
+    },
+    {
+      "target": "vba",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "literal_geometry",
+        "template_version": "1.0.0",
+        "target": "vba",
+        "literals": {
+          "lines": [
+            {
+              "start": [
+                0,
+                0,
+                0
+              ],
+              "end": [
+                1,
+                2,
+                3
+              ]
+            }
+          ],
+          "circles": [
+            {
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "target": "vba",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "example": {
+        "schema_version": "1",
+        "template_id": "serialize_entity_facts",
+        "template_version": "1.0.0",
+        "target": "vba",
+        "literals": {
+          "facts": [
+            {
+              "handle": "A",
+              "object_name": "Entity",
+              "layer": "Layer",
+              "properties": {
+                "value": "data"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -89,18 +89,18 @@ exceptions. Parsing receives JSON-compatible mappings, not source code.
 `tests/fixtures/codegen/catalogue.json`, `malicious-corpus.json`, and a concise
 `docs/advanced/codegen-threat-model.md`. No renderer, validator or registration.
 
-- [ ] Read the exact epic types/core JsonValue; test strict schemas, all bounds,
+- [x] Read the exact epic types/core JsonValue; test strict schemas, all bounds,
   normalized handles/numbers, deep immutability, deterministic bytes, unknown
   template/version/target and safe redacted failures before implementation.
-- [ ] Freeze catalogue and at least500 distinct malicious schema/literal cases
+- [x] Freeze catalogue and at least500 distinct malicious schema/literal cases
   with stable IDs and expected reject-or-literal-data classification. Cover all
   targets: quotes, delimiters/comments, newline/control/Unicode, import/eval/
   process/network/file/credential/macro/member payloads, malformed fields/types,
   nesting and byte limits. Do not count duplicate IDs/identical cases as variety.
-- [ ] Record attacker fields, forbidden sinks, per-target encoding/parser trust
+- [x] Record attacker fields, forbidden sinks, per-target encoding/parser trust
   and later validator limits. A literal accepted here is not yet safe generated
   source; the later target escaping/static gates must prove that separately.
-- [ ] Implement the minimal strict models/codec, run focused and affected/full
+- [x] Implement the minimal strict models/codec, run focused and affected/full
   portable tests once, lint/type/import checks, commit/report. Independent
   contract/security review before Task2. Corpus labels cannot be weakened by
   later renderers to hide an injection failure.

@@ -9,10 +9,12 @@ source-code presence, automated core evidence, and real AutoCAD verification.
 
 - `mcp.json` selects `uv run python -m autocad_mcp.server` as the canonical stdio command.
 - `autocad_mcp.server` is the sole registration owner for `server_status`,
-  `list_entities`, and `get_entity_info`, one status resource, and one help prompt.
+  `list_entities`, `get_entity_info`, and `generate_constrained_code`, one status resource, and one help prompt.
 - `src.server` is a protocol-safe compatibility shim with no registrations.
-- The core runtime composes a Windows adapter provider without importing COM
-  packages until a Windows adapter operation begins.
+- Default startup and code-generation requests import no adapter/context/capture/edit/COM module.
+  The basic runtime retains its existing adapter service after the first validated basic call.
+- Constrained code generation returns independently validated educational text
+  from nine fixed target/template pairs; it has no execution or persistence path.
 - The frozen four mutation schemas remain only in compatibility evidence.
 - The active dependency source is `pyproject.toml` plus `uv.lock`. The inactive
   Poetry lock and unsupported root container files are retired after clean
@@ -61,10 +63,15 @@ selection are not real-AutoCAD evidence.
 - AutoCAD COM connection lifecycle and reconnection
 - Any drawing mutation against a disposable DWG
 - Extrusion and revolution argument compatibility with AutoCAD COM
-- Surface unfolding, dimensioning, pattern optimization, code generation, or enterprise-oriented modules
+- Surface unfolding, dimensioning, pattern optimization, legacy code-generation, or enterprise-oriented modules
 - Full AutoCAD 2021, 2022, 2023, 2024, 2025, or 2026 compatibility
 
 ## Next validation gate
+
+The current C integration branch adds portable output-only code generation.
+Its [decision record](advanced/constrained-code-generation-decision.md) records
+the separate static/core evidence and pending final review/hosted CI; no AutoCAD
+or other advanced-track verification follows from it.
 
 EPIC-03 must execute and document the prepared read-only smoke test on full
 AutoCAD 2026 with an unchanged disposable drawing. Full AutoCAD 2021-2026

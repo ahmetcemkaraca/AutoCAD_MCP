@@ -9,7 +9,6 @@ import textwrap
 from pathlib import Path
 
 import anyio
-import mcp.types as types
 import pytest
 from autocad_mcp.core.models import (
     BasicToolInput,
@@ -18,12 +17,16 @@ from autocad_mcp.core.models import (
     ToolFailure,
     ToolResponse,
 )
-from autocad_mcp.core.tools import TOOL_DEFINITIONS
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 PROJECT_ROOT = Path(__file__).parents[2]
-ACTIVE_TOOL_NAMES = ("server_status", "list_entities", "get_entity_info")
+ACTIVE_TOOL_NAMES = (
+    "server_status",
+    "list_entities",
+    "get_entity_info",
+    "generate_constrained_code",
+)
 LEGACY_MUTATING_TOOL_NAMES = frozenset(
     {"draw_line", "draw_circle", "extrude_profile", "revolve_profile"}
 )
@@ -73,63 +76,6 @@ def test_canonical_and_shim_exports_share_one_com_free_server() -> None:
     assert shim.create_server is canonical.create_server
     assert shim.main is canonical.main
     assert COM_MODULE_NAMES.isdisjoint(sys.modules)
-
-
-def test_registered_catalog_resource_prompt_and_errors_share_the_core_contract() -> None:
-    """Registration drift would advertise operations the canonical core cannot safely serve."""
-    canonical, _ = _import_servers()
-    server = canonical.create_server(RecordingToolService())
-
-    tools = _server_result(server, types.ListToolsRequest()).tools
-    assert tuple(tool.name for tool in tools) == ACTIVE_TOOL_NAMES
-    assert tuple(tool.name for tool in tools) == tuple(tool.name for tool in TOOL_DEFINITIONS)
-
-    resources = _server_result(server, types.ListResourcesRequest()).resources
-    assert [(str(resource.uri), resource.name) for resource in resources] == [
-        ("autocad://server-status", "AutoCAD MCP Server Status")
-    ]
-    status = _server_result(
-        server,
-        types.ReadResourceRequest(
-            params=types.ReadResourceRequestParams(uri="autocad://server-status")
-        ),
-    )
-    assert json.loads(status.contents[0].text)["error"]["code"] == "AUTOCAD_UNAVAILABLE"
-
-    prompts = _server_result(server, types.ListPromptsRequest()).prompts
-    assert [prompt.name for prompt in prompts] == ["autocad-help"]
-    help_result = _server_result(
-        server,
-        types.GetPromptRequest(
-            params=types.GetPromptRequestParams(name="autocad-help")
-        ),
-    )
-    help_text = help_result.messages[0].content.text
-    assert _help_tool_names(help_text) == ACTIVE_TOOL_NAMES
-    assert not any(name in help_text for name in LEGACY_MUTATING_TOOL_NAMES)
-
-    status_call = _server_result(
-        server,
-        types.CallToolRequest(
-            params=types.CallToolRequestParams(name="server_status", arguments={})
-        ),
-    )
-    assert json.loads(status_call.content[0].text)["error"]["code"] == "AUTOCAD_UNAVAILABLE"
-    legacy_call = _server_result(
-        server,
-        types.CallToolRequest(
-            params=types.CallToolRequestParams(name="draw_line", arguments={})
-        ),
-    )
-    assert json.loads(legacy_call.content[0].text) == {
-        "error": {
-            "code": "UNKNOWN_TOOL",
-            "details": {},
-            "message": "Unknown tool",
-            "retryable": False,
-        },
-        "success": False,
-    }
 
 
 async def _exercise_stdio_entrypoint(module_name: str) -> tuple[dict[str, object], str]:

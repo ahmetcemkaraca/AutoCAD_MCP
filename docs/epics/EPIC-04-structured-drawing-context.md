@@ -36,7 +36,7 @@ Users and model clients can reason from CAD facts instead of screen appearance o
 - Vision inference, a vision provider, a provider API key, or server-side image interpretation.
 - Architectural labels such as wall, room, door, or window. Version 1 may carry client-confirmed or later-stage interpretations, but does not generate domain semantics.
 - Complete support for every AutoCAD entity class or every custom object. Unsupported members remain visible as capability issues.
-- A full in-memory replica of the AutoCAD object model, database-event subscriptions, or a long-lived snapshot cache.
+- A full in-memory replica of the AutoCAD object model or a long-lived snapshot cache. A narrowly scoped native metadata observer may subscribe to lifecycle/mutation events solely to supply trustworthy document-session and covered-change witnesses; it must not capture entity facts or mutate drawings.
 - Adding context members directly to EPIC-03's four-method read-only/status `AutoCADAdapter` or importing Windows adapter classes from context domain/service code.
 - A cryptographic guarantee that every possible DWG database object is unchanged. Fingerprints cover the facts enumerated by this version and publish their completeness.
 - AutoCAD LT, Linux-hosted AutoCAD, macOS, or real-installation claims for AutoCAD 2021-2025.
@@ -60,7 +60,7 @@ These EPIC-03 names are the base integration boundary. CTX-C then adds and freez
 - Analysis happens only in response to `query_entities`, `get_entity_context`, or `analyze_drawing`; it is not a startup or connection side effect.
 - Pure model, validation, fingerprint, pagination, and relationship modules do not import Windows COM packages.
 - `adapter/context_protocol.py` and `adapter/fake_context.py` are pure Python. Among EPIC-04 files, only `adapter/windows_context.py` may use COM-facing `AutoCADSession` objects, and it does so exclusively through an injected EPIC-03 `WindowsSessionManager`.
-- All coordinates are WCS unless a field name explicitly says `ucs` or `image`.
+- Entity coordinates use the owner frame discriminated by `EntitySpace`, as defined by [decision 0005](../decisions/0005-owner-scoped-entity-coordinates.md): model WCS, named paper-layout WCS, or owner-block-local. Document UCS/view fields retain their explicit WCS/UCS meaning.
 - Handles are uppercase hexadecimal strings without `0x`; they are persistent only within the lifetime of that entity in that drawing.
 - `ObjectID` is diagnostic session data. It is excluded from document identity, content fingerprints, cursors, durable references, and semantic subject references.
 - Missing optional values are accompanied by `CapabilityIssue`; the serializer does not silently drop a requested property.
@@ -228,21 +228,21 @@ class StyleFacts:
 @dataclass(frozen=True, slots=True)
 class LineGeometry:
     kind: Literal["line"]
-    start_wcs: Point3D
-    end_wcs: Point3D
+    start: Point3D
+    end: Point3D
 
 @dataclass(frozen=True, slots=True)
 class CircleGeometry:
     kind: Literal["circle"]
-    center_wcs: Point3D
-    normal_wcs: Point3D
+    center: Point3D
+    normal: Point3D
     radius: float
 
 @dataclass(frozen=True, slots=True)
 class ArcGeometry:
     kind: Literal["arc"]
-    center_wcs: Point3D
-    normal_wcs: Point3D
+    center: Point3D
+    normal: Point3D
     radius: float
     start_angle_radians: float
     end_angle_radians: float
@@ -250,20 +250,20 @@ class ArcGeometry:
 @dataclass(frozen=True, slots=True)
 class PolylineGeometry:
     kind: Literal["lwpolyline", "polyline"]
-    vertices_wcs: tuple[Point3D, ...]
+    vertices: tuple[Point3D, ...]
     bulges: tuple[float, ...]
     closed: bool
 
 @dataclass(frozen=True, slots=True)
 class PointGeometry:
     kind: Literal["point"]
-    position_wcs: Point3D
+    position: Point3D
 
 @dataclass(frozen=True, slots=True)
 class BlockReferenceGeometry:
     kind: Literal["block_reference"]
-    insertion_wcs: Point3D
-    normal_wcs: Point3D
+    insertion: Point3D
+    normal: Point3D
     rotation_radians: float
     scale_xyz: Point3D
 
@@ -291,14 +291,14 @@ class TextFacts:
     style_name: str | None
     height: float | None
     rotation_radians: float | None
-    insertion_wcs: Point3D | None
+    insertion: Point3D | None
 
 @dataclass(frozen=True, slots=True)
 class DimensionFacts:
     measurement: float | None
     dimension_text: str | None
     style_name: str | None
-    text_position_wcs: Point3D | None
+    text_position: Point3D | None
 
 RelationshipKind = Literal[
     "same_owner", "bbox_intersects", "bbox_contains", "bbox_within",
@@ -327,7 +327,7 @@ class EntityContext:
     layer: LayerFacts
     style: StyleFacts
     geometry: GeometryFacts
-    bounding_box_wcs: Bounds3D | None
+    bounds: Bounds3D | None
     block: BlockFacts | None
     text: TextFacts | None
     dimension: DimensionFacts | None
@@ -412,7 +412,7 @@ class AnalyzeDrawingResult:
 
 `SnapshotMaterialization.canonical_byte_count` is the UTF-8 canonical serialized size with that single count field omitted, avoiding a self-referential length. `SnapshotBuilder` and `SnapshotRepository` also enforce the 32 MiB limit against the actual full stored bytes including the count field.
 
-`EntitySummary`, used by `query_entities`, is the exact subset `identity`, `space`, `layer.name`, `geometry.kind`, `bounding_box_wcs`, `state_digest`, and `capability_issues`. `EntityContextBatch` contains `schema_version`, the current adapter revision-token digest, `document`, ordered `entities`, and top-level `capability_issues`; it is a bounded live read, not a `DrawingSnapshot`.
+`EntitySummary`, used by `query_entities`, is the exact subset `identity`, `space`, `layer.name`, `geometry.kind`, `bounds`, `state_digest`, and `capability_issues`. `EntityContextBatch` contains `schema_version`, the current adapter revision-token digest, `document`, ordered `entities`, and top-level `capability_issues`; it is a bounded live read, not a `DrawingSnapshot`.
 
 ### Document identity semantics
 
@@ -623,6 +623,7 @@ class AdapterEntityReadRequest:
     layout_names: tuple[str, ...]
     entity_types: tuple[str, ...]
     layer_names: tuple[str, ...]
+    layer_globs: tuple[str, ...]
     handles: tuple[str, ...]
     intersects_wcs: tuple[float, float, float, float, float, float] | None
     include: ContextInclude
@@ -642,7 +643,7 @@ class AdapterEntityFacts:
     layer: Mapping[str, JsonValue]
     style: Mapping[str, JsonValue]
     geometry: Mapping[str, JsonValue]
-    bounding_box_wcs: tuple[float, float, float, float, float, float] | None
+    bounds: tuple[float, float, float, float, float, float] | None
     block: Mapping[str, JsonValue] | None
     text: Mapping[str, JsonValue] | None
     dimension: Mapping[str, JsonValue] | None

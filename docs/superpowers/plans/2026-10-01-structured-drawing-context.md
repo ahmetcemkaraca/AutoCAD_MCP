@@ -171,14 +171,34 @@ retain at most eight most-recent expiry markers, never evict a live snapshot.
 - [ ] Test and implement complete-only insertion, matching counts/bytes, same-ID collisions, immutable reads, exact TTL/count/byte limits and bounded expiry tombstones. Include concurrent final-slot insertion, idempotency without expiry refresh, expired lookup after a long idle interval, expiry accessor behavior, preserved raw Unicode values with normalized identity equality, and unchanged original metadata on idempotent reinsert.
 - [ ] Verify focused tests and typing; commit.
 
+### Task 3B: Correct owner-frame coordinate contract before adapters
+
+**Files:** context models/validation and affected strict-codec/fingerprint tests,
+shared fixtures and canonical epic examples. No adapter/service implementation.
+
+**Contract:** [Decision 0005](../../decisions/0005-owner-scoped-entity-coordinates.md)
+replaces entity-only WCS field names with owner-frame-neutral names. Existing
+`EntitySpace` supplies the discriminator; do not add redundant frame metadata.
+Enforce paper layout and block owner constraints; retain document view/UCS WCS
+names and explicitly WCS query bounds. This is an unreleased version-1 contract
+correction. Keep stable identity exclusions, session retention and byte limits.
+
+- [ ] Add red regressions for owner-space invariants, renamed exact serialized
+  fields/JSON pointers, rejection of obsolete keys, frame-dependent identity,
+  and unchanged document WCS semantics. Update existing affected fixtures/tests.
+- [ ] Implement the minimal model/validation changes, update downstream epic
+  field examples, run context/full portable tests plus lint/types, commit and
+  independently review before Task4. Spatial filter/relation behavior is owned
+  by Task4/5 and must consume these exact owner-frame rules.
+
 ### Task 4: Additive context adapters and fact mapping (CTX-03)
 
 **Files:** The CTX-C paths enumerated by the spec, including `context_protocol.py`, `fake_context.py`, `windows_context.py`, `context/adapter_reader.py`, their tests, and raw entity fixture.
 
-**Interfaces:** Exact pure records, `ContextAutoCADAdapter`, provider interfaces, and mapper functions from the spec. Keep the base protocol unchanged. Freeze a trustworthy covered-facts revision-token strategy before coding.
+**Interfaces:** Exact pure records, `ContextAutoCADAdapter`, provider interfaces, and mapper functions from the spec. Keep the base protocol unchanged. Use the separate native-context-observer prerequisite for trustworthy lifetime/revision witnesses. Read the recorded Task4 preflight report and implement every supported mapping; observer loss fails closed. Add the missing `layer_globs` tuple to `AdapterEntityReadRequest` so public glob filtering happens before paging.
 
 - [ ] Test pure protocol/fake bounds and injected Windows-session extraction, revision consistency, required/optional failures and cleanup before implementation.
-- [ ] Implement WCS conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.
+- [ ] Implement OCS-to-owner-frame conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.
 - [ ] Verify adapter/mapper tests, import isolation, type checks; commit the frozen extension.
 
 ### Task 5: Complete builder, relationships, and services (CTX-04)

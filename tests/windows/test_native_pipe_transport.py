@@ -1,6 +1,5 @@
 """Real Windows local-pipe APIs against the BCL fake host; no AutoCAD/drawing access."""
 
-import json
 import shutil
 import subprocess
 import sys
@@ -9,6 +8,8 @@ from pathlib import Path
 import pytest
 from autocad_mcp.adapter.native_revision import NativeRevisionError
 from autocad_mcp.adapter.windows_native_revision import WindowsNativeRevisionSource
+
+from tests.windows.native_pipe_harness import read_ready, stop_owned_process
 
 pytestmark = pytest.mark.skipif(
     sys.platform != "win32", reason="requires real Windows named-pipe APIs"
@@ -36,14 +37,10 @@ def pipe_host(request):
         text=True,
     )
     try:
-        assert process.stdout is not None
-        metadata = json.loads(process.stdout.readline())
+        metadata = read_ready(process, timeout=5)
         yield metadata
     finally:
-        if process.stdin is not None:
-            process.stdin.write("stop\n")
-            process.stdin.flush()
-        _, error = process.communicate(timeout=10)
+        _, error = stop_owned_process(process, timeout=10)
         assert process.returncode == 0, error
 
 

@@ -8,6 +8,11 @@ internal static class PipeFixture
 {
     [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)] private static extern IntPtr CreateWindowExW(uint ex,string cls,string title,uint style,int x,int y,int w,int h,IntPtr parent,IntPtr menu,IntPtr module,IntPtr parameter);
     [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);
+    internal static void AssertNoAbandoned(UiWitnessQueue queue)
+    {
+        if(queue.Count!=0) throw new InvalidOperationException("transport retained abandoned work");
+        queue.Drain(expected=>{throw new InvalidOperationException("abandoned sample executed");});
+    }
     internal static void Run(bool stall)
     {
         if(Environment.OSVersion.Platform!=PlatformID.Win32NT) throw new Exception("Windows fixture requires Windows");
@@ -33,8 +38,8 @@ internal static class PipeFixture
                     if(!stall) queue.Drain(expected=>{samples++;return state.Sample(new[]{new ObservedDocument(1,2,unchecked((ulong)hwnd.ToInt64()),null,true)},1,false,expected);});
                     Thread.Sleep(5);
                 }
+                if(stall) {Thread.Sleep(2100);AssertNoAbandoned(queue);if(samples!=0) throw new Exception("stalled request was sampled");}
                 queue.Dispose();
-                if(stall) {queue.Drain(expected=>{samples++;throw new Exception("abandoned sample executed");});if(samples!=0) throw new Exception("stalled request was sampled");}
             }
         }
         finally {DestroyWindow(hwnd);}

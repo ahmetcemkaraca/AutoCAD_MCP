@@ -58,5 +58,8 @@ Check(attached==0 && removed==2);hooks.Dispose();Check(removed==2);
 var entered=new ManualResetEventSlim(); var cancelledPromptly=new ManualResetEventSlim(); var slow=new UiWitnessQueue(()=>0); var slowTicket=slow.Enqueue(1234,2,CancellationToken.None);
 var cancelling=new Thread(()=>{entered.Wait();slowTicket.Dispose();cancelledPromptly.Set();});cancelling.Start();
 slow.Drain(hwnd=>{entered.Set();Check(cancelledPromptly.Wait(200));return first;});cancelling.Join();Error("TIMEOUT",()=>slowTicket.Task.GetAwaiter().GetResult());slow.Dispose();
+var retainedQueue=new UiWitnessQueue(()=>3);var retainedTicket=retainedQueue.Enqueue(1234,5,CancellationToken.None);
+bool retentionDetected=false;try {PipeFixture.AssertNoAbandoned(retainedQueue);}catch(InvalidOperationException) {retentionDetected=true;}Check(retentionDetected);
+retainedTicket.Dispose();PipeFixture.AssertNoAbandoned(retainedQueue);Check(retainedQueue.Count==0);retainedQueue.Dispose();
 Console.WriteLine("Native host/queue pure checks passed: "+checks);
 }}

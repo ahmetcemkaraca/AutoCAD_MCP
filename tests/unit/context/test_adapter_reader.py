@@ -168,3 +168,27 @@ def test_block_scale_and_definition_provenance_names_actual_planned_activex_memb
     assert evidence["/geometry/scale_xyz/y"] == "YScaleFactor"
     assert evidence["/geometry/scale_xyz/z"] == "ZScaleFactor"
     assert evidence["/block/definition_handle"] == "Blocks.Item(Name).Handle"
+
+
+@pytest.mark.parametrize("issue_handle", ["A1", "50", None])
+def test_unknown_proxy_geometry_issue_requires_same_entity_or_whole_operation(issue_handle):
+    _, entities = fixture_records()
+    raw = next(item for item in entities if item.handle == "50")
+    issue = AdapterContextIssue(
+        "UNSUPPORTED_CAPABILITY", "geometry", None, issue_handle, "Synthetic proxy geometry"
+    )
+    raw = replace(
+        raw,
+        object_name="AcDbProxyEntity",
+        geometry={"kind": "unsupported", "object_name": "AcDbProxyEntity"},
+        issues=(issue,),
+    )
+    if issue_handle == "A1":
+        with pytest.raises(ContextValidationError) as error:
+            map_entity_context(raw)
+        assert error.value.code == "UNSUPPORTED_CAPABILITY"
+    else:
+        mapped = map_entity_context(raw)
+        assert mapped.geometry.kind == "unsupported"
+        assert mapped.geometry.object_name == "AcDbProxyEntity"
+        assert mapped.state_digest == entity_state_digest(mapped)

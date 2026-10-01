@@ -206,7 +206,10 @@ def map_entity_context(raw: AdapterEntityFacts) -> EntityContext:
             code="UNSUPPORTED_CAPABILITY",
         )
         require(
-            any(issue.capability == "geometry" for issue in raw.issues),
+            any(
+                issue.capability == "geometry" and issue.entity_handle in (None, raw.handle)
+                for issue in raw.issues
+            ),
             "Unsupported geometry requires capability evidence",
             code="UNSUPPORTED_CAPABILITY",
         )

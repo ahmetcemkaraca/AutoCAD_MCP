@@ -168,8 +168,8 @@ Tombstone expiry is the original record expiry plus its configured tombstone
 TTL, not the time a late caller notices expiration. Purge before every operation;
 retain at most eight most-recent expiry markers, never evict a live snapshot.
 
-- [ ] Test and implement complete-only insertion, matching counts/bytes, same-ID collisions, immutable reads, exact TTL/count/byte limits and bounded expiry tombstones. Include concurrent final-slot insertion, idempotency without expiry refresh, expired lookup after a long idle interval, expiry accessor behavior, preserved raw Unicode values with normalized identity equality, and unchanged original metadata on idempotent reinsert.
-- [ ] Verify focused tests and typing; commit.
+- [x] Test and implement complete-only insertion, matching counts/bytes, same-ID collisions, immutable reads, exact TTL/count/byte limits and bounded expiry tombstones. Include concurrent final-slot insertion, idempotency without expiry refresh, expired lookup after a long idle interval, expiry accessor behavior, preserved raw Unicode values with normalized identity equality, and unchanged original metadata on idempotent reinsert.
+- [x] Verify focused tests and typing; commit.
 
 ### Task 3B: Correct owner-frame coordinate contract before adapters
 

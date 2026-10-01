@@ -344,7 +344,7 @@ uv run ruff check src/autocad_mcp/advanced/unfolding/solver.py tests/unit/advanc
 
 ```bash
 uv run pytest tests/unit/advanced/unfolding/test_metrics.py tests/unit/advanced/unfolding/test_verifier_adversarial.py -q
-uv run python tests/performance/measure_unfolding.py --faces 500 2000 4000 --seed 9041 --output-dir docs/advanced/evidence/unfolding
+uv run python tests/performance/measure_unfolding.py --host-label linux-x64-reference-host --output-dir docs/advanced/evidence/unfolding/performance
 ```
 
 #### E09-U04: Pure-data service, MCP contract, and registration decision

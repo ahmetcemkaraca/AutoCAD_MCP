@@ -122,7 +122,11 @@ def test_nonpython_executable_tokens_are_checked_inside_the_function(
     assert original in source and validate_source(recipe, source.replace(original, changed))
 
 
-@pytest.mark.parametrize("source", [None, 12, "(", "(" * 65536, "x" * 65537, "\ud800", "\0"])
+@pytest.mark.parametrize(
+    "source",
+    [None, 12, "(", "(" * 65536, "x" * 65537, "\ud800", "\0"],
+    ids=["none", "number", "unclosed", "deep", "oversize", "surrogate", "nul"],
+)
 def test_malformed_or_excessive_source_is_fixed_redacted_error(source: object) -> None:
     findings = validate_source(decode_recipe(request()), source)  # type: ignore[arg-type]
     assert len(findings) == 1 and findings[0].severity == "error"

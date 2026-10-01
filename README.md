@@ -11,8 +11,8 @@ An experimental Model Context Protocol bridge for automating full AutoCAD on Win
 ## Project direction
 
 The canonical stdio server is `autocad_mcp.server`. Its active catalog is the
-four non-mutating tools `server_status`, `list_entities`, `get_entity_info`, and
-`generate_constrained_code`; `src.server` is a protocol-safe compatibility shim, not a
+five non-mutating tools `server_status`, `list_entities`, `get_entity_info`,
+`generate_constrained_code`, and `unfold_surface`; `src.server` is a protocol-safe compatibility shim, not a
 second implementation. The pure MCP contract has Linux automated evidence
 with unavailable or injected services. It is not evidence of a Windows COM or
 AutoCAD connection. See the [roadmap](docs/roadmap.md) for acceptance criteria
@@ -23,6 +23,12 @@ bounded literal recipes. It never executes or saves that text and needs no
 AutoCAD connection. The complete SDK `CallToolResult` body is limited to 65,536
 UTF-8 bytes, including nested JSON text escaping. See the
 [code-generation decision and usage](docs/advanced/constrained-code-generation-decision.md).
+
+`unfold_surface` accepts a complete caller-supplied triangular mesh and explicit
+seams/units. It returns independently verified 2D geometry without reading or
+editing AutoCAD. Numerical work runs in a cooperative worker thread; the actual
+SDK result body is bounded to 4 MiB. See the
+[surface-unfolding decision](docs/advanced/surface-unfolding-decision.md).
 
 ## Current limitations
 

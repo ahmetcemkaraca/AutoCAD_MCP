@@ -10,7 +10,7 @@ contract, all nine renderer goldens and the independently authored validator.
 ## Registered output-only contract
 
 The canonical server exposes `generate_constrained_code` alongside
-`server_status`, `list_entities` and `get_entity_info`. It takes the direct,
+`server_status`, `list_entities`, `get_entity_info` and `unfold_surface`. It takes the direct,
 closed recipe object, without a `recipe` wrapper:
 
 ```json
@@ -92,7 +92,9 @@ The 576 literal-data cases and 297 original rejections remain covered. Fresh
 real-stdio tests exercise all nine pairs with the unmodified default runtime,
 adapter/COM import guards and request-scoped file/process/network/environment/
 evaluation tripwires. AST-only parsing is explicitly allowed. Canonical
-manifest, registered catalog, help and reported four-tool count agree; injected
+manifest, registered catalog, help and reported five-tool count now agree after
+the U integration; the historical immutable C evidence retains its four-tool
+snapshot. C's source/artifact/result-body bytes and limit remain unchanged. Injected
 basic services still receive only the same three immutable basic request types.
 
 Final Linux verification: the affected C/core/stdio suites passed **321 tests

@@ -133,3 +133,8 @@ def test_parse_tool_input_distinguishes_unknown_tools_from_invalid_arguments(nam
 def test_basic_parser_never_converts_a_codegen_name_to_an_entity_read() -> None:
     with pytest.raises(UnknownToolName):
         parse_tool_input("generate_constrained_code", {"entity_id": 7})
+
+
+def test_basic_parser_never_converts_unfolding_to_an_entity_read() -> None:
+    with pytest.raises(UnknownToolName):
+        parse_tool_input("unfold_surface", {"entity_id": 7})

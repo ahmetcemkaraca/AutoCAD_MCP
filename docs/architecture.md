@@ -15,6 +15,7 @@ autocad_mcp.server
     |-- closed schemas and structured errors
     |-- server_status / list_entities / get_entity_info
     |-- generate_constrained_code -> pure recipe/render/independent-validation pipeline
+    |-- unfold_surface -> cooperative caller-mesh service/independent numerical verifier
     |-- autocad://server-status resource and autocad-help prompt
     v
 Lazy basic service -> AdapterToolService -> delayed Windows adapter provider
@@ -31,7 +32,7 @@ contract, and stdio contracts are tested without COM on Linux; this does not
 prove a connection to AutoCAD or support for Linux as an AutoCAD runtime.
 
 The active catalog contains `server_status`, `list_entities`, `get_entity_info`,
-and output-only `generate_constrained_code`. Code-generation calls bypass the
+output-only `generate_constrained_code`, and pure-data `unfold_surface`. Both bypass the
 basic service and do not import adapter/context/capture/edit/COM modules. The
 default runtime defers all adapter imports until a validated basic call. The
 historical mutation schemas are retained as compatibility
@@ -104,6 +105,19 @@ imports, evaluates or applies the generated text. The server bounds the actual
 SDK `CallToolResult` body to 65,536 UTF-8 bytes after nested JSON escaping;
 JSON-RPC request IDs remain transport metadata outside that body. See the
 [C decision record](advanced/constrained-code-generation-decision.md).
+
+### Pure surface unfolding
+
+`unfold_surface` delegates once to the accepted bounded service using
+`asyncio.to_thread`. An Event-backed cancellation probe carries transport
+cancellation into the service's shared budget; the awaiting call stays cancelled
+and cannot publish a late layout. Interruption is cooperative, not preemptive.
+Results preserve the canonical input digest, units, versions and independently
+verified metrics/corners. Fixed failures expose no partial geometry or digest.
+The SDK body guard shares only serialization logic with C: U's limit is 4 MiB,
+and C retains its existing 65,536-byte limit and refusal bytes. This path needs
+no context, capture, edit or AutoCAD service. See the
+[U decision](advanced/surface-unfolding-decision.md).
 
 ### Structured drawing context
 

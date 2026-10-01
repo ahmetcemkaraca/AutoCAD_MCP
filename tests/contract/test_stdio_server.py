@@ -26,6 +26,7 @@ ACTIVE_TOOL_NAMES = (
     "list_entities",
     "get_entity_info",
     "generate_constrained_code",
+    "unfold_surface",
 )
 LEGACY_MUTATING_TOOL_NAMES = frozenset(
     {"draw_line", "draw_circle", "extrude_profile", "revolve_profile"}

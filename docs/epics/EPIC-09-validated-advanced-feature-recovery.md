@@ -275,6 +275,25 @@ UnfoldingResponse = UnfoldingResult | BoundedExecutionFailure
 
 The solver places a root triangle and propagates adjacent triangles by rigid edge-preserving transforms. It returns overlap as an explicit metric/failure; it does not move islands heuristically to conceal overlaps. Canonical results are deterministic for the same normalized input, seam set, root, and solver version.
 
+Version-1 layout clarification (2026-10-01): all returned points share a global
+2D frame. Disconnected rigid charts receive one deterministic initial horizontal
+strip placement, with the requested-root island first and the others ordered by
+minimum source face ID. The first root anchor is preserved; subsequent chart
+bounds are placed after the preceding maximum x with a positive scale-relative
+gap and minimum y at zero. This initial placement is not sheet nesting or an
+overlap-driven retry. The independent verifier checks all triangles globally,
+including distinct islands; rejected layouts are never repositioned to conceal
+an overlap. `faces_2d` is ordered by source face ID and indexes `vertices_2d`;
+indexed source vertex IDs preserve each original oriented face. Seam cuts may
+produce multiple output corners with the same source vertex/island identity,
+distinguished by output vertex index.
+
+For multiple charts, the gap is `1e-6` times the largest pre-placement chart
+bounding-box x/y span. It must be finite and positive, and placement arithmetic
+must produce finite coordinates with a representable positive separation.
+Otherwise the operation returns a structured numerical failure; it never
+clamps values or returns a partial layout. A single chart needs no gap.
+
 ### Track U gates
 
 - Published fixtures include planar grids, cylinders/prisms, cones/frusta, branched strips, multiple islands, reversed faces, non-manifold edges, degeneracies, overlaps, and unsupported curved surfaces.
@@ -325,7 +344,7 @@ uv run ruff check src/autocad_mcp/advanced/unfolding/solver.py tests/unit/advanc
 
 ```bash
 uv run pytest tests/unit/advanced/unfolding/test_metrics.py tests/unit/advanced/unfolding/test_verifier_adversarial.py -q
-uv run python tests/performance/measure_unfolding.py --faces 500 2000 4000 --seed 9041 --output-dir docs/advanced/evidence/unfolding
+uv run python tests/performance/measure_unfolding.py --host-label linux-x64-reference-host --output-dir docs/advanced/evidence/unfolding/performance
 ```
 
 #### E09-U04: Pure-data service, MCP contract, and registration decision

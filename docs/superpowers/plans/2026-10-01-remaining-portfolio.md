@@ -25,8 +25,8 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Verifier accepted; solver implemented under review; maximum shared-budget repair remains |
-| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Recipe/corpus accepted after fixes; literal rendering in progress |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Solver/verifier and maximum shared-budget repair accepted; service/measurement work in progress |
+| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Recipe/corpus and nine renderers accepted; independent validator/service in progress |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
 | Final integration | Full portable suite, import/schema/manifest agreement, independent reviews, focused PRs, current docs and a single ordered operator test guide | Pending |
@@ -108,3 +108,25 @@ Inspect this ledger, Git worktrees, branch history, each active epic plan, and t
   in progress. No host/pipe/AutoCAD compatibility result is claimed.
 - No additional PR was merged in this checkpoint. Main remains599e8a9, PR4 is
   separate, and the complete remaining portfolio above is still authorized.
+
+## Current implementation checkpoint
+
+- EPIC-04 projection/cursor prerequisite is implemented at d937fe7 and awaiting
+  independent review: 49 focused /249 context /478 full tests passed,9 skipped.
+  Projected facts cannot enter complete-state boundaries; opaque cursors now
+  use handles and fit maximum supported layout/handle cases without changing
+  canonical entity order. Raw adapters/builder/tools remain unfinished.
+- EPIC-09U solver and repaired verifier are accepted. The exact maximum now
+  completes shared work at649,674/1,000,000 with unchanged numerical metrics.
+  Full pure service, final result sizing and real-clock measurements are active;
+  no registration decision has been made.
+- EPIC-09C all nine literal renderers/goldens are accepted at c76f647:100 focused
+  /380 full tests,9 skipped. A different author is implementing independent
+  Python/AutoLISP/VBA validation and the output-only service before MCP work.
+- Native observer pure state/protocol is accepted at b2abd8a:90 native checks,
+  69 Python focused /298 full tests,9 skips, and three locked BCL builds.
+  Actual SDK callback compile probes also pass on all three runtime profiles.
+  Host events/authenticated Windows transport are now being implemented;
+  Windows pipe and real AutoCAD acceptance are separate, pending gates.
+- The goal is still active; no remaining epic or operator test obligation has
+  been removed, and main/merged PR status is unchanged.

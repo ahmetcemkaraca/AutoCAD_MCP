@@ -6,7 +6,21 @@ from autocad_mcp.adapter.capabilities import (
     AdapterCapabilityIssueCode,
     AdapterCapabilityReport,
 )
+from autocad_mcp.adapter.context_protocol import (
+    CONTEXT_ADAPTER_SCHEMA_VERSION,
+    AdapterContextIssue,
+    AdapterDocumentContext,
+    AdapterDocumentIdentity,
+    AdapterDocumentRevisionToken,
+    AdapterEntityFacts,
+    AdapterEntityPage,
+    AdapterEntityReadRequest,
+    ContextAdapterProvider,
+    ContextAutoCADAdapter,
+    ContextInclude,
+)
 from autocad_mcp.adapter.fake import FakeAutoCADAdapter
+from autocad_mcp.adapter.fake_context import FakeContextAutoCADAdapter, StaticContextAdapterProvider
 from autocad_mcp.adapter.protocol import (
     AdapterError,
     AdapterErrorCode,
@@ -22,6 +36,19 @@ from autocad_mcp.adapter.provider import (
 )
 
 __all__ = [
+    "CONTEXT_ADAPTER_SCHEMA_VERSION",
+    "AdapterContextIssue",
+    "AdapterDocumentContext",
+    "AdapterDocumentIdentity",
+    "AdapterDocumentRevisionToken",
+    "AdapterEntityFacts",
+    "AdapterEntityPage",
+    "AdapterEntityReadRequest",
+    "ContextAdapterProvider",
+    "ContextAutoCADAdapter",
+    "ContextInclude",
+    "FakeContextAutoCADAdapter",
+    "StaticContextAdapterProvider",
     "AdapterCapability",
     "AdapterCapabilityIssue",
     "AdapterCapabilityIssueCode",

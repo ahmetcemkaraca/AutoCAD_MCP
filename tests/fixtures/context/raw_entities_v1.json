@@ -1,0 +1,466 @@
+{
+  "fixture_kind": "Synthetic portable adapter records; not AutoCAD observations",
+  "document": {
+    "schema_version": "1.0",
+    "identity": {
+      "display_name": "synthetic-context.dwg",
+      "full_path": "C:\\synthetic\\context.dwg",
+      "database_fingerprint_guid": "11111111-2222-4333-8444-555555555555",
+      "session_document_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "is_saved": true,
+      "is_read_only": true
+    },
+    "display_space": "model",
+    "active_layout_name": "Model",
+    "viewport_object_id": null,
+    "ucs": {
+      "name": null,
+      "origin_wcs": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "x_axis_wcs": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "y_axis_wcs": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "is_orthonormal": true
+    },
+    "view": {
+      "center_ucs": {
+        "x": 0,
+        "y": 0
+      },
+      "target_wcs": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "direction_wcs": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "width": 100,
+      "height": 100,
+      "twist_radians": 0,
+      "projection": "parallel",
+      "visual_style": null
+    },
+    "units": {
+      "insunits_code": 4,
+      "name": "millimeters",
+      "meters_per_unit": 0.001
+    },
+    "issues": []
+  },
+  "sessions": [
+    {
+      "session_document_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "object_ids": {
+        "10": 1001,
+        "20": 1002,
+        "30": 1003,
+        "40": 1004,
+        "50": 1005,
+        "60": 1006
+      }
+    },
+    {
+      "session_document_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "object_ids": {
+        "10": 11001,
+        "20": 11002,
+        "30": 11003,
+        "40": 11004,
+        "50": 11005,
+        "60": 11006
+      }
+    }
+  ],
+  "entities": [
+    {
+      "schema_version": "1.0",
+      "handle": "40",
+      "object_id": 1004,
+      "object_name": "AcDbBlockReference",
+      "dxf_name": "INSERT",
+      "space_kind": "model",
+      "layout_name": "Model",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "Blocks",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": true
+      },
+      "geometry": {
+        "kind": "block_reference",
+        "insertion": {
+          "x": 5,
+          "y": 5,
+          "z": 0
+        },
+        "normal": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        },
+        "rotation_radians": 0,
+        "scale_xyz": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": {
+        "effective_name": "fixture",
+        "definition_handle": "B1",
+        "attribute_values": {
+          "KEY": "VALUE"
+        },
+        "is_dynamic": false
+      },
+      "text": null,
+      "dimension": null,
+      "issues": []
+    },
+    {
+      "schema_version": "1.0",
+      "handle": "20",
+      "object_id": 1002,
+      "object_name": "AcDbCircle",
+      "dxf_name": "CIRCLE",
+      "space_kind": "model",
+      "layout_name": "Model",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "walls",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": null
+      },
+      "geometry": {
+        "kind": "circle",
+        "center": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "normal": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        },
+        "radius": 2
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": null,
+      "text": null,
+      "dimension": null,
+      "issues": [
+        {
+          "code": "MEMBER_UNAVAILABLE",
+          "capability": "visual_style",
+          "member": "Visible",
+          "entity_handle": "20",
+          "message": "Optional synthetic property unavailable"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "handle": "60",
+      "object_id": 1006,
+      "object_name": "AcDbAlignedDimension",
+      "dxf_name": "DIMENSION",
+      "space_kind": "paper",
+      "layout_name": "Sheet α",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "Dims",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": true
+      },
+      "geometry": {
+        "kind": "unsupported",
+        "object_name": "AcDbAlignedDimension"
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": null,
+      "text": null,
+      "dimension": {
+        "measurement": 5,
+        "dimension_text": "<>",
+        "style_name": "Standard",
+        "text_position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "issues": [
+        {
+          "code": "UNSUPPORTED_CAPABILITY",
+          "capability": "geometry",
+          "member": null,
+          "entity_handle": "60",
+          "message": "Synthetic unsupported geometry family"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "handle": "10",
+      "object_id": 1001,
+      "object_name": "AcDbLine",
+      "dxf_name": "LINE",
+      "space_kind": "model",
+      "layout_name": "Model",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "Walls",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": true
+      },
+      "geometry": {
+        "kind": "line",
+        "start": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "end": {
+          "x": 5,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": null,
+      "text": null,
+      "dimension": null,
+      "issues": []
+    },
+    {
+      "schema_version": "1.0",
+      "handle": "50",
+      "object_id": 1005,
+      "object_name": "AcDbText",
+      "dxf_name": "TEXT",
+      "space_kind": "paper",
+      "layout_name": "Sheet α",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "Text",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": true
+      },
+      "geometry": {
+        "kind": "unsupported",
+        "object_name": "AcDbText"
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": null,
+      "text": {
+        "plain_text": "Synthetic label",
+        "raw_text": null,
+        "style_name": "Standard",
+        "height": 2.5,
+        "rotation_radians": 0,
+        "insertion": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "dimension": null,
+      "issues": [
+        {
+          "code": "UNSUPPORTED_CAPABILITY",
+          "capability": "geometry",
+          "member": null,
+          "entity_handle": "50",
+          "message": "Synthetic unsupported geometry family"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "handle": "30",
+      "object_id": 1003,
+      "object_name": "AcDbPolyline",
+      "dxf_name": "LWPOLYLINE",
+      "space_kind": "model",
+      "layout_name": "Model",
+      "owner_block_handle": null,
+      "layer": {
+        "name": "wall[1]",
+        "is_off": false,
+        "is_frozen": false,
+        "is_locked": false
+      },
+      "style": {
+        "color_index": 256,
+        "true_color_rgb": [
+          12,
+          34,
+          56
+        ],
+        "linetype": null,
+        "linetype_scale": null,
+        "lineweight": null,
+        "transparency": null,
+        "visible": true
+      },
+      "geometry": {
+        "kind": "lwpolyline",
+        "vertices": [
+          {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "x": 2,
+            "y": 0,
+            "z": 0
+          },
+          {
+            "x": 2,
+            "y": 2,
+            "z": 0
+          }
+        ],
+        "bulges": [
+          0,
+          0,
+          0
+        ],
+        "closed": true
+      },
+      "bounds": [
+        0,
+        0,
+        0,
+        20,
+        20,
+        0
+      ],
+      "block": null,
+      "text": null,
+      "dimension": null,
+      "issues": []
+    }
+  ]
+}

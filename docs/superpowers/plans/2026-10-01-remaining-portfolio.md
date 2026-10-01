@@ -55,7 +55,9 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
   snapshots or fingerprints. Pure context records/fake/mapper are now accepted through `60e3c2c`: 48 focused/
   526 full tests plus 13 scoped mapper checks after an evidence-binding fix.
   Accepted native pure protocol was merged at `ea5ee70`; 120 combined tests passed.
-  Windows extraction is the next active task.
+  Windows extraction is accepted through `621b7d2`; after merging main,
+  987 full tests and 5 fresh import checks passed. Builder, relationships and
+  context services remain pending.
 - EPIC-09U service `f3f6428` plus test correction `b82ff64` is independently
   accepted: 30 service tests and 456 full tests, 9 skips. The complete maximum
   fixture passes the unchanged shared work budget. Final immutable measurement
@@ -90,8 +92,8 @@ The cost of this scheduling choice is that compatibility remains unverified unti
 those runs occur; no production DWG is touched by implementation work here.
 
 Shared server/runtime/catalogue/manifest integration is currently owned by
-Track C. Track U and context may prepare isolated modules but must wait for that
-window before editing the same integration surface. Completed pure foundations
+Track U after Track C merged. Context may prepare isolated modules but must wait
+for that window before editing the same integration surface. Completed pure foundations
 do not establish full epic completion.
 
 ## Recovery after interruption

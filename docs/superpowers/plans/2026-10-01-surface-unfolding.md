@@ -211,24 +211,24 @@ full result UTF-8 bytes including warnings/issues, not just candidate estimates.
 The later MCP owner also checks its full serialized envelope. No classes,
 factory framework, persistence or new dependency is needed for the pure service.
 
-- [ ] Write red service tests for validate-before-solve, verifier-before-success,
+- [x] Write red service tests for validate-before-solve, verifier-before-success,
   every failure/interrupt stage, no partial result/digest, deterministic bytes,
   exact final size and the maximum fixture through this complete service under
   one unchanged budget. Test seams with function spies, not execution backdoors.
-- [ ] Implement the bounded service and pure payload helper; preserve all current
+- [x] Implement the bounded service and pure payload helper; preserve all current
   algorithms, thresholds and corpus labels. All potentially long explicit loops
   need cooperative checks. Keep imports free of context/COM/capture/edit/files/
   processes. Invalid structured input must not leak exception text.
-- [ ] Measure real-clock service runs at500/2000/4000 faces with seed9041. Derive
+- [x] Measure real-clock service runs at500/2000/4000 faces with seed9041. Derive
   connected bands from the frozen maximum torus's firstN faces, retain referenced
   vertices and all actual edges as seams; record this deterministic construction
   and input hashes. Do not relabel/write the frozen source corpus.
-- [ ] Record explicit nonpersonal host label, OS/architecture/Python, policy,
+- [x] Record explicit nonpersonal host label, OS/architecture/Python, policy,
   wall time, process peak RSS (state its cumulative semantics), input/result
   digests, versions, metrics and outcomes in new content-addressed immutable
   evidence. Measurement code may use filesystem/OS APIs; production may not.
   No subprocess or hard-kill claim, and no elapsed/RSS in product results.
-- [ ] Run focused/full checks, lint/types and import/no-effect checks. Obtain
+- [x] Run focused/full checks, lint/types and import/no-effect checks. Obtain
   independent review before the serialized registration window below.
 
 ### Task 4: Serialized MCP integration and final acceptance (E09-U04)

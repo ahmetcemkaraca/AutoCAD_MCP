@@ -1,5 +1,23 @@
 # EPIC-05: On-Demand Visual Capture
 
+## Pre-release context amendments
+
+[Decision 0003](../decisions/0003-session-qualified-snapshot-retention.md)
+requires every lookup holding a `SnapshotRef`/cursor to pass its session ID.
+ID-only inputs use an optional `source_session_id`; omission succeeds only for
+one live matching session and never silently selects the active document.
+For optional snapshot inputs, a session without a snapshot ID is invalid.
+Approval/source agreement still uses the complete exact reference.
+
+[Decision 0005](../decisions/0005-owner-scoped-entity-coordinates.md)
+uses `EntitySpace` to distinguish model WCS, named paper-layout WCS and local
+block-definition frames. Entity geometry/positions/`bounds` have frame-neutral
+field names. Establish equal supported owner frames before spatial comparisons,
+WCS capture projection, topology or edit compilation. Version-1 consumers must
+report unsupported instance projection rather than interpret definition-local
+coordinates as drawing WCS. Document UCS/view and topology-plane WCS fields
+retain their explicit meaning.
+
 ## Status
 
 **Planned.** This epic describes target behavior for roadmap stage 4. It is not evidence that drawing capture exists. The implementation may start only after the stable MCP core and [EPIC-04](EPIC-04-structured-drawing-context.md) entry gates pass. The stage remains in progress until all automated gates and the disposable-DWG AutoCAD 2026 capture gate below pass.
@@ -49,7 +67,7 @@ Before parallel lanes fork, the integration lead records that:
 2. EPIC-03's `AutoCADAdapter` remains frozen at exactly four read-only/status methods; it does **not** contain capture records or methods. Its adapter-internal `WindowsSessionManager.session(require_document: bool) -> Iterator[AutoCADSession]` contract and delayed COM lifecycle are documented and tested.
 3. EPIC-04 schema `1.0`, additive `ContextAutoCADAdapter`, `FakeContextAutoCADAdapter`, `WindowsContextAutoCADAdapter`, revision-checked `SnapshotBuilder`, and `SnapshotRepository` are released and their unit, MCP, and AutoCAD 2026 read-only gates pass.
 4. These imports are stable: `DrawingSnapshot`, `DocumentIdentity`, `DrawingFingerprint`, `EntityContext`, `Bounds3D`, `Point2D`, `Point3D`, `ViewContext`, `DrawingContextService`, `CompleteSnapshotRequest`, and `SnapshotBuilder` from `autocad_mcp.context`; `SnapshotRepository` from `autocad_mcp.context.repository`; and `ContextAutoCADAdapter` from `autocad_mcp.adapter.context_protocol`.
-5. `SnapshotBuilder.build(CompleteSnapshotRequest) -> DrawingSnapshot`, `DrawingContextService.analyze_drawing(AnalyzeDrawingRequest) -> AnalyzeDrawingResult`, `get_entity_context(GetEntityContextRequest) -> EntityContextBatch`, and `SnapshotRepository.get_complete(snapshot_id: str) -> DrawingSnapshot` are available read-only.
+5. `SnapshotBuilder.build(CompleteSnapshotRequest) -> DrawingSnapshot`, `DrawingContextService.analyze_drawing(AnalyzeDrawingRequest) -> AnalyzeDrawingResult`, `get_entity_context(GetEntityContextRequest) -> EntityContextBatch`, and `SnapshotRepository.get_complete(snapshot_id: str, *, session_id: str | None = None) -> DrawingSnapshot` are available read-only.
 6. `src/autocad_mcp/core/models.py` provides `ErrorCode`, `ToolError`, `ToolSuccess`, `ToolFailure`, `ToolResponse`, `response_payload`, and `response_json`; EPIC-04 provides `CapabilityIssue` and the adapter provides `AdapterCapabilityReport`.
 7. The AutoCAD 2026 context fixture has known persistent handles and a reproducible disposable-DWG preparation path.
 8. The EPIC-03 exclusive AutoCAD verification lease is available; CAP must not overlap the EPIC-03 base smoke runner, CTX runner, or another CAP runner against the same interactive AutoCAD session.
@@ -124,6 +142,7 @@ class CaptureRequest:
     output: CaptureOutputSpec
     overlay: HandleOverlayOptions
     timeout_seconds: int
+    source_session_id: str | None = None
 
 @dataclass(frozen=True, slots=True)
 class PixelSize:
@@ -226,7 +245,7 @@ Version 1 accepts only `format="png"`. There is no silent format fallback. The c
 
 ### Correlation and drawing-state semantics
 
-If `source_snapshot_id` is present, the service first calls `SnapshotRepository.get_complete(source_snapshot_id)`; expired and unknown IDs preserve EPIC-04's distinct structured errors, and an MCP page can never be loaded through this interface. It then calls `SnapshotBuilder.build` and returns `STALE_SNAPSHOT` before image production when document ID or complete content fingerprint differs from the retained source. If no source ID is supplied, it builds one complete snapshot, inserts it, and uses it as the source. Correlation always uses the fresh pre-capture snapshot/reference, so a legitimate view-only change is represented by its fresh presentation digest rather than by the caller's older reference. Revision-token failure, partial reads, more than 10,000 entities, or more than 32 MiB return the EPIC-04 structured error; capture never substitutes a filtered/page fingerprint. The service verifies that adapter scope resolution and capture receipt use the same `document_id`, active layout, display space, and presentation digest.
+If `source_snapshot_id` is present, the service first calls `SnapshotRepository.get_complete(source_snapshot_id, session_id=source_session_id)`; expired and unknown IDs preserve EPIC-04's distinct structured errors, and an MCP page can never be loaded through this interface. It then calls `SnapshotBuilder.build` and returns `STALE_SNAPSHOT` before image production when document ID or complete content fingerprint differs from the retained source. If no source ID is supplied, it builds one complete snapshot, inserts it, and uses it as the source. Correlation always uses the fresh pre-capture snapshot/reference, so a legitimate view-only change is represented by its fresh presentation digest rather than by the caller's older reference. Revision-token failure, partial reads, more than 10,000 entities, or more than 32 MiB return the EPIC-04 structured error; capture never substitutes a filtered/page fingerprint. The service verifies that adapter scope resolution and capture receipt use the same `document_id`, active layout, display space, and presentation digest.
 
 For parallel 2D views with a valid plot rectangle and driver content rectangle, `build_capture_correlation(...) -> CaptureCorrelation` emits the affine mapping. Perspective, clipped/non-rectangular paper viewports, or a driver that cannot report its content rectangle return `quality="bounds_only"`, a `None` matrix, and a capability issue. Bounds-only correlation is still useful but cannot produce an overlay; an overlay request then fails `UNSUPPORTED_CORRELATION`.
 
@@ -270,7 +289,7 @@ class DrawingContextService:
 
 class SnapshotRepository(Protocol):
     def put_complete(self, snapshot: DrawingSnapshot) -> None: ...
-    def get_complete(self, snapshot_id: str) -> DrawingSnapshot: ...
+    def get_complete(self, snapshot_id: str, *, session_id: str | None = None) -> DrawingSnapshot: ...
 
 class SnapshotBuilder:
     def build(self, request: CompleteSnapshotRequest) -> DrawingSnapshot: ...

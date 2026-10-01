@@ -1,5 +1,23 @@
 # EPIC-07: Architectural Semantics
 
+## Pre-release context amendments
+
+[Decision 0003](../decisions/0003-session-qualified-snapshot-retention.md)
+requires every lookup holding a `SnapshotRef`/cursor to pass its session ID.
+ID-only inputs use an optional `source_session_id`; omission succeeds only for
+one live matching session and never silently selects the active document.
+For optional snapshot inputs, a session without a snapshot ID is invalid.
+Approval/source agreement still uses the complete exact reference.
+
+[Decision 0005](../decisions/0005-owner-scoped-entity-coordinates.md)
+uses `EntitySpace` to distinguish model WCS, named paper-layout WCS and local
+block-definition frames. Entity geometry/positions/`bounds` have frame-neutral
+field names. Establish equal supported owner frames before spatial comparisons,
+WCS capture projection, topology or edit compilation. Version-1 consumers must
+report unsupported instance projection rather than interpret definition-local
+coordinates as drawing WCS. Document UCS/view and topology-plane WCS fields
+retain their explicit meaning.
+
 ## Status
 
 **Planned as two sequential sub-epics.** **EPIC-07A** is read-only architectural analysis and may ship without any approval broker. **EPIC-07B** is the later semantic-confirmation/edit bridge and cannot start until EPIC-07A is accepted and EPIC-06's human broker, persistent store, and safe edit path pass. Neither sub-epic is current functionality.
@@ -80,7 +98,7 @@ Only a serialized integration owner modifies the EPIC-06 broker host/UI registra
 
 ```python
 class SnapshotRepository(Protocol):
-    def get_complete(self, snapshot_id: str) -> DrawingSnapshot: ...
+    def get_complete(self, snapshot_id: str, *, session_id: str | None = None) -> DrawingSnapshot: ...
 ```
 
 `SnapshotRepository` is imported from `autocad_mcp.context.repository` and accepts complete snapshots only. `DrawingSnapshot`, `SnapshotRef`, `DocumentIdentity`, `DrawingFingerprint`, `DrawingUnits`, `GeometryTolerance`, `EntityContext`, `RelationshipFact`, and `CapabilityIssue` are imported from EPIC-04. The analysis source is `DrawingSnapshot.reference`; stale-state checks use `DrawingSnapshot.fingerprint.content_digest`; handle and prior-state evidence uses `EntityContext.identity.handle` and `EntityContext.state_digest`. This epic does not define parallel context identities or broaden EPIC-04 relationship facts in place.
@@ -203,6 +221,7 @@ class ArchitecturalAnalysisRequest:
     visual_observations: tuple[ClientVisualObservation, ...]
     page_size: int
     cursor: str | None
+    source_session_id: str | None = None
 
 @dataclass(frozen=True)
 class ArchitecturalAnalysisResult:

@@ -1,5 +1,23 @@
 # EPIC-06: Human-Approved Safe Edit Plans
 
+## Pre-release context amendments
+
+[Decision 0003](../decisions/0003-session-qualified-snapshot-retention.md)
+requires every lookup holding a `SnapshotRef`/cursor to pass its session ID.
+ID-only inputs use an optional `source_session_id`; omission succeeds only for
+one live matching session and never silently selects the active document.
+For optional snapshot inputs, a session without a snapshot ID is invalid.
+Approval/source agreement still uses the complete exact reference.
+
+[Decision 0005](../decisions/0005-owner-scoped-entity-coordinates.md)
+uses `EntitySpace` to distinguish model WCS, named paper-layout WCS and local
+block-definition frames. Entity geometry/positions/`bounds` have frame-neutral
+field names. Establish equal supported owner frames before spatial comparisons,
+WCS capture projection, topology or edit compilation. Version-1 consumers must
+report unsupported instance projection rather than interpret definition-local
+coordinates as drawing WCS. Document UCS/view and topology-plane WCS fields
+retain their explicit meaning.
+
 ## Status
 
 **Planned.** This epic describes target behavior only. It depends on the stable canonical MCP server, structured errors, the Windows adapter boundary, and versioned drawing snapshots being delivered and verified first. Nothing in this document is evidence that drawing mutation is currently safe or available.
@@ -101,7 +119,7 @@ The integration owner alone modifies the canonical server registration file, `mc
 
 The epic consumes these prerequisite contracts. Equivalent immutable types are acceptable only after the epic is updated before implementation.
 
-`JsonValue`, `ErrorCode`, `ToolError`, `ToolSuccess`, and `ToolFailure` are imported unchanged from EPIC-02. `DrawingSnapshot`, `SnapshotRef`, `DocumentIdentity`, `DrawingFingerprint`, `EntityContext`, `CapabilityIssue`, `SnapshotRepository`, `CompleteSnapshotRequest`, `RelationshipOptions`, `SnapshotBuilder`, `AdapterDocumentContext`, `AdapterEntityFacts`, `ContextInclude`, `ContextAutoCADAdapter`, `ContextAdapterProvider`, `FakeContextAutoCADAdapter`, and `WindowsContextAutoCADAdapter` are imported unchanged from EPIC-04. `SnapshotRepository.get_complete(snapshot_id)` refuses partial snapshots. Edit freshness uses `DrawingSnapshot.reference`, `DrawingSnapshot.document.session_document_id`, `DrawingSnapshot.fingerprint.content_digest`, and `EntityContext.state_digest`; this epic does not define a second identity, fingerprint, context enumerator, context provider, or error envelope.
+`JsonValue`, `ErrorCode`, `ToolError`, `ToolSuccess`, and `ToolFailure` are imported unchanged from EPIC-02. `DrawingSnapshot`, `SnapshotRef`, `DocumentIdentity`, `DrawingFingerprint`, `EntityContext`, `CapabilityIssue`, `SnapshotRepository`, `CompleteSnapshotRequest`, `RelationshipOptions`, `SnapshotBuilder`, `AdapterDocumentContext`, `AdapterEntityFacts`, `ContextInclude`, `ContextAutoCADAdapter`, `ContextAdapterProvider`, `FakeContextAutoCADAdapter`, and `WindowsContextAutoCADAdapter` are imported unchanged from EPIC-04. `SnapshotRepository.get_complete(snapshot_id, session_id=source.session_id)` refuses partial snapshots. Edit freshness uses `DrawingSnapshot.reference`, `DrawingSnapshot.document.session_document_id`, `DrawingSnapshot.fingerprint.content_digest`, and `EntityContext.state_digest`; this epic does not define a second identity, fingerprint, context enumerator, context provider, or error envelope.
 
 `src/autocad_mcp/adapter/windows_edit.py` consumes the adapter-internal `WindowsSessionManager` frozen by EPIC-03. That manager is the only path to a live AutoCAD application, document, entity, COM apartment, or COM proxy. It is not imported by `edit_provider.py`, re-exported from `autocad_mcp.editing`, stored in plan/domain models, or returned by an edit-provider method.
 

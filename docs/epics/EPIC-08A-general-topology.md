@@ -1,5 +1,23 @@
 # EPIC-08A: General Topology
 
+## Pre-release context amendments
+
+[Decision 0003](../decisions/0003-session-qualified-snapshot-retention.md)
+requires every lookup holding a `SnapshotRef`/cursor to pass its session ID.
+ID-only inputs use an optional `source_session_id`; omission succeeds only for
+one live matching session and never silently selects the active document.
+For optional snapshot inputs, a session without a snapshot ID is invalid.
+Approval/source agreement still uses the complete exact reference.
+
+[Decision 0005](../decisions/0005-owner-scoped-entity-coordinates.md)
+uses `EntitySpace` to distinguish model WCS, named paper-layout WCS and local
+block-definition frames. Entity geometry/positions/`bounds` have frame-neutral
+field names. Establish equal supported owner frames before spatial comparisons,
+WCS capture projection, topology or edit compilation. Version-1 consumers must
+report unsupported instance projection rather than interpret definition-local
+coordinates as drawing WCS. Document UCS/view and topology-plane WCS fields
+retain their explicit meaning.
+
 ## Status
 
 **Planned.** This is the first independently deliverable half of EPIC-08. It is read-only and domain-neutral. Nothing here is current functionality or evidence that topology is available.
@@ -75,7 +93,7 @@ class Bounds3D:
     maximum: Point3D
 
 class SnapshotRepository(Protocol):
-    def get_complete(self, snapshot_id: str) -> DrawingSnapshot: ...
+    def get_complete(self, snapshot_id: str, *, session_id: str | None = None) -> DrawingSnapshot: ...
 ```
 
 `DrawingSnapshot`, `SnapshotRef`, `GeometryTolerance`, `EntityContext`, `PointGeometry`, `LineGeometry`, `ArcGeometry`, `CircleGeometry`, `PolylineGeometry`, `UnsupportedGeometry`, and `CapabilityIssue` also retain their EPIC-04 meaning. `Bounds3D` is never represented as a six-number tuple in domain topology output. A snapshot must have `materialization.complete is True`, `fingerprint.complete is True`, and matching materialization/fingerprint/entity counts; otherwise topology returns the accepted structured incomplete-snapshot failure. MCP response pagination belongs to `AnalyzeDrawingResult` and is not part of the retained complete snapshot.

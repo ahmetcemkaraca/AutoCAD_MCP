@@ -177,3 +177,32 @@ def test_warning_findings_are_retained_and_counted_in_actual_utf8_size(
     with pytest.raises(CodeGenerationError) as error:
         service.generate_code(request())
     assert error.value.code == "PAYLOAD_LIMIT"
+
+
+@pytest.mark.parametrize(
+    "old,new", [("1.0 -2.0", "1.0-2.0"), ("(/ lines circles)", "(/lines circles)")]
+)
+def test_corrupt_autolisp_renderer_atoms_fail_before_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+    old: str,
+    new: str,
+) -> None:
+    payload = request(
+        "literal_geometry",
+        {
+            "lines": [{"start": [1, -2, 3], "end": [4, 5, 6]}],
+            "circles": [],
+        },
+        target="autolisp",
+    )
+    original = service.render_recipe
+
+    def corrupt(recipe):
+        source = original(recipe)
+        assert old in source
+        return source.replace(old, new)
+
+    monkeypatch.setattr(service, "render_recipe", corrupt)
+    with pytest.raises(CodeGenerationError) as error:
+        service.generate_code(payload)
+    assert error.value.code == "STATIC_VALIDATION_FAILED"

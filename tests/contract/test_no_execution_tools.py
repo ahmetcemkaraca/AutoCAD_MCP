@@ -1,6 +1,8 @@
 """Fresh default startup and real stdio C requests have no drawing/execution effects."""
 
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -43,6 +45,35 @@ def test_metadata_module_can_be_the_first_project_import() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_content_addressed_evidence_survives_real_autocrlf_checkout() -> None:
+    relative = (
+        "docs/advanced/evidence/codegen/"
+        "077ad74ae8dedfcba3260cf6253a38e1ed89afca5cecb9fe9eeb4951b76b5a55.json"
+    )
+    original = (ROOT / relative).read_bytes()
+    expected = Path(relative).stem
+    assert hashlib.sha256(original).hexdigest() == expected
+    git = shutil.which("git")
+    assert git is not None
+    with tempfile.TemporaryDirectory() as directory:
+        subprocess.run(  # noqa: S603 - fixed Git checkout of a tracked immutable record
+            [
+                git,
+                "-c",
+                "core.autocrlf=true",
+                "checkout-index",
+                "--prefix=" + directory + "/",
+                "--",
+                relative,
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        converted = (Path(directory) / relative).read_bytes()
+    assert converted == original
+    assert hashlib.sha256(converted).hexdigest() == expected
 
 
 async def exercise_default_stdio() -> str:

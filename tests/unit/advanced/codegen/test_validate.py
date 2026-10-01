@@ -167,3 +167,30 @@ def test_python_type_comments_are_not_silently_discarded() -> None:
         "last_handle = handle", "last_handle = handle # type: str"
     )
     assert validate_source(recipe, source)
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("1.0 -2.0", "1.0-2.0"),
+        ("-2.0 3.0", "-2.03.0"),
+        ("(/ lines circles)", "(/lines circles)"),
+        ("lines circles", "linescircles"),
+    ],
+)
+def test_autolisp_joined_atoms_cannot_be_split_into_reviewed_tokens(old: str, new: str) -> None:
+    recipe = decode_recipe(
+        request(
+            "literal_geometry",
+            {
+                "lines": [{"start": [1, -2, 3], "end": [4, 5, 6]}],
+                "circles": [],
+            },
+            target="autolisp",
+        )
+    )
+    source = render_recipe(recipe)
+    changed = source.replace(old, new)
+    assert changed != source
+    findings = validate_source(recipe, changed)
+    assert findings and findings[0].severity == "error"

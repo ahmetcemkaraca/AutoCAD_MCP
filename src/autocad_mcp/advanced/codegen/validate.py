@@ -143,13 +143,28 @@ def _tokens(source: str, *, vba: bool) -> list[Token]:
         f"(?P<string>{string})|(?P<real>{real})|(?P<integer>\\d+)"
         r"|(?P<symbol>[A-Za-z_][A-Za-z_0-9]*)|(?P<punct>[(),=/&])"
     )
+    if not vba:
+        # Parentheses/whitespace/quotes delimit Lisp atoms; slash and signs do not.
+        pattern = f'(?P<string>{string})|(?P<punct>[()])|(?P<atom>[^() \\n"]+)'
     tokens: list[Token] = []
     cursor = 0
     for token in re.finditer(pattern, source):
         _require(not source[cursor : token.start()].strip(" \n"))
         if token.lastgroup is None:
             raise ValueError("Unreviewed token")
-        tokens.append((token.lastgroup, token.group()))
+        kind, text = token.lastgroup, token.group()
+        if kind == "atom":
+            if re.fullmatch(real, text):
+                kind = "real"
+            elif re.fullmatch(r"\d+", text):
+                kind = "integer"
+            elif re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", text):
+                kind = "symbol"
+            elif text == "/":
+                kind = "punct"
+            else:
+                raise ValueError("Unreviewed atom")
+        tokens.append((kind, text))
         cursor = token.end()
     _require(not source[cursor:].strip(" \n"))
     return tokens

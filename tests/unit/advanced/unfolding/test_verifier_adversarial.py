@@ -439,3 +439,132 @@ def test_actual_four_mib_candidate_overflow_rejects_before_numeric_work():
     assert not result.accepted and result.metrics is None
     assert result.issues[0].code == "RESOURCE_LIMIT"
     assert "byte" in result.issues[0].message
+
+
+def test_late_root_numeric_scan_honors_each_face_checkpoint(monkeypatch):
+    from autocad_mcp.advanced.unfolding.models import MeshFace
+
+    mesh, layout = triangle()
+    faces = tuple(MeshFace(index, (0, 1, 2)) for index in range(1500))
+    mesh = replace(mesh, request=replace(mesh.request, faces=faces, root_face_id=1499))
+    state = SimpleNamespace(cancelled=False, scanned=0, scanned_at_probe=None)
+
+    class FaceScan(tuple):
+        def __iter__(self):
+            for face in super().__iter__():
+                state.cancelled = True
+                state.scanned += 1
+                yield face
+
+    def cancelled():
+        if state.cancelled and state.scanned_at_probe is None:
+            state.scanned_at_probe = state.scanned
+        return state.cancelled
+
+    original = metrics._numeric
+
+    def observed_numeric(source_mesh, candidate, budget, *args):
+        source_mesh = replace(
+            source_mesh,
+            request=replace(source_mesh.request, faces=FaceScan(source_mesh.request.faces)),
+        )
+        return original(source_mesh, candidate, budget, *args)
+
+    monkeypatch.setattr(metrics, "_shape", lambda *args: None)
+    # Isolate the numerical phase: source scanning is what this regression observes.
+    monkeypatch.setattr(metrics, "_connectivity", lambda *args: 1499)
+    monkeypatch.setattr(metrics, "_serialized_bound", lambda *args, **kwargs: None)
+    monkeypatch.setattr(metrics, "_numeric", observed_numeric)
+    layout = replace(layout, faces_2d=((0, 1, 2),) * len(faces))
+    budget = WorkBudget(
+        replace(POLICY, cancellation_check_interval=1),
+        cancellation=SimpleNamespace(is_cancelled=cancelled),
+    )
+    result = verify(mesh, layout, budget=budget)
+    assert isinstance(result, BoundedExecutionFailure)
+    assert result.code == BoundedFailureCode.CANCELLED
+    assert state.scanned_at_probe <= 1
+
+
+def test_island_membership_scan_honors_each_face_checkpoint():
+    from autocad_mcp.advanced.bounds import BoundedExecutionInterrupted
+
+    mesh, layout = triangle()
+    state = SimpleNamespace(cancelled=False, scanned=0, scanned_at_probe=None)
+
+    class IslandScan(tuple):
+        def __iter__(self):
+            for face_id in super().__iter__():
+                state.cancelled = True
+                state.scanned += 1
+                yield face_id
+
+        def __contains__(self, value):
+            return any(face_id == value for face_id in self)
+
+    def cancelled():
+        if state.cancelled and state.scanned_at_probe is None:
+            state.scanned_at_probe = state.scanned
+        return state.cancelled
+
+    mesh = replace(
+        mesh, request=replace(mesh.request, root_face_id=1499), islands=(IslandScan(range(1500)),)
+    )
+    budget = WorkBudget(
+        replace(POLICY, cancellation_check_interval=1),
+        cancellation=SimpleNamespace(is_cancelled=cancelled),
+    )
+    with pytest.raises(BoundedExecutionInterrupted) as error:
+        metrics._connectivity(mesh, layout, budget)
+    assert error.value.failure.code == BoundedFailureCode.CANCELLED
+    assert state.scanned_at_probe <= 1
+
+
+def test_broadphase_preparation_honors_each_face_checkpoint():
+    from fractions import Fraction
+
+    from autocad_mcp.advanced.bounds import BoundedExecutionInterrupted
+
+    mesh, _ = triangle()
+    state = SimpleNamespace(cancelled=False, owners=set(), owners_at_probe=None)
+
+    class BoxCoordinate(Fraction):
+        def __new__(cls, value, owner):
+            instance = super().__new__(cls, value)
+            instance.owner = owner
+            return instance
+
+        def __sub__(self, other):
+            state.cancelled = True
+            return super().__sub__(other)
+
+        def __lt__(self, other):
+            if state.cancelled:
+                state.owners.add(self.owner)
+            return super().__lt__(other)
+
+        def __gt__(self, other):
+            if state.cancelled:
+                state.owners.add(self.owner)
+            return super().__gt__(other)
+
+    def cancelled():
+        if state.cancelled and state.owners_at_probe is None:
+            state.owners_at_probe = len(state.owners)
+        return state.cancelled
+
+    triangles = [
+        tuple(
+            (BoxCoordinate(x, index), BoxCoordinate(y, index))
+            for x, y in ((3 * index, 0), (3 * index + 1, 0), (3 * index, 1))
+        )
+        for index in range(1500)
+    ]
+    budget = WorkBudget(
+        replace(POLICY, cancellation_check_interval=1),
+        cancellation=SimpleNamespace(is_cancelled=cancelled),
+    )
+    with pytest.raises(BoundedExecutionInterrupted) as error:
+        metrics._overlaps(mesh, triangles, budget)
+    assert error.value.failure.code == BoundedFailureCode.CANCELLED
+    assert state.owners_at_probe <= 1

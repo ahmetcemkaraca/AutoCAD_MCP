@@ -2,6 +2,7 @@
 
 import json
 import math
+from bisect import bisect_left
 from collections import defaultdict
 from fractions import Fraction
 from heapq import heappop, heappush
@@ -111,18 +112,27 @@ def _shape(mesh: ValidatedMesh, layout: UnfoldingLayout, budget: WorkBudget) -> 
 
 def _connectivity(  # noqa: C901 - explicit corner equivalence and identity checks
     mesh: ValidatedMesh, layout: UnfoldingLayout, budget: WorkBudget
-) -> None:
+) -> int:
     parent = list(range(3 * len(mesh.request.faces)))
     corners = {}
     labels = {}
     for island in mesh.islands:
         budget.checkpoint()
-        root = mesh.request.root_face_id if mesh.request.root_face_id in island else min(island)
+        # ValidatedMesh publishes sorted island IDs; avoid a whole-island membership/min scan.
+        position = bisect_left(island, mesh.request.root_face_id)
+        root = (
+            mesh.request.root_face_id
+            if position < len(island) and island[position] == mesh.request.root_face_id
+            else island[0]
+        )
         for face_id in island:
             budget.checkpoint()
             labels[face_id] = f"island-{root}"
+    root_index = -1
     for index, face in enumerate(mesh.request.faces):
         budget.checkpoint()
+        if face.face_id == mesh.request.root_face_id:
+            root_index = index
         corners[face.face_id] = {
             source_id: 3 * index + corner for corner, source_id in enumerate(face.vertex_ids)
         }
@@ -168,6 +178,8 @@ def _connectivity(  # noqa: C901 - explicit corner equivalence and identity chec
                 "Separate seam corners cannot be welded",
                 face_ids=(face.face_id,),
             )
+    _require(root_index >= 0, "Requested root face is missing")
+    return root_index
 
 
 def _serialized_bound(
@@ -242,7 +254,7 @@ def _angle(a: Vector, b: Vector) -> float:
 
 
 def _numeric(
-    mesh: ValidatedMesh, layout: UnfoldingLayout, budget: WorkBudget
+    mesh: ValidatedMesh, layout: UnfoldingLayout, budget: WorkBudget, root_index: int
 ) -> tuple[tuple[float, float, float], tuple[UnfoldingIssue, ...], list[tuple[Point2, ...]]]:
     source = {}
     for vertex in mesh.request.vertices:
@@ -252,11 +264,6 @@ def _numeric(
     for flat_vertex in layout.vertices_2d:
         budget.checkpoint()
         output.append(cast(Point2, tuple(Fraction(value) for value in flat_vertex.point_2d)))
-    root_index = next(
-        index
-        for index, face in enumerate(mesh.request.faces)
-        if face.face_id == mesh.request.root_face_id
-    )
     root = [output[index] for index in layout.faces_2d[root_index]]
     _require(
         root[0] == (0, 0) and root[1][1] == 0 and root[1][0] > 0 and root[2][1] > 0,
@@ -381,22 +388,31 @@ def _positive_intersection(
 def _overlaps(  # noqa: C901 - bounded sweep and exact candidate predicates
     mesh: ValidatedMesh, triangles: list[tuple[Point2, ...]], budget: WorkBudget
 ) -> None:
-    boxes = []
+    boxes: list[tuple[tuple[Fraction, Fraction], ...]] = []
+    minimums: list[Fraction] = []
+    maximums: list[Fraction] = []
+    extents: list[Fraction] = []
     for triangle in triangles:
         budget.checkpoint()
-        boxes.append(
-            tuple(
-                (min(point[axis] for point in triangle), max(point[axis] for point in triangle))
-                for axis in range(2)
-            )
+        box = tuple(
+            (min(point[axis] for point in triangle), max(point[axis] for point in triangle))
+            for axis in range(2)
         )
-    spans = [
-        max(box[axis][1] for box in boxes) - min(box[axis][0] for box in boxes) for axis in range(2)
-    ]
+        if not boxes:
+            minimums = [bounds[0] for bounds in box]
+            maximums = [bounds[1] for bounds in box]
+            extents = [high - low for low, high in box]
+        else:
+            for axis in range(2):
+                minimums[axis] = min(minimums[axis], box[axis][0])
+                maximums[axis] = max(maximums[axis], box[axis][1])
+                extents[axis] = max(extents[axis], box[axis][1] - box[axis][0])
+        boxes.append(box)
+    spans = [maximums[axis] - minimums[axis] for axis in range(2)]
     sweep, secondary = (0, 1) if spans[0] >= spans[1] else (1, 0)
-    low = min(box[secondary][0] for box in boxes)
+    low = minimums[secondary]
     span = spans[secondary]
-    extent = max(box[secondary][1] - box[secondary][0] for box in boxes)
+    extent = extents[secondary]
     # ponytail: at most 64 adaptive sweep buckets; spatial trees if measured scale needs grow.
     count = min(64, max(1, int(span / extent)))
 
@@ -448,9 +464,9 @@ def verify_layout(
     try:
         budget.checkpoint(0)
         _shape(mesh, layout, budget)
-        _connectivity(mesh, layout, budget)
+        root_index = _connectivity(mesh, layout, budget)
         _serialized_bound(mesh, layout, budget)
-        errors, issues, triangles = _numeric(mesh, layout, budget)
+        errors, issues, triangles = _numeric(mesh, layout, budget, root_index)
         if issues:
             _serialized_bound(mesh, layout, budget, issues=issues)
             budget.checkpoint(0)

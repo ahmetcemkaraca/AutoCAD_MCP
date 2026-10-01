@@ -255,6 +255,23 @@ resolve actual canonical order after binding/revision checks.
 
 ### Task 5: Complete builder, relationships, and services (CTX-04)
 
+Execute5A relationships/complete builder before5B response services. The frozen
+RelationshipOptions record contains only effective GeometryTolerance, default
+linear/angular1e-6 in drawing units/radians. All six relation kinds are fixed
+version-one behavior; no hidden enable/kind policy changes accepted fingerprints.
+Fresh downstream reads can reuse the snapshot's stored tolerance exactly.
+
+Symmetric pairs have one numeric-handle orientation; containment/within are
+directed. Store facts on their source entity. Same-owner uses explicit non-null
+owner metadata, spatial comparisons obey owner frames, endpoint sets are lines/
+open polylines/arcs, and parallel applies to nonzero straight lines. Indexed
+candidate generation must not omit distant ownership/direction facts. Reject
+rather than truncate beyond100 outgoing/entity or100000 total relationships.
+Grid entries are capped at200000 and unique candidate evaluations at1000000;
+overflow is COMPLETE_SNAPSHOT_LIMIT. These admission bounds do not change an
+accepted graph. The exact5A brief freezes sequencing/byte-accounting/tests.
+
+
 **Files:** `context/relationships.py`, `context/builder.py`, `context/service.py`, corresponding tests.
 
 **Interfaces:** Freeze `RelationshipOptions`, `CompleteSnapshotRequest`, the three service request/result types in the task brief; implement exact `SnapshotBuilder`/`DrawingContextService` signatures from the epic.

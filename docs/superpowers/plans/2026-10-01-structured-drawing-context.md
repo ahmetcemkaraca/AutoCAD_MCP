@@ -216,6 +216,10 @@ canonical entity_sort_key, all other cursor bindings, HMAC/expiry and2,048 bytes
 
 ### Task 4: Additive context adapters and fact mapping (CTX-03)
 
+Task4A accepted through `60e3c2c` after independent contract/quality review;
+48 focused/526 full tests plus the scoped13-test evidence correction passed.
+Task4B Windows binding remains pending.
+
 Execute as two reviewable pieces:4A owns pure context_protocol/fake_context/
 adapter_reader, pure exports and their fixture/tests;4B owns Windows extraction,
 injected session/native witness tests and delayed provider integration.4B

@@ -1,0 +1,55 @@
+name: Portable tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python 3.12 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: '0.12.7'
+          python-version: '3.12'
+          enable-cache: false
+      - name: Install the frozen development environment
+        run: |
+          uv lock --check
+          uv sync --frozen --group dev
+      - name: Record interpreter, lock, and platform-marker evidence
+        run: |
+          uv --version
+          git rev-parse HEAD
+          git hash-object uv.lock
+          uv run --frozen python -c "import importlib.util, platform, struct, sys; assert sys.version_info[:2] == (3, 12) and struct.calcsize('P') == 8; present = {name: importlib.util.find_spec(name) is not None for name in ('pythoncom', 'win32com', 'pyautocad')}; assert all(value == (sys.platform == 'win32') for value in present.values()), present; print(platform.platform(), sys.version, present)"
+      - name: Run portable and Windows API tests without AutoCAD
+        run: uv run --frozen pytest -q -ra
+      - name: Check active source and tests
+        run: |
+          uv run --frozen ruff check src/autocad_mcp src/server.py tests/adapter tests/compatibility tests/contract tests/mcp tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/windows tests/conftest.py scripts
+          uv run --frozen mypy -p autocad_mcp -m src.server
+      - name: Check syntax, manifest, and import boundary
+        run: |
+          uv run --frozen python -m compileall -q src tests
+          uv run --frozen python -c "import json; json.load(open('mcp.json', encoding='utf-8'))"
+          uv run --frozen python -c "import autocad_mcp.server, autocad_mcp.adapter.windows_session, autocad_mcp.adapter.windows, src.server, sys; assert not {'pythoncom', 'win32com', 'win32com.client', 'pyautocad'} & set(sys.modules)"
+          git diff --exit-code

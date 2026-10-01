@@ -67,6 +67,15 @@ AutoCAD verification.
 
 ## Core developer commands
 
+The `Portable tests` GitHub workflow runs the frozen CPython 3.12 development
+environment on both Ubuntu and Windows. It checks platform-marked COM package
+availability, runs the test suite without opting into AutoCAD, and checks active
+source lint/types, syntax, the manifest, and delayed COM imports. Actions and uv
+are pinned; cache reuse is disabled so installation evidence comes from a clean
+runner. A successful Windows job is dependency/Windows-API evidence, never a
+real-AutoCAD result. Historical experimental source is syntax-checked but is not
+included in the active Ruff/type gate.
+
 For the current pure/core boundary, run:
 
 ```powershell

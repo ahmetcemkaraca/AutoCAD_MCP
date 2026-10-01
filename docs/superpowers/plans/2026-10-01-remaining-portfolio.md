@@ -18,15 +18,15 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Done agent work; clean Windows/Linux evidence and PRs #6/#7 merged |
 | EPIC-02 | Keep the accepted canonical core and its regression suite passing as tools are added; record merged evidence | Implemented; documentation pending |
 | EPIC-03 | Preserve adapter contracts and guarded smoke, consolidate operator handoff and evidence collection | Implementation present; handoff audit pending |
-| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | In progress: models/identity accepted; repository session amendment and native observer underway |
+| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | In progress: models/identity/repository/owner frames accepted; native observer and adapters remain |
 | EPIC-05 | Explicit capture service/adapters, projection/overlay metadata, bounded image transport, restoration/failure tests and Windows runner | Pending |
 | EPIC-06 | Preview, trusted non-MCP human approval broker, bounded mutation primitives, preflight, one-use approval, Undo/recovery, evidence and Windows runner | Pending |
 | EPIC-07A | Evidence-based read-only architectural hypotheses, corpus/evaluation, MCP integration and Windows runner | Pending |
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Contracts/validation/corpus accepted; independent verifier implemented and under review |
-| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Pending |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Verifier accepted; solver implemented under review; maximum shared-budget repair remains |
+| EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Recipe/corpus accepted after fixes; literal rendering in progress |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
 | Final integration | Full portable suite, import/schema/manifest agreement, independent reviews, focused PRs, current docs and a single ordered operator test guide | Pending |
@@ -82,3 +82,29 @@ Inspect this ledger, Git worktrees, branch history, each active epic plan, and t
 - EPIC-05/06/07A/07B/08A/08B/09C/09P/09D, final integration and the ordered
   operator test handoff remain unfinished and authorized. Do not mark the goal
   complete after these prerequisites alone.
+
+## Latest accepted implementation checkpoint
+
+- EPIC-04 repository and owner-frame corrections are accepted. Source2511afb
+  passes231 context /460 full portable tests with9 expected skips, including
+  current main diagnostics. Snapshot identity remains stable across saved-drawing
+  reopen while retained payloads are session-qualified. Native observer, raw
+  adapters, builder/services, MCP and operator runner are still pending.
+- Decision0006 clarifies include projection before adapters/services: acquire
+  complete entity facts, preserve source state digests, explicitly mark omitted
+  response groups, and reject projections at complete snapshot/digest boundaries.
+  Its nullable-geometry/guard implementation is still a CTX-03 task.
+- EPIC-09U independent verifier is accepted after its checkpoint fix2fa24d6.
+  Solver41ed0b9 passes41 focused /415 full tests with9 skips and all ten numerical
+  fixture checks in separate stages. Its exact-max single-budget pipeline still
+  exceeds1,000,000 work during verification (estimated total1,123,782); independent
+  solver review and verifier-owner repair are required before integration.
+- EPIC-09C recipe/catalogue/corpus are accepted through3bf777f after normalized
+  byte-bound and Windows checkout hash fixes:28 focused /280 full tests,9 skips.
+  All873 malicious cases remain frozen. Literal templates are now in progress;
+  independent static validation, service, full-envelope and MCP gates remain.
+- The native observer plan now covers Framework4.8/.NET8/.NET10 build profiles
+  with pinned actual Autodesk references. Pure state/protocol implementation is
+  in progress. No host/pipe/AutoCAD compatibility result is claimed.
+- No additional PR was merged in this checkpoint. Main remains599e8a9, PR4 is
+  separate, and the complete remaining portfolio above is still authorized.

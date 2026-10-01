@@ -165,18 +165,18 @@ envelope (including JSON text escaping), not infer it from artifact size.
 No service class/factory/cache or new dependency is needed for this stateless
 pipeline. Test spies may patch these existing function seams.
 
-- [ ] A different author from rendering implements the validator. Reject
+- [x] A different author from rendering implements the validator. Reject
   deliberately injected executable constructs first. Python uses an exact AST
   allowlist including fixed identifiers/call receivers; ast.parse is static
   parsing only. AutoLISP/VBA use conservative token/structure allowlists and
   exact template structure. No code execution, interpreter or compiler launch.
-- [ ] Deny rules inspect executable tokens, not escaped literal text. Unknown
+- [x] Deny rules inspect executable tokens, not escaped literal text. Unknown
   syntax or validator uncertainty fails; any error finding prevents artifact
   release. Verify every golden and all500+ malicious cases independently.
-- [ ] Service validates recipe, renders once, validates artifact, computes
+- [x] Service validates recipe, renders once, validates artifact, computes
   SHA-256 over canonical target/template/version/source metadata, constructs
   the exact artifact/warning and checks its actual bytes. No persistence/cache.
-- [ ] Record scoped Bandit/source-sink/import checks, full affected tests and
+- [x] Record scoped Bandit/source-sink/import checks, full affected tests and
   immutable catalogue/golden/corpus digests for independent security acceptance.
 
 ## Task 4: Serialized core integration and decision record

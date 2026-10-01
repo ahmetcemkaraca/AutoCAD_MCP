@@ -143,9 +143,38 @@ strip order/gap and unrepresentable separation, cancellation/deadline mid-solve
 and pre-return, fixed-work/item bounds. Include one decode/validate/solve/verify
 run sharing a single budget, rather than only stage-local fresh budgets.
 
-- [ ] Add failing rigid edge-preserving goldens, shuffled input determinism, branched/seamed cases and fixed-work/deadline/cancellation tests.
-- [ ] Implement canonical root placement, deterministic adjacency traversal, and the declared one-pass strip placement; no distortion minimizer, seam optimizer, overlap-driven repositioning, or hidden layout search.
-- [ ] Run independent verifier against fixtures. Do not edit verifier or frozen expectations to make results pass. Commit with evidence.
+- [x] Add failing rigid edge-preserving goldens, shuffled input determinism, branched/seamed cases and fixed-work/deadline/cancellation tests.
+- [x] Implement canonical root placement, deterministic adjacency traversal, and the declared one-pass strip placement; no distortion minimizer, seam optimizer, overlap-driven repositioning, or hidden layout search.
+- [x] Run independent verifier against fixtures. Do not edit verifier or frozen expectations to make results pass. Commit with evidence.
+
+### Task 4A: Complete maximum-mesh verification within the shared work ceiling
+
+**Files:** `advanced/unfolding/metrics.py`, additive focused byte/accounting
+tests and a full public-pipeline regression. Independent verifier ownership;
+the solver author must not implement or approve this repair.
+
+The accepted solver's maximum fixture passes numerical verification in separate
+stages, but one shared budget needs 1,123,782 work: decode114,049,
+validation325,628, solver81,996, verifier602,109. The immutable ceiling is
+1,000,000. This is an integration gap, not an accepted maximum-case refusal.
+
+- [ ] First add a failing exact-max public decode/validate/solve/verify test
+  using one unchanged WorkBudget and the frozen torus fixture. A fixed injected
+  clock isolates fixed-work accounting; real host timing remains Task4.
+- [ ] Replace duplicate/per-token verifier serialization work with exact,
+  bounded per-record size accounting using standard-library encoding. Preserve
+  every shape/connectivity/numerical/global-overlap check, actual UTF-8 bytes,
+  diagnostic bounds, envelope reservations and interruption priority. All
+  explicit potentially long loops must honor the caller's checkpoint interval;
+  bounded native record encoding is not an unaccounted whole-layout scan.
+- [ ] Do not reset/increase budgets, change policy, skip verification, modify
+  solver/validation/frozen corpus, add xfails or relabel accepted input. Reject
+  genuine resource overflow without partial metrics/candidate/digest.
+- [ ] Prove measured bytes against independent full JSON serialization at exact
+  boundaries, with Unicode/escapes, metrics and diagnostics. Keep the existing
+  true4MiB overflow and late cancellation regressions. Verify exact-max shared
+  acceptance plus focused/full regression, publish final stage counters, and
+  obtain independent scoped review before Task4 integration.
 
 ### Task 4: Measurements, service and serialized MCP integration (E09-U03/U04)
 

@@ -98,9 +98,9 @@ thresholds. Global overlap checks include distinct islands and allow legitimate
 zero-area boundary contact, never positive-area overlap. Use bounded spatial
 candidates and the shared budget; no unbounded all-pairs scan.
 
-- [ ] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping (including distinct islands), incomplete, non-finite, misindexed, unused-vertex, split-uncut-edge, and incorrectly welded seam layouts. Add scale extremes, near-degenerate cases, fixed-budget exhaustion, exact threshold boundaries, cancellation and expiry during verification. These are independent expected geometries, not solver-generated expectations.
-- [ ] Implement independent numeric checks and bounded global overlap candidates, including overlapping distinct islands; test cancellation and byte limits.
-- [ ] Verify and commit before dispatching solver implementation. Review global-frame and canonical face-index mapping explicitly.
+- [x] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping (including distinct islands), incomplete, non-finite, misindexed, unused-vertex, split-uncut-edge, and incorrectly welded seam layouts. Add scale extremes, near-degenerate cases, fixed-budget exhaustion, exact threshold boundaries, cancellation and expiry during verification. These are independent expected geometries, not solver-generated expectations.
+- [x] Implement independent numeric checks and bounded global overlap candidates, including overlapping distinct islands; test cancellation and byte limits.
+- [x] Verify and commit before dispatching solver implementation. Review global-frame and canonical face-index mapping explicitly.
 
 ### Task 3: Rigid unfolding solver (E09-U02)
 

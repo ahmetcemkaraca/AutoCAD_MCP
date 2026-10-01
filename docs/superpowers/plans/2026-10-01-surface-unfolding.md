@@ -43,19 +43,62 @@
 
 **Interfaces:** Exact `BoundedExecutionPolicy`, `MonotonicClock`, `CancellationProbe`, `BoundedFailureCode`, `BoundedExecutionFailure` and immutable ceiling constants from the epic. Exact Track U dataclasses. Produce a strict request decoder/normalizer and mesh validator returning immutable canonical adjacency/edge records; publish helper signatures in the report before the next task.
 
-- [ ] Write failing tests for strict types/fields/text/ID bounds, finite points, all mesh support rules, request policy ceilings, cancellation/deadline using injected fake clocks, and exact request byte/item boundaries.
-- [ ] Independently freeze at least ten accepted/rejected fixtures spanning planar grids, cylinders/prisms, cones/frusta, branched strips, islands, reversed/non-manifold/degenerate/intersecting inputs, plus maximum-size serialization vectors. Expected classifications are mathematical input facts, not solver outputs.
-- [ ] Run the three focused files and record red evidence before source implementation.
-- [ ] Implement bounded contracts and validation only. Check resource budget within potentially large validation loops. Do not build the solver, metrics verifier, or alter core registrations.
-- [ ] Run focused/full portable tests, scoped Ruff/mypy, compile/import checks. Commit and return exact signatures, fixed fixture digest inventory, results, and any remaining ambiguities.
+- [x] Write failing tests for strict types/fields/text/ID bounds, finite points, all mesh support rules, request policy ceilings, cancellation/deadline using injected fake clocks, and exact request byte/item boundaries.
+- [x] Independently freeze at least ten accepted/rejected fixtures spanning planar grids, cylinders/prisms, cones/frusta, branched strips, islands, reversed/non-manifold/degenerate/intersecting inputs, plus maximum-size serialization vectors. Expected classifications are mathematical input facts, not solver outputs.
+- [x] Run the three focused files and record red evidence before source implementation.
+- [x] Implement bounded contracts and validation only. Check resource budget within potentially large validation loops. Do not build the solver, metrics verifier, or alter core registrations.
+- [x] Run focused/full portable tests, scoped Ruff/mypy, compile/import checks. Commit and return exact signatures, fixed fixture digest inventory, results, and any remaining ambiguities.
 
 ### Task 2: Independent numerical verifier (E09-U03 verifier portion)
 
-**Files:** `advanced/unfolding/metrics.py`, `tests/unit/advanced/unfolding/test_metrics.py`, `test_verifier_adversarial.py`.
+**Files:** `advanced/unfolding/metrics.py`, additive candidate/verification value types in `advanced/unfolding/models.py`, `tests/unit/advanced/unfolding/test_metrics.py`, `test_verifier_adversarial.py`.
 
-**Interfaces:** Takes the normalized original request plus candidate pure layout; recomputes edge/area/angle/overlap/reconstruction metrics without importing solver internals. Returns acceptance/rejection with exact metrics/issues or typed bounded failure.
+**Interfaces:** Consume the accepted public `ValidatedMesh` (including its normalized
+original request and seam-island topology), plus an unverified layout. Recompute
+metrics without importing solver internals or copying its future algorithm.
 
-- [ ] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping, incomplete, misindexed, and incorrectly joined seam layouts.
+```python
+@dataclass(frozen=True)
+class UnfoldingLayout:
+    solver_version: str
+    vertices_2d: tuple[UnfoldedVertex, ...]
+    faces_2d: tuple[tuple[int, int, int], ...]
+    cut_edges: tuple[tuple[int, int], ...]
+
+@dataclass(frozen=True)
+class LayoutVerification:
+    accepted: bool
+    metrics: UnfoldingMetrics | None
+    issues: tuple[UnfoldingIssue, ...]
+
+VERIFIER_VERSION = "rigid-triangle-verifier-v1"
+def verify_layout(
+    mesh: ValidatedMesh, layout: UnfoldingLayout, *, budget: WorkBudget
+) -> LayoutVerification | BoundedExecutionFailure: ...
+```
+
+Malformed/incomplete candidate data returns a redacted rejection without fake
+zero-valued metrics. Only successful complete verification supplies accepted
+metrics. A detected overlap may reject immediately with its explicit face pair
+and `metrics=None`; do not report a partial pair count as an exact metric.
+Unexpected diagnostic overflow fails structurally rather than truncating.
+Deadline/cancellation returns the exact bounded failure with no candidate data.
+
+Validate all points as finite non-Boolean numbers, output indices as bounded
+non-Boolean integers, used-vertex completeness, exact source face order/oriented
+corner identity, exact cut-edge set, and expected `island-{root_face_id}` labels.
+Check corner connectivity through uncut edges: they share output corner indices;
+separate corner equivalence classes must not be accidentally welded merely
+because their source vertex IDs agree. Derive these classes independently from
+public input topology, never from solver internals. Preserve the requested root
+anchor and orientation; reject flipped triangles. Measure every source/output
+edge, area, and angle with numerically stable scaling, including very small and
+large inputs. All success metrics must be finite and within the epic's 1e-9
+thresholds. Global overlap checks include distinct islands and allow legitimate
+zero-area boundary contact, never positive-area overlap. Use bounded spatial
+candidates and the shared budget; no unbounded all-pairs scan.
+
+- [ ] Freeze tests with manually constructed valid triangles/islands and stretched, flipped, overlapping (including distinct islands), incomplete, non-finite, misindexed, unused-vertex, split-uncut-edge, and incorrectly welded seam layouts. Add scale extremes, near-degenerate cases, fixed-budget exhaustion, exact threshold boundaries, cancellation and expiry during verification. These are independent expected geometries, not solver-generated expectations.
 - [ ] Implement independent numeric checks and bounded global overlap candidates, including overlapping distinct islands; test cancellation and byte limits.
 - [ ] Verify and commit before dispatching solver implementation. Review global-frame and canonical face-index mapping explicitly.
 

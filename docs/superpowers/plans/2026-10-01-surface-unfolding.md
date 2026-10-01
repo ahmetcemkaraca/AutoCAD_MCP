@@ -241,9 +241,9 @@ constants. Topology, identity uniqueness, finite JSON and actual byte limits
 remain enforced by the existing strict decoder/service. Do not register or
 change shared files during Track C's integration window.
 
-- [ ] Add failing accepted-fixture and malformed/schema-boundary tests; implement
+- [x] Add failing accepted-fixture and malformed/schema-boundary tests; implement
   the minimum metadata; verify schema/core/stdio contracts and lint/types.
-- [ ] Obtain independent review of this root-authored prerequisite before adding
+- [x] Obtain independent review of this root-authored prerequisite before adding
   the handler and registration. This does not satisfy the complete MCP gate.
 
 ### Task 4: Serialized MCP integration and final acceptance (E09-U04)

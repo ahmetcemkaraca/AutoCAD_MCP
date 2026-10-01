@@ -184,6 +184,28 @@ pipeline. Test spies may patch these existing function seams.
 **Own:** `tools/constrained_code_generation.py`, contract/no-execution tests;
 shared core/runtime/server/manifest/docs only during controller integration.
 
+The public tool is `generate_constrained_code`; arguments are the exact
+`CodeRecipe` object without a wrapper, and success contains `artifact` with the
+exact artifact payload. Publish closed, template-discriminated literal schemas.
+Preserve the existing basic service seam and route C directly to its pure
+handler. Default runtime construction must defer adapter imports and creation
+until a validated basic operation needs the existing adapter service. Invalid,
+unknown and C calls must not initialize that service.
+
+Enforce 65,536 UTF-8 bytes on the complete serialized SDK `CallToolResult` body,
+including nested JSON text escaping and content/isError fields. The client
+request identifier is transport metadata outside this result body. Test exact
+boundary/one-over using the registered handler and real SDK serialization, plus
+a quote-heavy real recipe. Return redacted `PAYLOAD_LIMIT` without source on
+overflow. Source/artifact-only checks do not establish this bound.
+
+Fresh-process default-server import guards and real stdio C calls establish the
+core-only boundary without replacing runtime composition. Request-scoped
+file/process/network/evaluation spies start after Python/MCP import bootstrap;
+AST-only parsing is allowed. Keep basic injection tests and update canonical
+catalogue, help, manifest, tool counts and documentation together. Record
+content-addressed security evidence before final review and hosted CI.
+
 - [ ] Test exact closed MCP schema, structured errors, full64KiB response bound,
   returned literal-warning/artifact shape and pure injection-only composition.
 - [ ] Guard imports and forbidden file/process/adapter execution paths; actual

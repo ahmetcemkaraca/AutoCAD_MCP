@@ -86,15 +86,15 @@ translated later at the context boundary. Opaque token encoding is fixed
 `native-context-epochs-v1:{bridge_id}:{session_id}:{epoch}` (under 512 bytes).
 Do not invent an MCP result or duplicate domain identity.
 
-- [ ] Write red checks for create/activate/change/revert/close-cancel/reopen,
+- [x] Write red checks for create/activate/change/revert/close-cancel/reopen,
   monotonically changing epochs, bridge restart, bounds/overflow and busy/lost
   observation. Live-set reconciliation receives pure stable registration keys;
   never derive public UUID from the native key.
-- [ ] Implement the small locked state store, immutable witness and strict
+- [x] Implement the small locked state store, immutable witness and strict
   request/response framing/codec. Validate both peers against shared vectors,
   including fragmented/truncated data, duplicate keys, nonce mismatch, surrogate
   text, integer limits, unknown operations and no drawing-content fields.
-- [ ] Run focused Python/native checks, lint/type/import isolation, record
+- [x] Run focused Python/native checks, lint/type/import isolation, record
   commands/results and commit. Independent contract/quality review before Task2.
 
 ## Task 2: Actual SDK observer and local Windows transport

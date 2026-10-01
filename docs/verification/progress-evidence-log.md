@@ -44,3 +44,12 @@ The prepared PowerShell runner and AutoCAD 2026 smoke have not run on Windows.
 Do not create `docs/verification/autocad-2026-smoke.md`, promote any AutoCAD
 release, or describe the smoke as verified until an operator supplies the
 redacted real-device evidence.
+
+## 2026-10-01 dependency follow-up
+
+Clean hosted Windows and Linux frozen-install and automated-test evidence is now
+recorded in [the dependency baseline report](dependency-baseline-2026-10-01.md).
+That witness and the maintainer's remaining-work authorization permit retirement
+of the inactive Poetry lock and unsupported root container artifacts. The
+August retention statements above describe that earlier checkpoint. Actual
+AutoCAD execution remains pending; the prepared smoke is not promoted by CI.

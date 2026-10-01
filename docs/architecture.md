@@ -34,14 +34,14 @@ The active catalog contains only `server_status`, `list_entities`, and
 evidence and are excluded from runtime, metadata, and help. EPIC-06 owns any
 future constrained edits.
 
-Two non-canonical directions remain outside the active server surface:
+Historical directions outside the active server surface:
 
 - `src/mcp_integration/enhanced_mcp_server.py` remains experimental and
   unconnected. It is neither launched nor advertised by the canonical core.
-- The root Docker and Compose artifacts name an unsupported historical Linux
-  HTTP direction. Their disposition is recorded in
-  [decision 0001](decisions/0001-container-artifact-disposition.md); this
-  document does not authorize their repair or removal.
+- The unsupported root Docker and Compose artifacts were removed after the
+  maintainer-authorized disposition in
+  [decision 0001](decisions/0001-container-artifact-disposition.md). They remain
+  recoverable in Git history and are not a product deployment option.
 
 The retired FastMCP duplicate and Flask-oriented tests are documented in
 [decision 0002](decisions/0002-canonical-server-consolidation.md). Their

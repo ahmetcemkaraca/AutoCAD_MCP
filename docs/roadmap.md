@@ -36,9 +36,9 @@ EPIC-03's real-AutoCAD acceptance criterion below remains pending.
 - The documented launch command starts the installed `autocad_mcp.server` module and matches `mcp.json`; `src.server` remains only a tested temporary compatibility shim.
 - Package, initialization, and metadata versions agree.
 - Docker and Compose artifacts are either proven against the supported
-  architecture or removed with a documented justification; until then,
-  [decision 0001](decisions/0001-container-artifact-disposition.md) classifies
-  them as unsupported historical artifacts.
+  architecture or removed with a documented justification.
+  [Decision 0001](decisions/0001-container-artifact-disposition.md) records
+  removal of the unsupported historical artifacts on 2026-10-01.
 - Platform-independent server and schema modules import without Windows COM installed.
 - A focused fake adapter supports connection, document discovery, entity query, and failure contract tests without a mutation capability.
 - Invalid Flask-oriented tests and the duplicate FastMCP server are retired

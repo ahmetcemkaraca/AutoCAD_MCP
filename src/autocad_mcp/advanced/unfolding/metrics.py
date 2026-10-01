@@ -188,17 +188,14 @@ def _serialized_bound(
     budget: WorkBudget,
     metrics: UnfoldingMetrics | None = None,
     issues: tuple[UnfoldingIssue, ...] = (),
-) -> None:
-    vertices = []
-    for vertex in layout.vertices_2d:
-        budget.checkpoint()
-        vertices.append(
-            {
-                "source_vertex_id": vertex.source_vertex_id,
-                "island_id": vertex.island_id,
-                "point_2d": vertex.point_2d,
-            }
-        )
+    *,
+    geometry_bytes: int | None = None,
+) -> int:
+    """Measure exact result bytes; reuse immutable geometry's encoded byte count."""
+    budget.checkpoint()
+    encoder = json.JSONEncoder(
+        ensure_ascii=False, separators=(",", ":"), sort_keys=True, allow_nan=False, default=vars
+    )
     # Reserve the fixed digest/version/envelope fields before numerical work.
     payload: dict[str, Any] = {
         "request_id": mesh.request.request_id,
@@ -206,22 +203,35 @@ def _serialized_bound(
         "units_label": mesh.request.units_label,
         "solver_version": layout.solver_version,
         "verifier_version": VERIFIER_VERSION,
-        "vertices_2d": vertices,
-        "faces_2d": layout.faces_2d,
-        "cut_edges": layout.cut_edges,
+        "vertices_2d": (),
+        "faces_2d": (),
+        "cut_edges": (),
         "metrics": None if metrics is None else vars(metrics),
         "warnings": (),
-        "issues": [vars(issue) for issue in issues],
+        "issues": (),
     }
-    size = 0
-    for chunk in json.JSONEncoder(
-        ensure_ascii=False, separators=(",", ":"), sort_keys=True, allow_nan=False
-    ).iterencode(payload):
+    size = len(encoder.encode(payload).encode("utf-8"))
+    _require(size <= MAX_ADVANCED_RESULT_BYTES, "Result byte bound exceeded", code="RESOURCE_LIMIT")
+    if geometry_bytes is None:
+        geometry_bytes = 0
+        for records in (layout.vertices_2d, layout.faces_2d, layout.cut_edges):
+            for index, record in enumerate(records):
+                budget.checkpoint()
+                geometry_bytes += len(encoder.encode(record).encode("utf-8")) + (index > 0)
+                _require(
+                    size + geometry_bytes <= MAX_ADVANCED_RESULT_BYTES,
+                    "Result byte bound exceeded",
+                    code="RESOURCE_LIMIT",
+                )
+    size += geometry_bytes
+    _require(size <= MAX_ADVANCED_RESULT_BYTES, "Result byte bound exceeded", code="RESOURCE_LIMIT")
+    for index, issue in enumerate(issues):
         budget.checkpoint()
-        size += len(chunk.encode("utf-8"))
+        size += len(encoder.encode(issue).encode("utf-8")) + (index > 0)
         _require(
             size <= MAX_ADVANCED_RESULT_BYTES, "Result byte bound exceeded", code="RESOURCE_LIMIT"
         )
+    return geometry_bytes
 
 
 def _subtract(a: Vector, b: Vector) -> Vector:
@@ -465,15 +475,15 @@ def verify_layout(
         budget.checkpoint(0)
         _shape(mesh, layout, budget)
         root_index = _connectivity(mesh, layout, budget)
-        _serialized_bound(mesh, layout, budget)
+        geometry_bytes = _serialized_bound(mesh, layout, budget)
         errors, issues, triangles = _numeric(mesh, layout, budget, root_index)
         if issues:
-            _serialized_bound(mesh, layout, budget, issues=issues)
+            _serialized_bound(mesh, layout, budget, issues=issues, geometry_bytes=geometry_bytes)
             budget.checkpoint(0)
             return LayoutVerification(False, None, issues)
         _overlaps(mesh, triangles, budget)
         measured = UnfoldingMetrics(errors[0], errors[1], errors[2], 0, len(mesh.islands))
-        _serialized_bound(mesh, layout, budget, measured)
+        _serialized_bound(mesh, layout, budget, measured, geometry_bytes=geometry_bytes)
         budget.checkpoint(0)
         return LayoutVerification(True, measured, ())
     except BoundedExecutionInterrupted as error:

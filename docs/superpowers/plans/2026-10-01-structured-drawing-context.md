@@ -218,7 +218,9 @@ canonical entity_sort_key, all other cursor bindings, HMAC/expiry and2,048 bytes
 
 Task4A accepted through `60e3c2c` after independent contract/quality review;
 48 focused/526 full tests plus the scoped13-test evidence correction passed.
-Task4B Windows binding remains pending.
+Task4B Windows binding is accepted through `621b7d2` after two scoped
+review fixes: 675 full tests before fixes and 125 covering checks afterward.
+Actual native transport/AutoCAD behavior remains unverified.
 
 Execute as two reviewable pieces:4A owns pure context_protocol/fake_context/
 adapter_reader, pure exports and their fixture/tests;4B owns Windows extraction,
@@ -247,9 +249,9 @@ preserving complete source identity for every public include combination.
 Never derive a partial-data digest. Use decision0007's handle-bound cursors;
 resolve actual canonical order after binding/revision checks.
 
-- [ ] Test pure protocol/fake bounds and injected Windows-session extraction, revision consistency, required/optional failures and cleanup before implementation.
-- [ ] Implement OCS-to-owner-frame conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.
-- [ ] Verify adapter/mapper tests, import isolation, type checks; commit the frozen extension.
+- [x] Test pure protocol/fake bounds and injected Windows-session extraction, revision consistency, required/optional failures and cleanup before implementation.
+- [x] Implement OCS-to-owner-frame conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.
+- [x] Verify adapter/mapper tests, import isolation, type checks; commit the frozen extension.
 
 ### Task 5: Complete builder, relationships, and services (CTX-04)
 

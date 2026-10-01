@@ -73,7 +73,7 @@ These EPIC-03 names are the base integration boundary. CTX-C then adds and freez
 
 ### Versioning rule
 
-`SNAPSHOT_SCHEMA_VERSION` is the string `"1.0"`. Additive optional fields require a documented minor version and golden-fixture update. Removing a field, changing its meaning, changing canonicalization, or changing ordering requires a new major version and new type names or explicit migration. A serializer never emits an unknown version, and a parser rejects an unsupported major version with `UNSUPPORTED_SCHEMA_VERSION`.
+`SNAPSHOT_SCHEMA_VERSION` is the string `"1.0"`. The following migration rules apply to published schemas; decision 0005 records the coordinate correction before the first release of version 1.0. Additive optional fields require a documented minor version and golden-fixture update. Removing a field, changing its meaning, changing canonicalization, or changing ordering requires a new major version and new type names or explicit migration. A serializer never emits an unknown version, and a parser rejects an unsupported major version with `UNSUPPORTED_SCHEMA_VERSION`.
 
 ### Exact Python data contract
 

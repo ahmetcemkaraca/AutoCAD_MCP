@@ -122,14 +122,14 @@ macro entry points. Generated iteration works only on supplied literal handles.
 Source-language grammar/escape assumptions must be checked against primary
 language documentation before freezing each target's goldens.
 
-- [ ] Freeze hand-reviewed expected output for every pair before rendering.
+- [x] Freeze hand-reviewed expected output for every pair before rendering.
   Use fixed local identifiers and only bounded literal encoders. Prefer ordinary
   quoted strings; where a target needs a safe code-unit constructor for control
   characters, allow only fixed reviewed constructor syntax with numeric units.
-- [ ] Implement literal-only rendering, exact roundtrip tests across supported
+- [x] Implement literal-only rendering, exact roundtrip tests across supported
   text/number boundaries, and structured unsupported literal failures when a
   target cannot represent data safely. No runtime inspection/execution.
-- [ ] Test the complete malicious literal corpus through safe rendering, fixed
+- [x] Test the complete malicious literal corpus through safe rendering, fixed
   variables/template identity, determinism and output-size refusal. Independent
   golden/security review before Task3.
 

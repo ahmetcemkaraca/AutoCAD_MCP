@@ -156,6 +156,13 @@ def assert_guard_run_current_user_system_acl(path: Path) -> None:
     _verify_guard_run_acl(candidate, _current_user_sid())
 
 
+def create_guard_run_directory(path: Path) -> None:
+    """Exclusively create a guard child with current-user ownership and private ACLs."""
+    _require_windows()
+    if not _create_guard_temp_root(Path(path), _current_user_sid()):
+        raise AutoCADLeaseError("Windows guard run directory already exists")
+
+
 class AutoCADLease:
     """A non-blocking OS-file-lock lease with auditable owner metadata."""
 
@@ -573,12 +580,16 @@ def _set_private_acl(path: Path, user_sid: str, *, inheritable: bool = False) ->
             ntsecuritycon.FILE_ALL_ACCESS,
             security.ConvertStringSidToSid(_SYSTEM_SID),
         )
-        descriptor = security.SECURITY_DESCRIPTOR()
-        descriptor.SetSecurityDescriptorDacl(True, dacl, False)
-        security.SetFileSecurity(
+        security.SetNamedSecurityInfo(
             str(path),
-            security.DACL_SECURITY_INFORMATION | security.PROTECTED_DACL_SECURITY_INFORMATION,
-            descriptor,
+            security.SE_FILE_OBJECT,
+            security.OWNER_SECURITY_INFORMATION
+            | security.DACL_SECURITY_INFORMATION
+            | security.PROTECTED_DACL_SECURITY_INFORMATION,
+            security.ConvertStringSidToSid(user_sid),
+            None,
+            dacl,
+            None,
         )
     except (ImportError, OSError, AttributeError) as error:
         raise AutoCADLeaseUnavailableError("Windows lease ACL cannot be established") from error
@@ -890,7 +901,7 @@ def _process_created_at_100ns(pid: int) -> int:
 
 def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate"]:
     kernel32 = _kernel32()
-    process = kernel32.OpenProcess(0x1000, False, owner.pid)
+    process = kernel32.OpenProcess(0x1000 | 0x100000, False, owner.pid)  # query + SYNCHRONIZE
     if not process:
         return "dead" if ctypes.get_last_error() == 87 else "indeterminate"
     try:
@@ -907,7 +918,12 @@ def _owner_liveness(owner: LeaseOwner) -> Literal["live", "dead", "indeterminate
         ):
             return "indeterminate"
         observed = (int(created.dwHighDateTime) << 32) | int(created.dwLowDateTime)
-        return "live" if observed == owner.process_created_at_100ns else "dead"
+        if observed != owner.process_created_at_100ns:
+            return "dead"
+        state = kernel32.WaitForSingleObject(process, 0)
+        if state == 0:  # WAIT_OBJECT_0: exited process, including a retained process handle
+            return "dead"
+        return "live" if state == 258 else "indeterminate"  # WAIT_TIMEOUT
     finally:
         kernel32.CloseHandle(process)
 
@@ -918,6 +934,8 @@ def _kernel32() -> ctypes.WinDLL:
     kernel32.OpenProcess.restype = ctypes.c_void_p
     kernel32.CloseHandle.argtypes = (ctypes.c_void_p,)
     kernel32.CloseHandle.restype = ctypes.c_int
+    kernel32.WaitForSingleObject.argtypes = (ctypes.c_void_p, ctypes.c_uint32)
+    kernel32.WaitForSingleObject.restype = ctypes.c_uint32
     kernel32.ProcessIdToSessionId.argtypes = (ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32))
     kernel32.ProcessIdToSessionId.restype = ctypes.c_int
     kernel32.GetComputerNameW.argtypes = (ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_uint32))

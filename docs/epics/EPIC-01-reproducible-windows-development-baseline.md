@@ -2,7 +2,14 @@
 
 ## Status
 
-Proposed. This epic is an implementation plan, not evidence that any described command currently passes.
+The dependency baseline has clean Linux and Windows automated evidence as of
+2026-10-01, and the inactive installer artifacts are retired. See the
+[current evidence](../verification/dependency-baseline-2026-10-01.md).
+The body below preserves the original migration plan; its temporary non-package
+mode and `src.server` launch were subsequently replaced by the reviewed EPIC-02
+canonical package. It is not a claim that historical intermediate commands or
+any real-AutoCAD test pass today. Final epic acceptance follows the retirement
+pull request's independent review and merged-state readback.
 
 **Dependency position:** first foundation epic. [EPIC-02](EPIC-02-canonical-mcp-core.md) and [EPIC-03](EPIC-03-windows-autocad-adapter-and-contract-tests.md) may design against the accepted lock after E01-G2, but implementation starts only after E01-G4 closes this temporary baseline. Roadmap Stage 2, Stable MCP core, remains open until all three foundation epics pass their completion gates.
 

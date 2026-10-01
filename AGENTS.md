@@ -60,7 +60,7 @@ Direct user instructions take precedence. When a request conflicts with reposito
 
 ## MCP boundaries
 
-- `src/server.py` is the adopted stdio entry point until a later pull request explicitly migrates it.
+- `autocad_mcp.server` is the canonical stdio entry point; `src.server` is a tested compatibility shim with no registrations.
 - New MCP tools MUST use constrained, documented schemas and structured errors.
 - Tool metadata, `mcp.json`, implementation registrations, tests, and user documentation MUST agree.
 - Logging MUST NOT write normal messages to MCP stdio output; use standard error or structured tool results.

@@ -1,6 +1,6 @@
 # Context
 
-The repository contains root `Dockerfile` and `docker-compose.yml` artifacts. They describe a Linux HTTP deployment, while the supported product target is full AutoCAD 2021-2026 on Windows. This record classifies those artifacts before any removal.
+The adopted repository contained root `Dockerfile` and `docker-compose.yml` artifacts describing a Linux HTTP deployment, while the product targets full AutoCAD 2021-2026 on Windows. The initial classification below preceded removal; the final disposition was authorized and executed on 2026-10-01.
 
 # Product runtime boundary
 
@@ -31,13 +31,22 @@ The checks used a filesystem existence loop and `command -v docker`. Because the
 
 # Decision
 
-Recommend option 3: remove `Dockerfile` and `docker-compose.yml`. The static evidence shows missing required inputs, an incompatible Linux product boundary, and a server and HTTP health contract that do not establish the adopted supported runtime.
+Adopt option 3: remove `Dockerfile` and `docker-compose.yml`. The static evidence shows missing required inputs, an incompatible Linux product boundary, and a server and HTTP health contract that do not establish the adopted supported runtime.
 
-Deletion requires explicit maintainer approval at E01-G3, including agreement that Git history is sufficient recovery. That approval has not occurred, and no deletion has occurred. This agent review does not substitute for maintainer authority.
+The initial 2026-08-29 decision deferred removal to E01-G3. On 2026-10-01 the
+maintainer requested completion of all agent-owned remaining tasks after the
+remaining-work list explicitly included retirement of old installation files.
+This authorizes the reversible cleanup described here. The removed files remain
+recoverable from Git history (for example, commit `2cb0ea4`). The agent records
+that user authorization; it does not manufacture a separate maintainer review.
 
 # Consequences
 
-Until E01-G3 explicitly approves removal, the root artifacts remain present but are not a supported product deployment. The Docker CLI absence prevents compose-config and image-build evidence on this host; it does not turn either unrun operation into a failure result. After approval, removal must be a focused change that checks active documentation for stale Docker runtime instructions.
+The unsupported root container artifacts are removed. No supported launch path,
+MCP schema, source module, or drawing behavior changes. The Docker CLI absence
+prevented compose-config and image-build evidence; neither unrun operation is
+reported as a failed build. Active documentation and the canonical uv workflow
+were checked for dependencies on these files.
 
 # Reintroduction criteria
 

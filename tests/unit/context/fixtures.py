@@ -125,9 +125,7 @@ def snapshot_payload():
 
 
 def snapshot():
-    import json
-
-    return snapshot_from_json(json.dumps(snapshot_payload()))
+    return snapshot_from_json(snapshot_payload())
 
 
 CAPTURED_AT = datetime(2026, 10, 1, 12, 34, 56, 789000, tzinfo=UTC)

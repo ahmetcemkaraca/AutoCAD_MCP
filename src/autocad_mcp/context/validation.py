@@ -106,7 +106,12 @@ def _datetime(value: Any, decode: bool) -> datetime:
         isinstance(value, datetime) and value.utcoffset() is not None,
         "Capture timestamp must be timezone-aware",
     )
-    value = value.astimezone(UTC)
+    try:
+        value = value.astimezone(UTC)
+    except OverflowError:
+        raise ContextValidationError(
+            "Capture timestamp is outside the UTC datetime range"
+        ) from None
     result: datetime = value.replace(microsecond=value.microsecond // 1000 * 1000)
     return result
 
@@ -174,7 +179,7 @@ def convert_value(value: Any, annotation: Any, *, decode: bool = False) -> Any:
 
 def record_from_payload(record_type: type[Any], payload: Any) -> Any:
     """Decode exactly the declared fields; reject unknown and missing keys."""
-    require(isinstance(payload, dict), "Expected a record object")
+    require(isinstance(payload, Mapping), "Expected a record object")
     if "schema_version" in payload:
         require(
             payload["schema_version"] == "1.0",

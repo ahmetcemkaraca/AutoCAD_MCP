@@ -42,17 +42,26 @@ def record_to_json(record: Any) -> str:
     )
 
 
-def _bounded_json(record: Any, limit: int, code: str) -> str:
-    result = record_to_json(record)
+def _bounded_payload(record: Any, limit: int, code: str) -> dict[str, object]:
+    result: dict[str, object] = record_to_payload(record)
     require(
-        len(result.encode("utf-8")) <= limit, "Serialized context exceeds byte bound", code=code
+        len(record_to_json(result).encode("utf-8")) <= limit,
+        "Serialized context exceeds byte bound",
+        code=code,
     )
     return result
 
 
-def snapshot_to_json(snapshot: DrawingSnapshot) -> str:
+def snapshot_to_json(snapshot: DrawingSnapshot) -> dict[str, object]:
     require(type(snapshot) is DrawingSnapshot, "Expected a DrawingSnapshot")
-    return _bounded_json(snapshot, MAX_SNAPSHOT_BYTES, "COMPLETE_SNAPSHOT_LIMIT")
+    return _bounded_payload(snapshot, MAX_SNAPSHOT_BYTES, "COMPLETE_SNAPSHOT_LIMIT")
+
+
+def snapshot_from_json(value: Mapping[str, object]) -> DrawingSnapshot:
+    require(isinstance(value, Mapping), "Expected a snapshot JSON object")
+    result: DrawingSnapshot = record_from_payload(DrawingSnapshot, value)
+    _bounded_payload(result, MAX_SNAPSHOT_BYTES, "COMPLETE_SNAPSHOT_LIMIT")
+    return result
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -67,7 +76,8 @@ def _reject_constant(value: str) -> None:
     raise ContextValidationError("Non-finite JSON number")
 
 
-def snapshot_from_json(payload: str) -> DrawingSnapshot:
+def snapshot_from_json_text(payload: str) -> DrawingSnapshot:
+    """Decode JSON text with duplicate-key checks before the mapping boundary."""
     require(isinstance(payload, str), "Expected snapshot JSON text")
     try:
         measured = len(payload.encode("utf-8"))
@@ -86,10 +96,9 @@ def snapshot_from_json(payload: str) -> DrawingSnapshot:
         if isinstance(error, ContextValidationError):
             raise
         raise ContextValidationError("Invalid snapshot JSON") from None
-    result: DrawingSnapshot = record_from_payload(DrawingSnapshot, value)
-    return result
+    return snapshot_from_json(value)
 
 
-def analyze_result_to_json(result: AnalyzeDrawingResult) -> str:
+def analyze_result_to_json(result: AnalyzeDrawingResult) -> dict[str, object]:
     require(type(result) is AnalyzeDrawingResult, "Expected an AnalyzeDrawingResult")
-    return _bounded_json(result, MAX_RESULT_BYTES, "PAYLOAD_LIMIT")
+    return _bounded_payload(result, MAX_RESULT_BYTES, "PAYLOAD_LIMIT")

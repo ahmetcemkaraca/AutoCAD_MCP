@@ -61,7 +61,7 @@ class PageCursor:
     session_id: str
     filter_digest: str
     page_size: int
-    last_sort_key: tuple[int, str, int, str] | None
+    last_handle: str | None
     issued_at: datetime
     expires_at: datetime
     snapshot_id: str | None = None
@@ -191,20 +191,44 @@ correction. Keep stable identity exclusions, session retention and byte limits.
   independently review before Task4. Spatial filter/relation behavior is owned
   by Task4/5 and must consume these exact owner-frame rules.
 
+### Task 3C: Projection guards and bounded continuation identity
+
+**Files:** context models/validation/fingerprint/pagination and focused tests;
+no adapter/service/registry implementation. Execute this bounded prerequisite
+inline, then obtain a fresh independent review before consumers are implemented.
+
+**Spec:** decisions0006 and0007. Nullable projected geometry needs the explicit
+geometry NOT_REQUESTED marker. Complete models/repository/digest helpers refuse
+projected entities, while response records preserve their complete source digest.
+Replace private PageCursor.last_sort_key with normalized last_handle. Keep
+canonical entity_sort_key, all other cursor bindings, HMAC/expiry and2,048 bytes.
+
+- [ ] Add red tests for projection roundtrip/marker validation, full-model and
+  entity/drawing/repository refusal, including omitted nongeometry groups; valid
+  complete entities still hash/store unchanged. Add maximum-handle and Unicode
+  layout/nested-live cursor checks, invalid handles and obsolete field rejection.
+- [ ] Implement the minimum shared completeness guard and cursor field change;
+  update affected old cursor tests to the unreleased contract without weakening
+  signature, time or byte-boundary checks. No compression/cache or partial digest.
+- [ ] Run focused changed tests (expect pass), the context/full suites, scoped
+  lint/types/syntax/import checks. Record commands/results and commit. Independent
+  review is required; Task4/5 must consume these exact guards and boundary rules.
+
 ### Task 4: Additive context adapters and fact mapping (CTX-03)
 
 **Files:** The CTX-C paths enumerated by the spec, including `context_protocol.py`, `fake_context.py`, `windows_context.py`, `context/adapter_reader.py`, their tests, and raw entity fixture.
 
 **Interfaces:** Exact pure records, `ContextAutoCADAdapter`, provider interfaces, and mapper functions from the spec. Keep the base protocol unchanged. Use the separate native-context-observer prerequisite for trustworthy lifetime/revision witnesses. Read the recorded Task4 preflight report and implement every supported mapping; observer loss fails closed. Add the missing `layer_globs` tuple to `AdapterEntityReadRequest` so public glob filtering happens before paging.
 
-Before mapping, implement the minimal pre-release model/fingerprint guards in
+Consume the accepted pre-release model/fingerprint guards from Task3C and
 [decision 0006](../../decisions/0006-context-include-projection.md): nullable
 projected geometry requires its explicit NOT_REQUESTED issue; complete snapshots,
 entity/drawing digest helpers and repository admission reject projected records.
 The mapper produces a complete entity digest from full raw coverage only. Task5
 owns public response projection and requests all-true adapter includes first,
 preserving complete source identity for every public include combination.
-Test these guard boundaries before altering source; no partial-data digest.
+Never derive a partial-data digest. Use decision0007's handle-bound cursors;
+resolve actual canonical order after binding/revision checks.
 
 - [ ] Test pure protocol/fake bounds and injected Windows-session extraction, revision consistency, required/optional failures and cleanup before implementation.
 - [ ] Implement OCS-to-owner-frame conversion and geometry/layer/style/block/text/dimension/context reads with no proxy escape; use only the existing session lifecycle.

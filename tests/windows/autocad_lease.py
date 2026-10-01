@@ -580,15 +580,16 @@ def _set_private_acl(path: Path, user_sid: str, *, inheritable: bool = False) ->
             ntsecuritycon.FILE_ALL_ACCESS,
             security.ConvertStringSidToSid(_SYSTEM_SID),
         )
-        descriptor = security.SECURITY_DESCRIPTOR()
-        descriptor.SetSecurityDescriptorOwner(security.ConvertStringSidToSid(user_sid), False)
-        descriptor.SetSecurityDescriptorDacl(True, dacl, False)
-        security.SetFileSecurity(
+        security.SetNamedSecurityInfo(
             str(path),
+            security.SE_FILE_OBJECT,
             security.OWNER_SECURITY_INFORMATION
             | security.DACL_SECURITY_INFORMATION
             | security.PROTECTED_DACL_SECURITY_INFORMATION,
-            descriptor,
+            security.ConvertStringSidToSid(user_sid),
+            None,
+            dacl,
+            None,
         )
     except (ImportError, OSError, AttributeError) as error:
         raise AutoCADLeaseUnavailableError("Windows lease ACL cannot be established") from error

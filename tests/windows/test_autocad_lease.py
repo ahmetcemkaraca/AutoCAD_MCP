@@ -296,19 +296,16 @@ def test_new_path_acl_sets_current_user_owner_and_protected_dacl(
 ) -> None:
     module = _lease_module()
     calls: list[tuple[object, ...]] = []
-    descriptor = SimpleNamespace(
-        SetSecurityDescriptorOwner=lambda *args: calls.append(("owner", *args)),
-        SetSecurityDescriptorDacl=lambda *args: None,
-    )
+    dacl = SimpleNamespace(AddAccessAllowedAceEx=lambda *args: None)
     security = SimpleNamespace(
-        ACL=lambda: SimpleNamespace(AddAccessAllowedAceEx=lambda *args: None),
+        ACL=lambda: dacl,
         ACL_REVISION=2,
         ConvertStringSidToSid=lambda sid: sid,
-        SECURITY_DESCRIPTOR=lambda: descriptor,
         OWNER_SECURITY_INFORMATION=1,
         DACL_SECURITY_INFORMATION=4,
         PROTECTED_DACL_SECURITY_INFORMATION=0x80000000,
-        SetFileSecurity=lambda *args: calls.append(("set", *args)),
+        SE_FILE_OBJECT=1,
+        SetNamedSecurityInfo=lambda *args: calls.append(("named", *args)),
     )
     bindings = {
         "ntsecuritycon": SimpleNamespace(FILE_ALL_ACCESS=0x1F01FF),
@@ -319,8 +316,7 @@ def test_new_path_acl_sets_current_user_owner_and_protected_dacl(
     module._set_private_acl(tmp_path / "new", "S-1-5-21-100")
 
     assert calls == [
-        ("owner", "S-1-5-21-100", False),
-        ("set", str(tmp_path / "new"), 0x80000005, descriptor),
+        ("named", str(tmp_path / "new"), 1, 0x80000005, "S-1-5-21-100", None, dacl, None),
     ]
 
 

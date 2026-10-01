@@ -20,6 +20,14 @@ def _source_dwg(tmp_path: Path, name: str = "fixture.dwg") -> Path:
     return source
 
 
+def _replace_pinned_path(replacement: Path, target: Path) -> None:
+    """Replace the name without Windows replacement-over-open-target semantics."""
+    displaced = replacement.with_name(f"{replacement.name}.displaced")
+    target.rename(displaced)
+    os.replace(replacement, target)
+    displaced.unlink()
+
+
 def test_prepare_creates_unique_guid_copy(tmp_path: Path) -> None:
     source = _source_dwg(tmp_path)
 
@@ -294,7 +302,7 @@ def test_prepare_rejects_post_close_copy_replacement_before_ownership(
         identity = real_copy(source_path, copy_path)
         replacement = tmp_path / "replacement-copy.dwg"
         replacement.write_bytes(b"replacement")
-        os.replace(replacement, copy_path)
+        _replace_pinned_path(replacement, copy_path)
         return identity
 
     monkeypatch.setattr(drawing_copy_guard, "_copy_source_to_new_file", copy_then_replace)
@@ -316,7 +324,7 @@ def test_prepare_rejects_post_close_marker_replacement_before_ownership(
         identity = real_write_marker(path, token)
         replacement = tmp_path / "replacement-marker"
         replacement.write_text("replacement", encoding="utf-8")
-        os.replace(replacement, path)
+        _replace_pinned_path(replacement, path)
         return identity
 
     monkeypatch.setattr(drawing_copy_guard, "_write_private_token", write_then_replace_marker)
@@ -412,7 +420,7 @@ def test_latched_violation_reports_replaced_copy_as_unavailable(tmp_path: Path) 
         alias.symlink_to(sentinel)
     except OSError as error:
         pytest.skip(f"symlinks unavailable: {error}")
-    os.replace(alias, guard.copy_path)
+    _replace_pinned_path(alias, guard.copy_path)
 
     evidence = guard.finalize(preserve=False, reason="completed")
     assert evidence.preserved is False
@@ -433,7 +441,7 @@ def test_finalize_revalidates_copy_immediately_before_unlink(
             if copy_checks == 2:
                 replacement = tmp_path / "late-copy.dwg"
                 replacement.write_bytes(b"late replacement")
-                os.replace(replacement, path)
+                _replace_pinned_path(replacement, path)
         return real_same_file(path, identity)
 
     monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)
@@ -456,7 +464,7 @@ def test_cleanup_rejects_reused_file_numbers_deterministically(
     original_bytes = target.read_bytes()
     replacement = tmp_path / "replacement"
     replacement.write_bytes(original_bytes)
-    os.replace(replacement, target)
+    _replace_pinned_path(replacement, target)
     real_lstat = Path.lstat
 
     # Model immediate reuse of the original inode, independent of filesystem allocation.
@@ -532,7 +540,7 @@ def test_finalize_revalidates_marker_immediately_before_unlink(
             if marker_checks == 2:
                 replacement = tmp_path / "late-marker"
                 replacement.write_text("late replacement", encoding="utf-8")
-                os.replace(replacement, path)
+                _replace_pinned_path(replacement, path)
         return real_same_file(path, identity)
 
     monkeypatch.setattr(drawing_copy_guard, "_same_private_regular_file", replace_on_sink_check)

@@ -21,7 +21,11 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 
 **Depends on:** Stage 1
 
-**Outcome:** Provide one testable server and one AutoCAD connection boundary.
+**Outcome:** Provide one testable canonical MCP core and prepare the AutoCAD
+connection boundary.
+
+**Status:** Open. The pure/core MCP contract has local Linux evidence, but
+EPIC-03's real-AutoCAD acceptance criterion below remains pending.
 
 **Acceptance criteria:**
 
@@ -29,13 +33,25 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 - PEP 621 dependency metadata, a committed `uv.lock`, and Windows-only COM markers produce a reproducible clean installation.
 - The documented launch command starts the installed `autocad_mcp.server` module and matches `mcp.json`; `src.server` remains only a tested temporary compatibility shim.
 - Package, initialization, and metadata versions agree.
-- Docker and Compose artifacts are either proven against the supported architecture or removed with a documented justification.
+- Docker and Compose artifacts are either proven against the supported
+  architecture or removed with a documented justification; until then,
+  [decision 0001](decisions/0001-container-artifact-disposition.md) classifies
+  them as unsupported historical artifacts.
 - Platform-independent server and schema modules import without Windows COM installed.
 - A focused fake adapter supports connection, document discovery, entity query, and failure contract tests without a mutation capability.
-- Existing Flask-oriented tests are replaced or archived with an explicit reason.
+- Invalid Flask-oriented tests and the duplicate FastMCP server are retired
+  only with the replacement matrix in
+  [decision 0002](decisions/0002-canonical-server-consolidation.md).
 - MCP startup and the active `server_status`, `list_entities`, and `get_entity_info` contracts pass automated tests.
 - Historical mutation schemas are preserved as compatibility records but are absent from active registration and metadata.
 - A read-only Windows smoke test connects to full AutoCAD 2026 using a disposable drawing and proves unchanged drawing state.
+
+**Recorded partial evidence:** The canonical command, three non-mutating tools,
+structured unavailable status, resource and prompt, compatibility shim,
+legacy-schema exclusion, and stdio contract have Linux pure/core MCP coverage.
+This is not a Stage 2 completion claim: the prepared Windows adapter and
+unchanged-DWG full AutoCAD 2026 smoke must still be executed and recorded on a
+real installation. AutoCAD 2021-2026 remains targeted, not verified.
 
 ## 3. Structured drawing context
 

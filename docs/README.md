@@ -9,6 +9,7 @@ This index defines the current AutoCAD MCP documentation surface. Files below [`
 - [Roadmap](roadmap.md): ordered deliveries with evidence-based acceptance gates
 - [Epic portfolio](epics/README.md): detailed, dependency-gated work packages for parallel AI-agent development
 - [Testing](testing.md): pure Python, MCP contract, and real AutoCAD test boundaries
+- [Windows AutoCAD 2026 smoke guide](windows-testing-guide.md): first guarded real-device handoff
 - [Compatibility](compatibility.md): targeted, verified, and excluded platforms and releases
 
 ## Maintainer documents

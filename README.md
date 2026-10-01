@@ -10,11 +10,23 @@ An experimental Model Context Protocol bridge for automating full AutoCAD on Win
 
 ## Project direction
 
-The project is being stabilized around one MCP server, a testable Windows COM boundary, structured drawing context, on-demand drawing capture, and approval-gated CAD edits. See the [roadmap](docs/roadmap.md) for acceptance criteria and delivery order.
+The canonical stdio server is `autocad_mcp.server`. Its active catalog is the
+three non-mutating tools `server_status`, `list_entities`, and
+`get_entity_info`; `src.server` is a protocol-safe compatibility shim, not a
+second implementation. The pure MCP contract has Linux automated evidence
+with unavailable or injected services. It is not evidence of a Windows COM or
+AutoCAD connection. See the [roadmap](docs/roadmap.md) for acceptance criteria
+and delivery order.
 
 ## Current limitations
 
-The adopted runtime and installation flow are being revalidated before wider use. Read the [project status](docs/project-status.md) before relying on the server with production drawings.
+The delayed Windows AutoCAD adapter and guarded AutoCAD 2026 smoke harness are
+implemented, but no real Windows/AutoCAD run has been recorded. Full AutoCAD
+2021-2026 is targeted, not verified. `src/mcp_integration/enhanced_mcp_server.py`
+is experimental and unconnected; it is not launched or advertised by the
+canonical server. Read the [Windows smoke guide](docs/windows-testing-guide.md)
+and [project status](docs/project-status.md) before relying on the server with
+production drawings.
 
 ## Requirements
 
@@ -22,13 +34,19 @@ The adopted runtime and installation flow are being revalidated before wider use
 - Full AutoCAD 2021-2026; compatibility is targeted and tracked per release
 - Python 3.12 or newer
 
+The first guarded real-device smoke requires 64-bit CPython 3.12 exactly; the
+package metadata remains `>=3.12` for ordinary development.
+
 AutoCAD LT and AutoCAD hosted on Linux or macOS are outside the supported scope. See the [compatibility policy](docs/compatibility.md).
 
 ## Development setup
 
-The adopted dependency declarations and launch metadata are not yet a reproducible development baseline. In particular, the repository has not validated a clean dependency installation or a successful MCP startup on the target Windows environment. Do not treat `uv sync`, Poetry installation, or the command currently stored in `mcp.json` as supported setup instructions.
-
-The first modernization epic will establish and test the Windows setup and launch procedure. Until that work passes its acceptance gate, use the repository for source review and documentation work only. See the [project status](docs/project-status.md) and [epic portfolio](docs/epics/README.md).
+The manifest's canonical command is `uv run python -m autocad_mcp.server`.
+The core MCP tests exercise that entry point and the `src.server` compatibility
+shim on Linux without COM modules. They do not establish a supported Windows
+installation or successful startup with a real AutoCAD session. See
+[testing](docs/testing.md), [project status](docs/project-status.md), and the
+[epic portfolio](docs/epics/README.md).
 
 ## Documentation
 

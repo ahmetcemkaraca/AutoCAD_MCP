@@ -1,0 +1,96 @@
+{
+  "source_commit": "00207ed084e9ef81538b5283615e689d483632d1",
+  "source_path": "src/server.py",
+  "tools": {
+    "draw_line": {
+      "type": "object",
+      "properties": {
+        "start_point": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Starting point [x, y, z]"
+        },
+        "end_point": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Ending point [x, y, z]"
+        }
+      },
+      "required": ["start_point", "end_point"]
+    },
+    "draw_circle": {
+      "type": "object",
+      "properties": {
+        "center": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Center point [x, y, z]"
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Circle radius"
+        }
+      },
+      "required": ["center", "radius"]
+    },
+    "extrude_profile": {
+      "type": "object",
+      "properties": {
+        "profile_points": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 2,
+            "maxItems": 3
+          },
+          "description": "List of 2D/3D points defining the profile"
+        },
+        "extrude_height": {
+          "type": "number",
+          "description": "Height to extrude the profile"
+        }
+      },
+      "required": ["profile_points", "extrude_height"]
+    },
+    "revolve_profile": {
+      "type": "object",
+      "properties": {
+        "profile_points": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {"type": "number"}
+          },
+          "description": "List of points defining the profile"
+        },
+        "axis_start": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Start point of revolution axis"
+        },
+        "axis_end": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "End point of revolution axis"
+        },
+        "angle": {
+          "type": "number",
+          "description": "Revolution angle in degrees"
+        }
+      },
+      "required": ["profile_points", "axis_start", "axis_end", "angle"]
+    }
+  }
+}

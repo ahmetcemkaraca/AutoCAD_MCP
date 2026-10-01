@@ -22,41 +22,23 @@
       "args": [
         "run",
         "python",
-        "src/server.py"
-      ],
-      "env": {
-        "PYTHONPATH": "src"
-      }
+        "-m",
+        "autocad_mcp.server"
+      ]
     }
   },
   "tools": [
     {
-      "name": "draw_line",
-      "description": "Draw a line in AutoCAD between two 3D points"
-    },
-    {
-      "name": "draw_circle",
-      "description": "Draw a circle in AutoCAD with a center and radius"
-    },
-    {
-      "name": "extrude_profile",
-      "description": "Create a 3D solid by extruding a profile"
-    },
-    {
-      "name": "revolve_profile",
-      "description": "Create a 3D solid by revolving a profile around an axis"
+      "name": "server_status",
+      "description": "Report MCP server and AutoCAD availability."
     },
     {
       "name": "list_entities",
-      "description": "List entities in the current AutoCAD drawing"
+      "description": "List entities in the active AutoCAD document."
     },
     {
       "name": "get_entity_info",
-      "description": "Get details for a drawing entity in the current session"
-    },
-    {
-      "name": "server_status",
-      "description": "Report MCP server and AutoCAD connection status"
+      "description": "Get information for an entity by its session-local identifier."
     }
   ],
   "resources": [
@@ -84,10 +66,10 @@
   },
   "installation": {
     "steps": [
-      "Install a targeted full AutoCAD release on Windows",
+      "Install a targeted full AutoCAD 2021-2026 release on Windows",
       "Install Python 3.12 or newer and uv",
-      "Install dependencies with: uv sync",
-      "Start the stdio server with: uv run python src/server.py"
+      "Install development dependencies with: uv sync --frozen --group dev",
+      "Start the stdio server with: uv run python -m autocad_mcp.server"
     ]
   }
 }

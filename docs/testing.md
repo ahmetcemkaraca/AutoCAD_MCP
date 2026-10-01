@@ -2,17 +2,24 @@
 
 AutoCAD MCP requires separate evidence for pure Python behavior, MCP protocol behavior, and real AutoCAD behavior. Evidence from one layer must not be reported as proof of another.
 
-## Current baseline
+## Current core evidence
 
-The stewardship branch has run:
+The canonical core has named Linux automated coverage for the exact
+`server_status`, `list_entities`, and `get_entity_info` catalog, closed input
+schemas, dispatch, legacy-mutation exclusion, manifest agreement, canonical
+stdio entry point, and the `src.server` compatibility shim. The status path is
+exercised through unavailable or injected services, not a real AutoCAD adapter.
+
+Run the focused core suite with:
 
 ```bash
-python3 -m compileall -q src tests
+uv run pytest tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/compatibility/test_legacy_mutating_tool_schemas.py tests/contract/test_stdio_server.py -q
 ```
 
-The command exited successfully with Python 3.14.4 in the current Linux development environment. This is a syntax check only.
-
-The adopted pytest files are not a reliable runtime baseline: they import a Flask `app` that does not exist in the selected stdio server. Repairing the test boundary is part of the stable MCP core roadmap stage.
+The replacement record for the retired duplicate server and invalid Flask
+tests is [decision 0002](decisions/0002-canonical-server-consolidation.md).
+Its evidence does not make an HTTP route, mutation tool, Windows adapter, or
+AutoCAD session available.
 
 ## Pure Python tests
 
@@ -22,14 +29,15 @@ Passing them proves only the tested platform-independent behavior. Linux is not 
 
 ## MCP contract tests
 
-Contract tests should start the canonical server with a focused fake AutoCAD adapter and verify:
+Contract tests start the canonical server with unavailable or focused injected
+services and verify:
 
 - advertised tool, prompt, and resource schemas;
 - valid and invalid input handling;
 - structured success and error results;
-- pagination and response limits;
 - stdio output integrity;
-- stale edit-plan and approval behavior.
+- the status resource and help prompt;
+- exclusion of the four historical mutation names.
 
 The fake adapter should implement only the contract needed by active tools. It should not attempt to emulate the complete AutoCAD object model.
 
@@ -48,17 +56,29 @@ Use a disposable copy of every DWG. Mutation tests should group created entities
 
 AutoCAD 2026 is the first planned validation environment. Earlier targeted releases remain unverified until the same documented contract checks pass on a real installation.
 
-## Intended developer commands after the development-baseline epic
+The prepared opt-in command is documented in
+[the Windows AutoCAD 2026 smoke guide](windows-testing-guide.md). Before any
+real run, an operator must start full AutoCAD 2026 in the same interactive
+session, close modal dialogs, choose an immutable source DWG, and use the
+provided PowerShell runner. Without `--run-autocad`, every real-installation
+test skips with the exact reason `requires explicit disposable-DWG
+authorization`. A skip, collection-only result, or Linux result is not
+AutoCAD verification.
 
-After dependency metadata is migrated to PEP 621, a `uv.lock` is committed, and the stable-core test boundary is repaired, the expected workflow is:
+## Core developer commands
+
+For the current pure/core boundary, run:
 
 ```powershell
 uv sync --frozen --group dev
-uv run pytest
-uv run ruff check src tests
+uv run pytest tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/compatibility/test_legacy_mutating_tool_schemas.py tests/contract/test_stdio_server.py -q
+uv run ruff check src/autocad_mcp src/server.py tests/adapter tests/compatibility tests/contract tests/mcp tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/windows tests/conftest.py scripts
+uv run python -m compileall -q src tests
+uv run python -m json.tool mcp.json
 ```
 
-These commands describe the target workflow; this stewardship pull request does not claim that they currently install the adopted dependencies or pass. The current repository has no supported setup command. When dependency and test repair lands, replace this note with fresh Windows results and supported command variants.
+Passing them is Linux pure/core MCP evidence only. It does not establish a
+supported Windows setup or a real AutoCAD connection.
 
 ## Documentation checks
 

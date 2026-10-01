@@ -288,6 +288,12 @@ indexed source vertex IDs preserve each original oriented face. Seam cuts may
 produce multiple output corners with the same source vertex/island identity,
 distinguished by output vertex index.
 
+For multiple charts, the gap is `1e-6` times the largest pre-placement chart
+bounding-box x/y span. It must be finite and positive, and placement arithmetic
+must produce finite coordinates with a representable positive separation.
+Otherwise the operation returns a structured numerical failure; it never
+clamps values or returns a partial layout. A single chart needs no gap.
+
 ### Track U gates
 
 - Published fixtures include planar grids, cylinders/prisms, cones/frusta, branched strips, multiple islands, reversed faces, non-manifold edges, degeneracies, overlaps, and unsupported curved surfaces.

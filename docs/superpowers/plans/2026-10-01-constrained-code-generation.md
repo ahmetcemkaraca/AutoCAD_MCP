@@ -137,6 +137,34 @@ language documentation before freezing each target's goldens.
 
 **Own:** `validate.py`, `service.py`, static/adversarial/service tests.
 
+Freeze these pure public seams:
+
+```python
+def validate_source(recipe: CodeRecipe, source: str) -> tuple[StaticFinding, ...]: ...
+def generate_code(payload: object) -> GeneratedCodeArtifact: ...
+def artifact_payload(artifact: GeneratedCodeArtifact) -> dict[str, JsonValue]: ...
+```
+
+The validator imports models/core data and stdlib only, never renderer/templates
+or their private helpers. Independently parse the exact reviewed function and
+local-assignment/return/iteration structures. Reconstruct literal data as data
+only and compare it to the recipe; do not evaluate a generated function or use
+the renderer itself as a validation oracle. Python uses AST; AutoLISP/VBA use
+bounded conservative token/structure parsing, with quotes decoded before any
+executable-token policy. Unknown syntax, extra invocation/definition, changed
+literal data or unsafe names fail. A fixed first-error finding is sufficient;
+diagnostics contain fixed rules/messages and positions, never source fragments.
+
+The service decodes the input before rendering, renders once, validates once,
+and refuses any error finding with STATIC_VALIDATION_FAILED. Artifact digest is
+`sha256:` plus SHA-256 of compact sorted UTF-8 JSON containing exactly target,
+template_id, template_version and source. It constructs the exact artifact with
+executed false and the mandatory warning, and bounds actual artifact JSON bytes
+to65,536. The later MCP owner must separately enforce the full serialized tool
+envelope (including JSON text escaping), not infer it from artifact size.
+No service class/factory/cache or new dependency is needed for this stateless
+pipeline. Test spies may patch these existing function seams.
+
 - [ ] A different author from rendering implements the validator. Reject
   deliberately injected executable constructs first. Python uses an exact AST
   allowlist including fixed identifiers/call receivers; ast.parse is static

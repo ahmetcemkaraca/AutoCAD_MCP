@@ -1,0 +1,15 @@
+Option Explicit
+Option Base 0
+
+Public Function CodegenIterateHandles() As String
+    Dim handles As Variant
+    Dim handle As Variant
+    Dim last_handle As String
+    ReDim handles(0 To 0)
+    handles(0) = "ABC"
+    last_handle = ""
+    For Each handle In handles
+        last_handle = handle
+    Next handle
+    CodegenIterateHandles = last_handle
+End Function

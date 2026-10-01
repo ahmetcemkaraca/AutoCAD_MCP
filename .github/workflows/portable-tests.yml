@@ -46,7 +46,7 @@ jobs:
           git hash-object uv.lock
           uv run --frozen python -c "import importlib.util, platform, struct, sys; assert sys.version_info[:2] == (3, 12) and struct.calcsize('P') == 8; present = {name: importlib.util.find_spec(name) is not None for name in ('pythoncom', 'win32com', 'pyautocad')}; assert all(value == (sys.platform == 'win32') for value in present.values()), present; print(platform.platform(), sys.version, present)"
       - name: Run portable and Windows API tests without AutoCAD
-        run: uv run --frozen pytest -q -ra
+        run: uv run --frozen pytest -x -vv -ra -o faulthandler_timeout=60
       - name: Check active source and tests
         run: |
           uv run --frozen ruff check src/autocad_mcp src/server.py tests/adapter tests/compatibility tests/contract tests/mcp tests/unit/test_mcp_models.py tests/unit/test_mcp_tools.py tests/unit/test_mcp_dispatch.py tests/windows tests/conftest.py scripts

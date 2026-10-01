@@ -18,14 +18,14 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Done agent work; clean Windows/Linux evidence and PRs #6/#7 merged |
 | EPIC-02 | Keep the accepted canonical core and its regression suite passing as tools are added; record merged evidence | Implemented; documentation pending |
 | EPIC-03 | Preserve adapter contracts and guarded smoke, consolidate operator handoff and evidence collection | Implementation present; handoff audit pending |
-| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | Models, identity, repository, owner frames and projection/cursors accepted; pure adapters in progress; native host/builder/tools pending |
+| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | Models, identity, repository, projection/cursors and pure adapters accepted; Windows extraction/native host/builder/tools pending |
 | EPIC-05 | Explicit capture service/adapters, projection/overlay metadata, bounded image transport, restoration/failure tests and Windows runner | Pending |
 | EPIC-06 | Preview, trusted non-MCP human approval broker, bounded mutation primitives, preflight, one-use approval, Undo/recovery, evidence and Windows runner | Pending |
 | EPIC-07A | Evidence-based read-only architectural hypotheses, corpus/evaluation, MCP integration and Windows runner | Pending |
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pure service and measured maximum case accepted; tool schema awaits review; MCP integration pending |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pure service and measured maximum case accepted; tool schema accepted; MCP handler/integration pending |
 | EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | All nine renderers and independent validator/service accepted; MCP integration in progress |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Validated dimension-proposal delivery using topology/mechanical context and approved edit path | Pending |
@@ -52,8 +52,10 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
   (plan checkpoint `380d805`): 49 changed tests, 249 context tests, 478 full tests,
   9 skips, plus independent marker/strict-roundtrip/cursor probes. Complete source
   identity survives response projection; projected records cannot become complete
-  snapshots or fingerprints. Pure context records/fake/mapper are being built;
-  their current uncommitted files are not accepted implementation evidence.
+  snapshots or fingerprints. Pure context records/fake/mapper are now accepted through `60e3c2c`: 48 focused/
+  526 full tests plus 13 scoped mapper checks after an evidence-binding fix.
+  Accepted native pure protocol was merged at `ea5ee70`; 120 combined tests passed.
+  Windows extraction is the next active task.
 - EPIC-09U service `f3f6428` plus test correction `b82ff64` is independently
   accepted: 30 service tests and 456 full tests, 9 skips. The complete maximum
   fixture passes the unchanged shared work budget. Final immutable measurement
@@ -62,7 +64,8 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
   named Linux host, with cumulative process RSS and concurrent-load caveats.
   The earlier stage-local maximum failure remains in historical evidence and
   has been resolved; do not restart that repair. Tool-schema commit `208d311`
-  passes 30 schema/84 affected core+stdio tests but awaits independent review.
+  passes 30 schema/84 affected core+stdio tests and now has independent
+  contract/quality acceptance.
   Handler, complete MCP body bound, registration and hosted feature CI remain.
 - EPIC-09C source `cc0d959` is independently accepted at plan `58fcc0a`:
   84 focused tests and 464 full tests, 9 skips. All nine hand-reviewed goldens

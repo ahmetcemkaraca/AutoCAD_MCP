@@ -1,0 +1,5 @@
+(defun codegen_facts (/ facts_json)
+  (setq facts_json "")
+  (setq facts_json (strcat facts_json "[{\"handle\":\"A\",\"layer\":\"Layer\",\"object_name\":\"Entity\",\"properties\":{\"value\":\"data\"}}]"))
+  facts_json
+)

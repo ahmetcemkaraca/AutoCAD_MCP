@@ -1,0 +1,9 @@
+Option Explicit
+Option Base 0
+
+Public Function CodegenFacts() As String
+    Dim facts_json As String
+    facts_json = ""
+    facts_json = facts_json & "[{""handle"":""A"",""layer"":""Layer"",""object_name"":""Entity"",""properties"":{""value"":""data""}}]"
+    CodegenFacts = facts_json
+End Function

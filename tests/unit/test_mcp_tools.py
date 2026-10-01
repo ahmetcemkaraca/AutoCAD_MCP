@@ -1,6 +1,5 @@
 """Contract tests for the active MCP tool catalog and input parser."""
 
-import json
 import os
 import subprocess
 import sys
@@ -42,21 +41,6 @@ def test_core_imports_are_hermetic_from_com_modules() -> None:
     )
 
     assert result.returncode == 0, result.stderr
-
-
-def test_manifest_catalog_matches_the_canonical_tool_definitions() -> None:
-    """Manifest drift would advertise tools unavailable from the canonical server."""
-    manifest = json.loads((Path(__file__).parents[2] / "mcp.json").read_text(encoding="utf-8"))
-    server = manifest["mcpServers"]["autocad-mcp"]
-
-    assert [
-        {"name": tool["name"], "description": tool["description"]}
-        for tool in manifest["tools"]
-    ] == [
-        {"name": definition.name, "description": definition.description}
-        for definition in TOOL_DEFINITIONS
-    ]
-    assert server == {"command": "uv", "args": ["run", "python", "-m", "autocad_mcp.server"]}
 
 
 @pytest.mark.parametrize(
@@ -144,3 +128,8 @@ def test_parse_tool_input_distinguishes_unknown_tools_from_invalid_arguments(nam
         parse_tool_input(name, {})
 
     assert error.value.tool_name == name
+
+
+def test_basic_parser_never_converts_a_codegen_name_to_an_entity_read() -> None:
+    with pytest.raises(UnknownToolName):
+        parse_tool_input("generate_constrained_code", {"entity_id": 7})

@@ -5,6 +5,8 @@ from collections.abc import Mapping
 from typing import Protocol
 from uuid import uuid4
 
+from autocad_mcp.tools.constrained_code_generation import generate_constrained_code
+
 from .models import (
     BasicToolInput,
     ErrorCode,
@@ -36,7 +38,7 @@ class UnavailableToolService:
                 details={
                     "mcp_server": "running",
                     "autocad_connected": False,
-                    "tools_available": 3,
+                    "tools_available": len(ToolName),
                     "transport": "stdio",
                 },
             )
@@ -51,6 +53,8 @@ async def dispatch_tool(
         arguments = {}
 
     try:
+        if name == ToolName.GENERATE_CONSTRAINED_CODE:
+            return generate_constrained_code(arguments)
         return await service.invoke(parse_tool_input(name, arguments))
     except InvalidToolArguments:
         return ToolFailure(ToolError(ErrorCode.INVALID_ARGUMENT, "Invalid tool arguments"))
@@ -60,7 +64,8 @@ async def dispatch_tool(
         incident_id = uuid4().hex
         logger.error(
             "Unexpected tool dispatch failure; incident_id=%s; error_type=%s",
-            incident_id, type(error).__name__,
+            incident_id,
+            type(error).__name__,
         )
         return ToolFailure(
             ToolError(

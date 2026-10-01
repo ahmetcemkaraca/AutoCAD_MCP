@@ -5,7 +5,9 @@ import logging
 import sys
 from collections.abc import Mapping
 
+import autocad_mcp.adapter.provider as provider_module
 import pytest
+from autocad_mcp.adapter.fake import FakeAutoCADAdapter
 from autocad_mcp.adapter.provider import WindowsAdapterProvider
 from autocad_mcp.adapter.service import AdapterToolService
 from autocad_mcp.core.models import (
@@ -160,15 +162,29 @@ def test_unavailable_status_reports_the_running_server_and_capabilities() -> Non
     assert response.error.details == {
         "mcp_server": "running",
         "autocad_connected": False,
-        "tools_available": 3,
+        "tools_available": 4,
         "transport": "stdio",
     }
 
 
-def test_runtime_uses_delayed_windows_adapter_service_without_loading_com_modules() -> None:
+def test_runtime_uses_delayed_windows_adapter_service_without_loading_com_modules(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Eager COM loading would make production runtime composition non-portable."""
     service = create_tool_service()
 
-    assert isinstance(service, AdapterToolService)
-    assert isinstance(service._provider, WindowsAdapterProvider)
+    assert service._service is None
+    monkeypatch.setattr(
+        provider_module,
+        "WindowsAdapterProvider",
+        lambda: WindowsAdapterProvider(FakeAutoCADAdapter),
+    )
+    asyncio.run(dispatch_tool(service, "get_entity_info", {"entity_id": True}))
+    assert service._service is None
+    asyncio.run(dispatch_tool(service, "server_status", {}))
+    assert isinstance(service._service, AdapterToolService)
+    assert isinstance(service._service._provider, WindowsAdapterProvider)
+    retained = service._service
+    asyncio.run(dispatch_tool(service, "list_entities", {}))
+    assert service._service is retained
     assert {"pythoncom", "win32com", "win32com.client", "pyautocad"}.isdisjoint(sys.modules)

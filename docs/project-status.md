@@ -1,6 +1,6 @@
 # Project Status
 
-**Evidence date:** 2026-08-29
+**Evidence date:** 2026-10-01
 
 This document describes the current repository state. It deliberately separates
 source-code presence, automated core evidence, and real AutoCAD verification.
@@ -28,6 +28,12 @@ Source presence does not prove that a module is connected to the root server, fu
 | Historical deployment artifacts | Docker and Compose describe a Linux HTTP direction that names the experimental enhanced server. | They are not a supported deployment; [decision 0001](decisions/0001-container-artifact-disposition.md) records their status without authorizing removal. |
 
 ## Automated core evidence
+
+The merged baseline `52448cb` passed a fresh frozen Linux installation and
+`uv run --frozen pytest -q -ra`: **215 passed, 9 skipped**. The skipped checks
+require Windows APIs or explicit disposable-DWG authorization. The merge also
+fixed malformed MCP arguments returning unstructured SDK errors; both stdio
+entry points now have regression coverage for the structured error contract.
 
 ```text
 The named model, tool/schema, dispatch, legacy-exclusion, and stdio suites are
@@ -63,9 +69,22 @@ AutoCAD 2026 with an unchanged disposable drawing. Full AutoCAD 2021-2026
 remains targeted, not verified. Stage 2 remains open until that evidence
 exists; the current MCP evidence is not an EPIC completion claim.
 
+On 2026-10-01 the maintainer requested completion of all agent-owned remaining
+epic work before personally running application tests. Dependent implementation,
+portable tests, fixtures, and Windows runners may proceed in dependency order.
+This changes execution scheduling only: actual drawing edits still require
+per-plan human approval, and no feature or AutoCAD release becomes verified
+without its recorded real-device evidence.
+
 ## Repository governance status
 
 - The imported history is preserved on the protected `archive` branch.
-- Draft pull request #1 contains the stewardship baseline and targets `main`.
-- The `main` branch was not protected when read back on 2026-08-28.
-- Roadmap Stage 1 remains in progress until review corrections are published, `main` protection is enabled, the pull request is approved and merged, and the merged state is read back.
+- [PR #1](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/1),
+  [PR #2](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/2), and
+  [PR #3](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/3) merged on 2026-10-01.
+- `main` requires pull requests and linear history and prohibits force pushes
+  and deletion. The single-maintainer policy requires zero approving GitHub
+  reviews; the maintainer explicitly authorized the merges in the project chat.
+- `archive` remains locked and prohibits force pushes and deletion.
+- Roadmap Stage 1 is accepted; the [closure record](verification/stewardship-2026-10-01.md)
+  records merged-state readback, documentation checks, and the review-policy limit.

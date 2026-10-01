@@ -1,10 +1,10 @@
 # Modernization Epic Portfolio
 
-**Status:** Proposed implementation portfolio
+**Status:** Active implementation portfolio; real-application execution is deferred to the maintainer's final test phase.
 
-**Documentation date:** 2026-08-28
+**Documentation date:** 2026-10-01
 
-This portfolio decomposes the approved AutoCAD MCP modernization design into independently reviewable implementation epics. It authorizes no runtime work by itself. Each epic requires its own focused branch, approved execution plan, tests, review, and pull request before implementation begins.
+This portfolio decomposes the approved AutoCAD MCP modernization design into independently reviewable implementation epics. The maintainer authorized all remaining agent-owned implementation on 2026-10-01 and will run real-application tests after implementation. Each delivery retains its own focused branch, execution plan, tests, review, and pull request. Real-device evidence is still required for full epic acceptance and compatibility claims.
 
 ## Portfolio outcomes
 
@@ -69,7 +69,7 @@ Wave 5:          EPIC-07B            EPIC-08B
 EPIC-09 U and C may start after their core/security gates. P waits for EPIC-08A; D waits for EPIC-08B.
 ```
 
-Dependency arrows are merge gates, not scheduling suggestions. A downstream branch may prepare fixtures or design notes early, but it must not merge code against an unaccepted upstream interface.
+Dependency arrows require reviewed upstream interfaces. Under the maintainer's 2026-10-01 instruction, portable implementation and integration may proceed after those interfaces and automated contracts pass while real-device execution is deferred to the final operator phase. Missing real-device evidence remains an explicit acceptance limitation; it cannot be reported as a passed gate.
 
 EPIC-05, EPIC-06, EPIC-07A, and EPIC-08A may develop exclusively owned pure/fake feature modules in parallel. Their real-AutoCAD runs are separately serialized by the verification lease below. EPIC-07B and EPIC-08B begin only after their named gates. No feature or candidate track may concurrently edit `src/autocad_mcp/core/models.py`, `src/autocad_mcp/runtime.py`, `src/autocad_mcp/server.py`, `mcp.json`, or canonical catalog/stdio contract tests. A controller-owned registration queue serializes those shared changes, rebases each next feature branch onto the prior integration commit, and reruns every active core, adapter, context, feature, catalog, and stdio contract suite before the newly integrated epic closes.
 
@@ -85,7 +85,7 @@ One controller agent owns the epic branch and coordinates work packages. It must
 - keep at most one agent editing a shared registration, schema-export, or documentation index file;
 - require each implementation lane to return exact test output and changed paths;
 - run an integration review after every wave; and
-- stop the epic when an acceptance gate requires real AutoCAD, human approval infrastructure, or maintainer authority that is unavailable.
+- leave acceptance pending when a gate requires unavailable real AutoCAD evidence, human approval infrastructure, or maintainer authority; continue authorized portable implementation and test-harness preparation without exercising or signing that gate.
 
 ### Implementation-agent responsibilities
 

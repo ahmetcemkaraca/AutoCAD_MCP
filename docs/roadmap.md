@@ -136,6 +136,12 @@ real installation. AutoCAD 2021-2026 remains targeted, not verified.
 
 **Candidate areas:** surface unfolding, automatic dimensioning, pattern optimization, and constrained code generation.
 
+The canonical server has a portably tested output-only `generate_constrained_code`
+integration. Its [separate decision](advanced/constrained-code-generation-decision.md)
+records immutable static/core evidence, passed independent final review and
+passed hosted Windows/Linux CI. This does not complete Stage 7 or establish another
+candidate's numerical or AutoCAD gates.
+
 **Acceptance criteria for each candidate:**
 
 - The feature has a focused design consistent with the current safety boundary.

@@ -1,0 +1,68 @@
+{
+  "schema_version": "1",
+  "goldens": [
+    {
+      "target": "python",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "file": "goldens/python-iterate_handles.py.txt",
+      "source_sha256": "184b7d4a43863c800a6fe304dad5201bf1efc79106baeb54cceabf7f191e93b9"
+    },
+    {
+      "target": "python",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "file": "goldens/python-literal_geometry.py.txt",
+      "source_sha256": "2eb118fb5c3ea209e4928d11106e1a4a236a1a7366148b88680bb10ebf5aca54"
+    },
+    {
+      "target": "python",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "file": "goldens/python-serialize_entity_facts.py.txt",
+      "source_sha256": "a7bbcfba00906b721c1d759dbf7e95414c1e98e35d525949498be5047d2c9b64"
+    },
+    {
+      "target": "autolisp",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "file": "goldens/autolisp-iterate_handles.lsp.txt",
+      "source_sha256": "ec1f47c4f577cdffedbed1c3e8ba823cecbd36681423d51229e5b85806aa57e1"
+    },
+    {
+      "target": "autolisp",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "file": "goldens/autolisp-literal_geometry.lsp.txt",
+      "source_sha256": "c4d8c9b35ea254d6fc302711a76d7a83296ff308263d0fe333670963c08c9756"
+    },
+    {
+      "target": "autolisp",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "file": "goldens/autolisp-serialize_entity_facts.lsp.txt",
+      "source_sha256": "354cdacfcf8942e1d0df81ba82f89e31308cc4ea7288645e9c6213e3966638ef"
+    },
+    {
+      "target": "vba",
+      "template_id": "iterate_handles",
+      "template_version": "1.0.0",
+      "file": "goldens/vba-iterate_handles.bas.txt",
+      "source_sha256": "1ff558d3d6c296203a82af5f173cac88d5b6dcc7e7e5bd98cd55cb0cd1a8c5ce"
+    },
+    {
+      "target": "vba",
+      "template_id": "literal_geometry",
+      "template_version": "1.0.0",
+      "file": "goldens/vba-literal_geometry.bas.txt",
+      "source_sha256": "4dbfa0797c057ecac2bdbdbab4e30df550b526dfea98fb29ccba970ab22cddf3"
+    },
+    {
+      "target": "vba",
+      "template_id": "serialize_entity_facts",
+      "template_version": "1.0.0",
+      "file": "goldens/vba-serialize_entity_facts.bas.txt",
+      "source_sha256": "a9045b0004e16e32ae48e16247acff61c81edfb1b732f371c00076cd6c4d5690"
+    }
+  ]
+}

@@ -39,6 +39,10 @@
     {
       "name": "get_entity_info",
       "description": "Get information for an entity by its session-local identifier."
+    },
+    {
+      "name": "generate_constrained_code",
+      "description": "Generate reviewed source text from bounded literal recipes; never execute it."
     }
   ],
   "resources": [

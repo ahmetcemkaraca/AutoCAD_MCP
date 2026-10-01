@@ -1,3 +1,9 @@
 # Preserve content-addressed fixtures across platform checkouts.
 tests/fixtures/compatibility/legacy-mutating-tool-schemas.json -text
 tests/fixtures/unfolding/** -text
+
+# Preserve the frozen code-generation catalogue and adversarial corpus bytes.
+tests/fixtures/codegen/** -text
+
+# Preserve content-addressed immutable advanced evidence on every checkout.
+docs/advanced/evidence/** -text

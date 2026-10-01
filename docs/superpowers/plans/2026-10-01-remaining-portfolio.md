@@ -2,7 +2,7 @@
 
 **User objective:** List and complete every remaining task the agent can perform. The user will execute real-application tests after implementation finishes.
 
-**Current baseline:** `82b85a2` on `main`; PRs #1-3 and #5-9 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
+**Current baseline:** `67f2adf` on `main`; PRs #1-9 are merged. This is a delivery ledger, not a claim of AutoCAD verification.
 
 ## Authority and completion boundary
 
@@ -18,14 +18,14 @@ Use the approved design and epic contracts; preserve their safety, validation, p
 | EPIC-01 | Verify reproducible portable setup, add missing baseline CI, resolve documented historical artifact disposition, prepare clean Windows install witness | Done agent work; clean Windows/Linux evidence and PRs #6/#7 merged |
 | EPIC-02 | Keep the accepted canonical core and its regression suite passing as tools are added; record merged evidence | Implemented; documentation pending |
 | EPIC-03 | Preserve adapter contracts and guarded smoke, consolidate operator handoff and evidence collection | Implementation present; handoff audit pending |
-| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | Models, identity, repository, projection/cursors and pure adapters accepted; Windows extraction/native host/builder/tools pending |
+| EPIC-04 | Complete models, serialization, identities, fingerprints, cursors, immutable repository, native observer prerequisite, context adapters, builder, queries, relationships, MCP tools, fixtures, Windows runner | Models, identity, repository, projection/cursors and both adapters accepted; builder/relationships active; native packaging, services and tools pending |
 | EPIC-05 | Explicit capture service/adapters, projection/overlay metadata, bounded image transport, restoration/failure tests and Windows runner | Pending |
 | EPIC-06 | Preview, trusted non-MCP human approval broker, bounded mutation primitives, preflight, one-use approval, Undo/recovery, evidence and Windows runner | Pending |
 | EPIC-07A | Evidence-based read-only architectural hypotheses, corpus/evaluation, MCP integration and Windows runner | Pending |
 | EPIC-07B | Human-confirmed architectural edit compilation through accepted edit-plan pipeline | Pending |
 | EPIC-08A | Domain-neutral topology, predicates/index/graph, closed-loop facts, MCP integration and Windows runner | Pending |
 | EPIC-08B | Mechanical interpretations over accepted topology and evidence contracts, fixtures/evaluation and MCP integration | Pending |
-| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pure service and measured maximum case accepted; tool schema accepted; MCP handler/integration pending |
+| EPIC-09U | Validated numerical surface-unfolding delivery and constrained integration | Pure service, MCP integration and independent final review passed; PR #10 awaits Windows CI repair and merge |
 | EPIC-09C | Validated constrained code-generation delivery, security review and non-executing integration | Done; PR #9 merged after independent review and hosted Windows/Linux CI |
 | EPIC-09P | Validated pattern-placement delivery using accepted topology | Pending |
 | EPIC-09D | Read-only dimension proposals using accepted topology/mechanical facts; no dimension creation | Pending |
@@ -42,9 +42,11 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
 
 ## Current verified checkpoint
 
-- Main is `82b85a2`; PRs #1–3 and #5–9 are merged. A fresh GitHub readback
-  finds only PR #4 open. It changes the pinned MCP major version and remains a
-  separate migration review; it has not been merged into these feature branches.
+- Main is `67f2adf`; PRs #1–9 are merged. PR #4 initially broke server import
+  with MCP 2.2 (`Server.list_tools` missing). The repaired dependency PR retains
+  `mcp>=1,<2` (locked 1.30.0); independent review and hosted Windows 499/3 skips
+  and Linux 493/9 skips passed before merge. Optional ML workloads were not run.
+  PR #10 contains U; its Windows integration failure is under investigation.
 - Baseline hosted evidence is Windows 233 passed/3 skipped and Linux 227 passed/
   9 skipped. This proves baseline dependency/portable/Windows-API behavior, not
   AutoCAD execution or the new unmerged feature branches.
@@ -68,7 +70,10 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
   has been resolved; do not restart that repair. Tool-schema commit `208d311`
   passes 30 schema/84 affected core+stdio tests and now has independent
   contract/quality acceptance.
-  Handler, complete MCP body bound, registration and hosted feature CI remain.
+  Handler, complete MCP body bound and registration are implemented at `5c1ac9b`.
+  Independent whole-U review passed with 248 focused and 742 full tests/9 skips.
+  Main dependency merge `95c4e47` passed 742/9 again locally. Hosted Windows
+  integration has a failure/stall and must pass before PR #10 merges.
 - EPIC-09C is delivered through [PR #9](https://github.com/ahmetcemkaraca/AutoCAD_MCP/pull/9),
   merged as `82b85a2`. All nine templates, independent static validation,
   default-server isolation and complete 65,536-byte SDK result bound passed
@@ -79,9 +84,10 @@ The agent owns test code, fixtures that can be generated here, runner behavior, 
 - Native observer pure state/protocol `b2abd8a` is accepted: 90 native checks,
   69 focused Python/298 full tests, 9 skips, and three locked BCL builds. Actual
   SDK callback compile probes pass for the three pinned runtime profiles. Host
-  events/authenticated Windows transport are still in progress. Client process
-  incarnation and sampling-change races found during early review are assigned
-  to that author. Windows pipe and real AutoCAD acceptance remain separate gates.
+  events/authenticated transport are accepted at `f518e83`; harness correction
+  `7cbaacc` has 39 native checks and 4 portable lifecycle checks. Real Windows
+  pipe tests remain pending. Task3 packaging/CI/operator runner is active.
+  Real AutoCAD acceptance remains an operator gate after implementation.
 
 ## Execution decisions
 

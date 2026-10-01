@@ -171,3 +171,17 @@ def test_decode_and_normalize_can_share_cooperative_work_budget() -> None:
     budget = WorkBudget(BoundedExecutionPolicy(200000, 1000000, 30, 1, 0), cancellation=Probe())
     with pytest.raises(BoundedExecutionInterrupted):
         decode_request(payload(), budget=budget)
+
+
+def test_deeply_nested_coordinate_returns_redacted_invalid_argument() -> None:
+    data = payload()
+    coordinate: object = "private-coordinate-value"
+    for _ in range(2000):
+        coordinate = [coordinate]
+    data["vertices"][0]["point"][0] = coordinate
+
+    with pytest.raises(MeshValidationError) as caught:
+        decode_request(data)
+
+    assert caught.value.code == "INVALID_ARGUMENT"
+    assert "private-coordinate-value" not in str(caught.value)

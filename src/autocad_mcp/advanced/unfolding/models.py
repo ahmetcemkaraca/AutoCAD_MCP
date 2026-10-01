@@ -161,7 +161,7 @@ def _enforce_request_bytes(payload: object, budget: WorkBudget | None) -> None:
             size += len(chunk.encode("utf-8"))
             if size > MAX_ADVANCED_REQUEST_BYTES:
                 raise MeshValidationError("RESOURCE_LIMIT", "Request byte limit exceeded")
-    except (ValueError, TypeError, UnicodeError) as error:
+    except (ValueError, TypeError, UnicodeError, RecursionError) as error:
         if isinstance(error, MeshValidationError):
             raise
         raise MeshValidationError("INVALID_ARGUMENT", "Request must be finite JSON data") from error

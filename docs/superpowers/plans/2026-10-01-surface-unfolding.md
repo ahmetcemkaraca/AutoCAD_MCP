@@ -231,6 +231,21 @@ factory framework, persistence or new dependency is needed for the pure service.
 - [x] Run focused/full checks, lint/types and import/no-effect checks. Obtain
   independent review before the serialized registration window below.
 
+### Task 4C: Closed tool metadata before serialized registration
+
+Own only `tools/__init__.py`, `tools/surface_unfolding.py` metadata and schema
+contract tests. `SURFACE_UNFOLDING_TOOL` names `unfold_surface` and advertises
+exact direct `UnfoldingRequest` fields, closed records/policy, published counts,
+ID/text/arity limits and read-only/local-data annotations. Reuse accepted bound
+constants. Topology, identity uniqueness, finite JSON and actual byte limits
+remain enforced by the existing strict decoder/service. Do not register or
+change shared files during Track C's integration window.
+
+- [ ] Add failing accepted-fixture and malformed/schema-boundary tests; implement
+  the minimum metadata; verify schema/core/stdio contracts and lint/types.
+- [ ] Obtain independent review of this root-authored prerequisite before adding
+  the handler and registration. This does not satisfy the complete MCP gate.
+
 ### Task 4: Serialized MCP integration and final acceptance (E09-U04)
 
 **Files:** `tests/performance/measure_unfolding.py`, immutable numerical evidence, `advanced/unfolding/service.py`, `tools/surface_unfolding.py`, MCP tests; controller-owned server/runtime/catalog/manifest/docs during an exclusive integration window.

@@ -59,6 +59,7 @@ coverage.xml
 
 # Local settings
 .claude/settings.local.json
+.worktrees/
 
 # Project cleanup
 DELETED/
@@ -69,6 +70,7 @@ scratch/
 # Development files
 debug_*.py
 test_*.py
+!tests/**/test_*.py
 *_debug.py
 *_test.py
 run_test.bat

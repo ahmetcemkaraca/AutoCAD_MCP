@@ -1,36 +1,26 @@
-# AutoCAD MCP Server Documentation
+# Documentation
 
-Welcome to the AutoCAD MCP Server documentation! This directory contains comprehensive guides and tutorials to help you get the most out of the AutoCAD MCP Server.
+This index defines the current AutoCAD MCP documentation surface. Files below [`legacy/`](legacy/README.md) are preserved historical material and are not current product guidance.
 
-## 📚 Available Guides
+## Project documentation
 
-### 🚀 Getting Started
-- [Installation Guide](installation-guide.md) - Step-by-step installation instructions
-- [Quick Start Tutorial](quick-start-tutorial.md) - Get up and running in minutes
+- [Project status](project-status.md): observed source state, known inconsistencies, and current validation limits
+- [Architecture](architecture.md): adopted architecture and approved modernization target
+- [Roadmap](roadmap.md): ordered deliveries with evidence-based acceptance gates
+- [Epic portfolio](epics/README.md): detailed, dependency-gated work packages for parallel AI-agent development
+- [Testing](testing.md): pure Python, MCP contract, and real AutoCAD test boundaries
+- [Windows AutoCAD 2026 smoke guide](windows-testing-guide.md): first guarded real-device handoff
+- [Compatibility](compatibility.md): targeted, verified, and excluded platforms and releases
 
-### 💼 Use Cases & How-To Guides
-- [Manufacturing Use Cases](use-cases/manufacturing.md) - Manufacturing and production workflows
-- [Architecture & Engineering Use Cases](use-cases/architecture-engineering.md) - AEC industry applications
-- [Product Design Use Cases](use-cases/product-design.md) - Product development workflows
-- [Education & Training Use Cases](use-cases/education-training.md) - Educational applications
+## Maintainer documents
 
-### 🛠️ Technical Guides
-- [MCP Tool Reference](mcp-tool-reference.md) - Complete reference for all 43+ MCP tools
-- [Configuration Guide](configuration-guide.md) - Server configuration options
-- [API Reference](api-reference.md) - Server API documentation
+- [Repository rules](../AGENTS.md): mandatory language, workflow, test, security, and documentation policy
+- [Modernization design](superpowers/specs/2026-08-25-maintenance-and-modernization-design.md): approved product and architecture decisions
+- [Stewardship implementation plan](superpowers/plans/2026-08-25-stewardship-baseline.md): execution plan for the first maintenance pull request
 
-### 🤝 Contributing
-- [Development Setup](development-setup.md) - How to set up your development environment
-- [Contributing Guidelines](contributing-guidelines.md) - How to contribute to the project
+## Historical material
 
-## 🆘 Getting Help
+- [Legacy archive](legacy/README.md): archived documentation and usage warning
+- [Document audit](legacy/document-audit.md): disposition and evidence for every imported document
 
-If you can't find what you're looking for in these guides:
-
-- 🐛 **Report Issues**: [GitHub Issues](https://github.com/BarryMcAdams/AutoCAD_MCP/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/BarryMcAdams/AutoCAD_MCP/discussions)  
-- 📧 **Email Support**: [info@CADcoLabs.com](mailto:info@CADcoLabs.com)
-
----
-
-*Documentation maintained by Barry Adams*
+When a current document and a legacy document disagree, use the current document and verify important behavior against source code and fresh test evidence.

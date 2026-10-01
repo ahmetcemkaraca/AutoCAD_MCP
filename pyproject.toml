@@ -1,8 +1,7 @@
-
 [project]
 name = "autocad-mcp"
 version = "0.1.0"
-description = "A Model Context Protocol (MCP) server for AutoCAD 2025"
+description = "An experimental Model Context Protocol bridge for full AutoCAD 2021-2026 on Windows"
 authors = [
     {name = "AutoCAD MCP Contributors"}
 ]
@@ -18,57 +17,64 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
+dependencies = [
+    "flask>=3.1.3,<4",
+    "pyautocad>=0.2.0,<0.3; sys_platform == 'win32'",
+    "numpy>=2.1.0,<3",
+    "scipy>=1.14.1,<2",
+    "pywin32>=311; sys_platform == 'win32'",
+    "fastapi>=0.116.1,<0.117",
+    "uvicorn[standard]>=0.35.0,<0.36",
+    "python-multipart>=0.0.31,<0.0.32",
+    "mcp>=1,<2",
+    "websockets>=12.0,<13",
+    "aiofiles>=23.2.0,<24",
+    "jinja2>=3.1.2,<4",
+    "requests>=2.33.0,<3",
+    "python-dotenv>=1.2.2,<2",
+    "cryptography>=50.0.0,<51",
+]
 
-[tool.poetry]
-package-mode = false
+[project.optional-dependencies]
+ml = [
+    "scikit-learn>=1.4.0,<2",
+    "transformers>=5.10.1,<6",
+    "torch>=2.13.0,<3",
+    "accelerate>=0.24,<0.25",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-flask = "^3.1.3"
-pyautocad = "^0.2.0"
-numpy = "^2.1.0"
-scipy = "^1.14.1"
-pypiwin32 = "^223"
-fastapi = "^0.116.1"
-uvicorn = {extras = ["standard"], version = "^0.35.0"}
-python-multipart = "^0.0.31"
-mcp = "^1.0.0"
-websockets = "^12.0"
-aiofiles = "^23.2.0"
-jinja2 = "^3.1.2"
-requests = "^2.33.0"
-python-dotenv = "^1.2.2"
-cryptography = "^50.0.0"
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3,<10",
+    "pytest-cov>=4,<5",
+    "pytest-html>=4.0.0,<5",
+    "pytest-mock>=3.12.0,<4",
+    "black>=24.8,<25",
+    "ruff>=0.5.5,<0.6",
+    "mypy>=1.0,<2",
+    "bandit>=1.7,<2",
+    "safety>=2,<3",
+    "packaging>=24,<26",
+]
 
-[tool.poetry.group.ml]
-optional = true
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.ml.dependencies]
-scikit-learn = "^1.4.0"
-transformers = "^5.10.1"
-torch = "^2.13.0"
-accelerate = "^0.24.0"
-
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^9.0.3"
-pytest-cov = "^4.0"
-pytest-html = "^4.0.0"
-pytest-mock = "^3.12.0"
-black = "^24.8.0"
-ruff = "^0.5.5"
-mypy = "^1.0"
-bandit = "^1.7"
-safety = "^2.0"
+[tool.hatch.build.targets.wheel]
+packages = ["src/autocad_mcp"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = [
+    "autocad: requires explicit disposable-DWG authorization",
+]
 
 # Black configuration
 [tool.black]
 line-length = 100
 target-version = ['py312']
-include = '\.pyi?$'
+include = '\\.pyi?$'
 extend-exclude = '''
 /(
     DELETED
@@ -87,9 +93,11 @@ ignore = ["S101"]  # Allow assert statements in tests
 [tool.ruff.per-file-ignores]
 "tests/*" = ["S101", "S106"]  # Allow hardcoded passwords in tests
 
-# MyPy configuration  
+# MyPy configuration
 [tool.mypy]
 python_version = "3.12"
+mypy_path = ["$MYPY_CONFIG_FILE_DIR/src"]
+explicit_package_bases = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -111,7 +119,3 @@ ignore_missing_imports = true
 [tool.bandit]
 exclude_dirs = ["tests", "DELETED", "migration_backup"]
 skips = ["B101"]  # Skip assert_used test
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"

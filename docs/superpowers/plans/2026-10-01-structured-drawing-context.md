@@ -125,7 +125,38 @@ so a forged same-ID different fact object can be rejected by the repository.
 
 **Interfaces:** `Clock.now()`, `SnapshotRepository`, `SnapshotRepositoryError`, `InMemorySnapshotRepository` exactly as specified. Canonical-byte storage, defensive reconstruction, original-expiry idempotency.
 
-- [ ] Test and implement complete-only insertion, matching counts/bytes, same-ID collisions, immutable reads, exact TTL/count/byte limits and bounded expiry tombstones.
+Re-export the accepted `Clock` from `pagination.py` instead of defining another
+clock interface. Add `expires_at(snapshot_id: str) -> datetime` to the repository
+protocol and implementation so signed continuation cursors can bind the actual
+retained insertion expiry. It performs the same purge/not-found/expired checks
+as `get_complete`; it neither extends TTL nor returns drawing facts. This is a
+necessary internal metadata accessor, not a new MCP tool or wire field.
+
+Snapshot storage uses the accepted deterministic `record_to_json` UTF-8 encoding
+to preserve exact record values; identity comparison uses the separate
+`snapshot_identity_bytes` fact normalization. Compute `canonical_byte_count`
+with just that count field omitted, and check actual full stored bytes too.
+Store only serialized payloads and expiry metadata; do not retain duplicate
+full identity-byte blobs outside the total-byte budget. On same-ID insertion,
+compare normalized identity bytes reconstructed from the retained payload.
+
+Validate complete markers, schema/type, reference/document/session/fingerprint
+agreement, non-required issues, duplicate handles, and exact entity/relationship/
+byte counts before admitting a record. Preserve the epic's distinct error codes
+for invalid/incomplete, limits, identity collision, expired and not found. A
+valid repeated identity retains the original payload and expiry, including its
+original diagnostic/session data; it is not a freshness refresh. Later services
+must use the retained object after insertion and enforce stale session bindings.
+
+Constructor tuning may lower but never raise the published limits. Reject bools,
+non-positive sizes/TTLs and over-ceiling values. Serialize operations with one
+stdlib lock because runtime services can call the singleton from worker threads;
+test competing insertions cannot exceed four live records or total bytes.
+Tombstone expiry is the original record expiry plus its configured tombstone
+TTL, not the time a late caller notices expiration. Purge before every operation;
+retain at most eight most-recent expiry markers, never evict a live snapshot.
+
+- [ ] Test and implement complete-only insertion, matching counts/bytes, same-ID collisions, immutable reads, exact TTL/count/byte limits and bounded expiry tombstones. Include concurrent final-slot insertion, idempotency without expiry refresh, expired lookup after a long idle interval, expiry accessor behavior, preserved raw Unicode values with normalized identity equality, and unchanged original metadata on idempotent reinsert.
 - [ ] Verify focused tests and typing; commit.
 
 ### Task 4: Additive context adapters and fact mapping (CTX-03)

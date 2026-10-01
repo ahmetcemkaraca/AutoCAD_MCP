@@ -176,7 +176,62 @@ validation325,628, solver81,996, verifier602,109. The immutable ceiling is
   acceptance plus focused/full regression, publish final stage counters, and
   obtain independent scoped review before Task4 integration.
 
-### Task 4: Measurements, service and serialized MCP integration (E09-U03/U04)
+### Task 4B: Pure orchestration and named-host evidence
+
+**Files:** `advanced/unfolding/service.py`, focused service tests,
+`tests/performance/measure_unfolding.py`, content-addressed evidence. Models may
+only extract a reusable `decode_policy(value) -> BoundedExecutionPolicy` helper
+and add optional bounded `issues` to MeshValidationError for rejection details.
+No solver/verifier/bounds/registration or frozen-corpus changes.
+
+```python
+def unfold_surface(
+    payload: object, *, clock: MonotonicClock | None = None,
+    cancellation: CancellationProbe | None = None,
+) -> UnfoldingResponse: ...
+def result_payload(result: UnfoldingResponse) -> dict[str, JsonValue]: ...
+```
+
+Validate the small policy shape before constructing one WorkBudget; all mesh
+decode, validation, solve, verification and result/digest work shares it. Do not
+decode the full mesh once without a budget just to discover its policy. Reuse
+the accepted normalized-request payload helper with checkpoints for canonical
+hashing, rather than needlessly revalidating a trusted ValidatedMesh request.
+Input digest is the lowercase64-character SHA-256 of the same canonical UTF-8
+bytes defined by request_json; no elapsed/host data enters it. Do not call the
+unbudgeted request_json path over a large request inside orchestration.
+
+The service returns only an exact bounded failure on deadline/cancellation,
+including during digest/result shaping. Other validation/numerical/resource
+failures raise the accepted fixed MeshValidationError. A verifier rejection
+raises VERIFICATION_FAILED with its bounded issues and no candidate/metrics/
+digest. Success copies accepted candidate/metrics and fixed versions into the
+exact UnfoldingResult, with no unsolicited warnings. Independently enforce actual
+full result UTF-8 bytes including warnings/issues, not just candidate estimates.
+The later MCP owner also checks its full serialized envelope. No classes,
+factory framework, persistence or new dependency is needed for the pure service.
+
+- [ ] Write red service tests for validate-before-solve, verifier-before-success,
+  every failure/interrupt stage, no partial result/digest, deterministic bytes,
+  exact final size and the maximum fixture through this complete service under
+  one unchanged budget. Test seams with function spies, not execution backdoors.
+- [ ] Implement the bounded service and pure payload helper; preserve all current
+  algorithms, thresholds and corpus labels. All potentially long explicit loops
+  need cooperative checks. Keep imports free of context/COM/capture/edit/files/
+  processes. Invalid structured input must not leak exception text.
+- [ ] Measure real-clock service runs at500/2000/4000 faces with seed9041. Derive
+  connected bands from the frozen maximum torus's firstN faces, retain referenced
+  vertices and all actual edges as seams; record this deterministic construction
+  and input hashes. Do not relabel/write the frozen source corpus.
+- [ ] Record explicit nonpersonal host label, OS/architecture/Python, policy,
+  wall time, process peak RSS (state its cumulative semantics), input/result
+  digests, versions, metrics and outcomes in new content-addressed immutable
+  evidence. Measurement code may use filesystem/OS APIs; production may not.
+  No subprocess or hard-kill claim, and no elapsed/RSS in product results.
+- [ ] Run focused/full checks, lint/types and import/no-effect checks. Obtain
+  independent review before the serialized registration window below.
+
+### Task 4: Serialized MCP integration and final acceptance (E09-U04)
 
 **Files:** `tests/performance/measure_unfolding.py`, immutable numerical evidence, `advanced/unfolding/service.py`, `tools/surface_unfolding.py`, MCP tests; controller-owned server/runtime/catalog/manifest/docs during an exclusive integration window.
 

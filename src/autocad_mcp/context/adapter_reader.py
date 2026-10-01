@@ -65,7 +65,7 @@ _MEMBERS = {
     "scale_xyz": "XScaleFactor/YScaleFactor/ZScaleFactor",
     "effective_name": "EffectiveName",
     "definition_handle": "Blocks.Item(Name).Handle",
-    "attribute_values": "GetAttributes",
+    "attribute_values": "GetAttributes/GetConstantAttributes",
     "is_dynamic": "IsDynamicBlock",
     "plain_text": "TextString",
     "raw_text": "TextString",

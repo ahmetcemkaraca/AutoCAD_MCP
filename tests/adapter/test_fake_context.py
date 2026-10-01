@@ -201,12 +201,12 @@ def test_glob_adversary_finishes_and_brackets_and_backslashes_are_literal():
     import subprocess
     import sys
 
-    from autocad_mcp.adapter.fake_context import _glob
+    from autocad_mcp.context.filtering import layer_glob_matches as _glob
 
     assert _glob("[ab]", "[ab]") and not _glob("[ab]", "a")
     assert _glob("[?]", "[x]") and _glob(r"wall\*", r"wall\abc")
     script = (
-        "from autocad_mcp.adapter.fake_context import _glob; "
+        "from autocad_mcp.context.filtering import layer_glob_matches as _glob; "
         "from time import perf_counter; started=perf_counter(); "
         "assert not _glob('*a'*20+'b','a'*100); assert perf_counter()-started < 2"
     )

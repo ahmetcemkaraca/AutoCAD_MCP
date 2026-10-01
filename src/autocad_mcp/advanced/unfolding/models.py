@@ -110,8 +110,13 @@ UnfoldingResponse: TypeAlias = UnfoldingResult | BoundedExecutionFailure  # noqa
 class MeshValidationError(ValueError):
     """A redacted, structured strict-schema/topology/resource rejection."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(
+        self, code: str, message: str, *, issues: tuple[UnfoldingIssue, ...] = ()
+    ) -> None:
+        if type(issues) is not tuple or len(issues) > MAX_RESULT_ISSUES:
+            raise MeshValidationError("RESOURCE_LIMIT", "Diagnostic count bound exceeded")
         self.code = code
+        self.issues = issues
         super().__init__(message)
 
 
@@ -182,6 +187,25 @@ def _enforce_request_bytes(payload: object, budget: WorkBudget | None) -> None:
         raise MeshValidationError("INVALID_ARGUMENT", "Request must be finite JSON data") from error
 
 
+def decode_policy(value: object) -> BoundedExecutionPolicy:
+    """Decode only the fixed small policy before starting one shared work budget."""
+    policy_data = _object(
+        value,
+        {
+            "max_items",
+            "max_iterations",
+            "deadline_seconds",
+            "cancellation_check_interval",
+            "deterministic_seed",
+        },
+        "policy",
+    )
+    try:
+        return BoundedExecutionPolicy(**policy_data)  # type: ignore[arg-type]
+    except ValueError as error:
+        raise MeshValidationError("RESOURCE_LIMIT", "Invalid bounded execution policy") from error
+
+
 def decode_request(payload: object, *, budget: WorkBudget | None = None) -> UnfoldingRequest:
     """Reject unknown/over-limit JSON fields, then normalize order and edge direction."""
     if budget is not None:
@@ -194,21 +218,7 @@ def decode_request(payload: object, *, budget: WorkBudget | None = None) -> Unfo
     vertices_data = _array(data["vertices"], 3, MAX_VERTICES, "vertices")
     faces_data = _array(data["faces"], 1, MAX_FACES, "faces")
     seams_data = _array(data["seam_edges"], 0, MAX_SEAMS, "seam_edges")
-    policy_data = _object(
-        data["policy"],
-        {
-            "max_items",
-            "max_iterations",
-            "deadline_seconds",
-            "cancellation_check_interval",
-            "deterministic_seed",
-        },
-        "policy",
-    )
-    try:
-        policy = BoundedExecutionPolicy(**policy_data)  # type: ignore[arg-type]
-    except ValueError as error:
-        raise MeshValidationError("RESOURCE_LIMIT", "Invalid bounded execution policy") from error
+    policy = decode_policy(data["policy"])
     if len(vertices_data) + len(faces_data) + len(seams_data) > policy.max_items:
         raise MeshValidationError("RESOURCE_LIMIT", "Request exceeds policy item limit")
     _enforce_request_bytes(payload, budget)

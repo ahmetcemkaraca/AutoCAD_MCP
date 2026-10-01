@@ -1,0 +1,2 @@
+# Preserve content-addressed mathematical fixtures across platform checkouts.
+tests/fixtures/unfolding/** -text

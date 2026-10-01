@@ -1,6 +1,6 @@
 # EPIC-00: Stewardship Baseline Closure
 
-**Status:** In progress
+**Status:** Accepted on 2026-10-01; see the [closure evidence](../verification/stewardship-2026-10-01.md).
 
 **Roadmap stage:** 1 — Stewardship baseline
 
@@ -11,11 +11,12 @@ Merge an evidence-based canonical documentation surface through a protected pull
 ## Current evidence
 
 - The imported history exists on the protected `archive` branch.
-- Draft pull request #1 targets `main` from `docs/stewardship-baseline`.
+- Pull request #1 merged into `main` as `a43e8c8` on 2026-10-01 after explicit maintainer authorization.
 - Sixty-four imported documentation files are preserved and audited below `docs/legacy/imported-2025/`.
 - Canonical project, architecture, roadmap, testing, compatibility, and epic documents exist.
-- The `main` branch was not protected when checked on 2026-08-28.
-- Review corrections are present locally and require final validation and publication.
+- The 2026-10-01 readback confirms required pull requests, linear history, and force-push/deletion protection on `main`.
+- The historical branch remains locked with force-push/deletion protection.
+- Fresh canonical-link and archive-audit checks pass. GitHub requires zero approving reviews under the current single-maintainer policy; this record does not claim a GitHub approval review occurred.
 
 ## Scope
 

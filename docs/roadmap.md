@@ -6,7 +6,9 @@ Roadmap stages are ordered by dependency and close only when their observable ac
 
 **Outcome:** Establish an honest, maintainable project surface.
 
-**Status:** In progress in draft pull request #1. The documentation archive and canonical surface exist; review corrections and `main` branch protection remain open gates.
+**Status:** Accepted on 2026-10-01 after maintainer-authorized PR #1 integration,
+merged-state readback, protection verification, and documentation checks. See
+the [closure evidence](verification/stewardship-2026-10-01.md).
 
 **Acceptance criteria:**
 

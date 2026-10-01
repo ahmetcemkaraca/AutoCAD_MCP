@@ -39,11 +39,15 @@ The window field is 16 lowercase hexadecimal digits representing an unsigned
 nonzero 64-bit handle. A response echoes version/nonce and has either `error`
 from the fixed set `UNAVAILABLE`, `BUSY`, `INVALID_REQUEST`, `TIMEOUT`,
 `UNTRUSTED_PEER`, or `state` with exactly `bridge_id`, `session_id` (canonical
-UUID strings), `epoch` (positive decimal ASCII string, at most 20 digits),
+UUID strings), `epoch` (canonical positive decimal ASCII string in
+`1..2**64-1`, without leading zeroes),
 `database_guid` (canonical UUID or null), `ready` (true), `coverage`
 (literal `context-facts-v1`). No paths, names, facts, arbitrary capability text,
 timestamps or raw HWNDs are returned. Error/state are exclusive. Only a ready
-trusted witness succeeds; readiness is not caller-controlled.
+trusted witness succeeds; readiness is not caller-controlled. `client_pid` is
+an integer in `1..2**32-1`, never a Boolean or floating JSON number. Replay
+protection uses a fresh random client nonce and exact response matching on each
+single-request connection; this read-only protocol needs no server nonce cache.
 
 Pipe name: `autocad-mcp-context-v1-{pid}-{creation_filetime:016x}`. Python derives
 the expected process from the COM document HWND via Win32 and queries its

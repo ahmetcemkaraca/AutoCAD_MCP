@@ -1,7 +1,8 @@
 # Constrained code-generation decision and usage
 
 **Scope:** EPIC-09C only. Portable implementation and authored core checks pass;
-independent final integration review and hosted Windows/Linux CI are pending.
+independent final integration review passed through `8ad8421`; hosted
+Windows/Linux CI is pending.
 This decision does not complete other advanced tracks or establish AutoCAD
 compatibility. Earlier independent controller reviews accepted the strict
 contract, all nine renderer goldens and the independently authored validator.
@@ -101,8 +102,11 @@ passed. Skips remain platform/explicit-DWG checks; they are not C execution or
 AutoCAD evidence. Exact commands and red/green handoff are recorded in the
 integration task report for final review.
 
-The integration remains a branch candidate until independent final review and
-hosted CI pass. No AutoCAD gate is required for C, and no real AutoCAD release
+The independent final review and scoped re-review passed after whole-atom
+AutoLISP validation and Windows checkout evidence preservation were repaired.
+Post-fix checks passed 247 affected tests and 493 full tests with 9 skips;
+all frozen source/evidence bytes remained unchanged. The integration remains
+a branch candidate until hosted CI and PR handoff pass. No AutoCAD gate is required for C, and no real AutoCAD release
 was tested or promoted. See [testing](../testing.md),
 [threat boundary](codegen-threat-model.md), [architecture](../architecture.md)
 and [compatibility](../compatibility.md). Merge/publication and any new

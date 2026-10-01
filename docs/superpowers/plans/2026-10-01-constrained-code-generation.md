@@ -206,11 +206,11 @@ AST-only parsing is allowed. Keep basic injection tests and update canonical
 catalogue, help, manifest, tool counts and documentation together. Record
 content-addressed security evidence before final review and hosted CI.
 
-- [ ] Test exact closed MCP schema, structured errors, full64KiB response bound,
+- [x] Test exact closed MCP schema, structured errors, full64KiB response bound,
   returned literal-warning/artifact shape and pure injection-only composition.
-- [ ] Guard imports and forbidden file/process/adapter execution paths; actual
+- [x] Guard imports and forbidden file/process/adapter execution paths; actual
   stdio/core tests must prove output-only behavior and no execute companion.
-- [ ] Register only after independent contract/pure/security gates. Preserve
+- [x] Register only after independent contract/pure/security gates. Preserve
   existing tools and record the Track C decision and content-addressed evidence.
 - [ ] Run full portable/Windows-CI checks as applicable, independent final review
   and focused PR. No AutoCAD compatibility or other-epic completion claim.

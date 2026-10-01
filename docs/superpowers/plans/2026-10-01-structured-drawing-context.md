@@ -183,10 +183,10 @@ Enforce paper layout and block owner constraints; retain document view/UCS WCS
 names and explicitly WCS query bounds. This is an unreleased version-1 contract
 correction. Keep stable identity exclusions, session retention and byte limits.
 
-- [ ] Add red regressions for owner-space invariants, renamed exact serialized
+- [x] Add red regressions for owner-space invariants, renamed exact serialized
   fields/JSON pointers, rejection of obsolete keys, frame-dependent identity,
   and unchanged document WCS semantics. Update existing affected fixtures/tests.
-- [ ] Implement the minimal model/validation changes, update downstream epic
+- [x] Implement the minimal model/validation changes, update downstream epic
   field examples, run context/full portable tests plus lint/types, commit and
   independently review before Task4. Spatial filter/relation behavior is owned
   by Task4/5 and must consume these exact owner-frame rules.

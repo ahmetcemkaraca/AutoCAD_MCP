@@ -115,9 +115,9 @@ retains complete normalized observed facts using the same identity exclusions
 as the content/presentation fingerprint (including ObjectID and session IDs),
 so a forged same-ID different fact object can be rejected by the repository.
 
-- [ ] Add failing identity/privacy/NFC/handle, complete-set digest invariance, content vs presentation, signed cursor tamper/expiry/context-binding tests from CTX-02. Include Windows path case/slash/prefix equivalence; GUID precedence; unsaved session changes; schema/session/ObjectID/pagination exclusion; duplicate NFC object keys; nested entity fact changes; cursor kind mixing, 2,048-byte boundary, overlong/unknown fields, future issue time and exact expiry.
-- [ ] Implement numeric canonicalization, stable entity order and snapshot IDs; no page-derived fingerprints.
-- [ ] Verify focused tests and stable digests over shuffled inputs, then commit.
+- [x] Add failing identity/privacy/NFC/handle, complete-set digest invariance, content vs presentation, signed cursor tamper/expiry/context-binding tests from CTX-02. Include Windows path case/slash/prefix equivalence; GUID precedence; unsaved session changes; schema/session/ObjectID/pagination exclusion; duplicate NFC object keys; nested entity fact changes; cursor kind mixing, 2,048-byte boundary, overlong/unknown fields, future issue time and exact expiry.
+- [x] Implement numeric canonicalization, stable entity order and snapshot IDs; no page-derived fingerprints.
+- [x] Verify focused tests and stable digests over shuffled inputs, then commit.
 
 ### Task 3: Complete snapshot repository (CTX-02R)
 

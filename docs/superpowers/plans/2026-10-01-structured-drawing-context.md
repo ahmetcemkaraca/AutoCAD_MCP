@@ -126,7 +126,7 @@ so a forged same-ID different fact object can be rejected by the repository.
 **Interfaces:** `Clock.now()`, `SnapshotRepository`, `SnapshotRepositoryError`, `InMemorySnapshotRepository` exactly as specified. Canonical-byte storage, defensive reconstruction, original-expiry idempotency.
 
 Re-export the accepted `Clock` from `pagination.py` instead of defining another
-clock interface. Add `expires_at(snapshot_id: str) -> datetime` to the repository
+clock interface. Add `expires_at(snapshot_id: str, *, session_id: str | None = None) -> datetime` to the repository
 protocol and implementation so signed continuation cursors can bind the actual
 retained insertion expiry. It performs the same purge/not-found/expired checks
 as `get_complete`; it neither extends TTL nor returns drawing facts. This is a
@@ -144,9 +144,21 @@ Validate complete markers, schema/type, reference/document/session/fingerprint
 agreement, non-required issues, duplicate handles, and exact entity/relationship/
 byte counts before admitting a record. Preserve the epic's distinct error codes
 for invalid/incomplete, limits, identity collision, expired and not found. A
-valid repeated identity retains the original payload and expiry, including its
-original diagnostic/session data; it is not a freshness refresh. Later services
-must use the retained object after insertion and enforce stale session bindings.
+valid repeated identity in the same session retains the original payload and
+expiry, including diagnostic data; it is not a freshness refresh.
+
+[Decision 0003](../../decisions/0003-session-qualified-snapshot-retention.md)
+amends ID-only retention: key records and tombstones by `(snapshot_id, session_id)`.
+Both `get_complete` and `expires_at` accept optional keyword `session_id`.
+Qualified lookup never falls back to another session; unqualified lookup only
+succeeds for one live match, otherwise multiple live matches return
+`SNAPSHOT_ID_COLLISION`. Compare normalized facts across every live same-ID
+record before admission. A new session with equal facts retains a separate
+payload/expiry and counts separately toward all limits. All consumers with a
+reference/cursor pass its session. Test changed ObjectIDs after reopen, old and
+new retained payloads, independent TTL, ambiguity, cross-session collisions,
+pair-qualified tombstones and shared capacity. This corrects the previous
+literal plan; it is not an implementation defect in commit `8166e57`.
 
 Constructor tuning may lower but never raise the published limits. Reject bools,
 non-positive sizes/TTLs and over-ceiling values. Serialize operations with one

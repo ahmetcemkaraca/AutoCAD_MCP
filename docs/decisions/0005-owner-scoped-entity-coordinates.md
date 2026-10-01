@@ -19,8 +19,9 @@ do not add a second redundant frame field. `kind="model"` means model WCS,
 `kind="paper"` means the named layout's paper WCS, and
 `kind="block_definition"` means the local frame of `owner_block_handle`.
 Paper requires a nonempty layout name. Block definitions require an owner
-handle and no layout name. Model layout name may be `Model` or null. Layout
-block owner handles may be retained as observed ownership metadata.
+handle and no layout name. Model layout name may be its observed bounded
+display name or null; do not hard-code an English name to identify the model
+space. Layout block owner handles may be retained as observed ownership metadata.
 
 Rename the pre-release entity coordinate slots to frame-neutral names:
 

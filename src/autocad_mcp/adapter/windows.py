@@ -6,7 +6,7 @@ import logging
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from itertools import chain
-from typing import cast
+from typing import SupportsInt, cast
 
 from autocad_mcp.adapter.capabilities import (
     AdapterCapability,
@@ -21,7 +21,12 @@ from autocad_mcp.adapter.protocol import (
     EntityDetails,
     EntitySummary,
 )
-from autocad_mcp.adapter.windows_session import AutoCADSession, WindowsSessionManager, _com_error
+from autocad_mcp.adapter.windows_session import (
+    AutoCADSession,
+    WindowsSessionManager,
+    _com_error,
+    active_document,
+)
 from autocad_mcp.core.models import JsonValue
 
 _IDENTITY_MEMBERS = ("ObjectID", "Handle", "ObjectName", "Layer")
@@ -155,9 +160,13 @@ def _required(entity: object, name: str) -> object:
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
 
 
+def _object_id(entity: object) -> int:
+    return int(cast(SupportsInt, _required(entity, "ObjectID")))
+
+
 def _entity_summary(entity: object) -> EntitySummary:
     return EntitySummary(
-        int(cast(str, _required(entity, "ObjectID"))),
+        _object_id(entity),
         str(_required(entity, "Handle")),
         str(_required(entity, "ObjectName")),
         str(_required(entity, "Layer")),
@@ -209,12 +218,11 @@ def _unsupported(capability: AdapterCapability) -> AdapterError:
     )
 
 
-def _status_member(target: object, name: str, *, required: bool = False) -> object | None:
+def _status_member(target: object, name: str) -> object | None:
+    """Read an optional status member; absence is None, any other failure is public."""
     try:
         return cast(object, getattr(target, name))
-    except AttributeError as error:
-        if required:
-            raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+    except AttributeError:
         return None
     except Exception as error:
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
@@ -248,7 +256,7 @@ class WindowsAutoCADAdapter:
 
     def status(self) -> ConnectionInfo:
         with self._session_manager.session(require_document=False) as connected:
-            document = _status_member(connected.application, "ActiveDocument", required=True)
+            document = active_document(connected.application)
             model_space = _status_member(document, "ModelSpace") if document is not None else None
             session = AutoCADSession(connected.com, connected.application, document, model_space)
             product = _status_member(connected.application, "Name")
@@ -289,7 +297,7 @@ class WindowsAutoCADAdapter:
                 raise _unsupported(AdapterCapability.GET_ENTITY_INFO)
             try:
                 for entity in entities:
-                    if int(cast(str, _required(entity, "ObjectID"))) == object_id:
+                    if _object_id(entity) == object_id:
                         return _entity_details(entity)
             except AdapterError:
                 raise

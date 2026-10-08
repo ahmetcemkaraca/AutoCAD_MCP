@@ -194,3 +194,79 @@ def test_windows_extensions_share_manager_without_lifecycle_duplication() -> Non
     assert WindowsContextExtension().read() is True
     assert WindowsCaptureExtension().read() is True
     assert pythoncom.events == ["initialize", "uninitialize", "initialize", "uninitialize"]
+
+
+def application_without_documents(failure: Exception, *, count: object = 0) -> object:
+    """Model AutoCAD raising on ``ActiveDocument`` while ``Documents`` reports its size."""
+
+    class EmptyApplication:
+        Documents = SimpleNamespace(Count=count)
+
+        @property
+        def ActiveDocument(self) -> object:  # noqa: N802
+            raise failure
+
+    return EmptyApplication()
+
+
+def test_empty_documents_collection_is_a_no_document_state(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """AutoCAD raises on ActiveDocument with zero drawings; Documents.Count == 0 proves it."""
+    manager, pythoncom, _ = make_manager(
+        application_without_documents(RuntimeError("private: no document is active"))
+    )
+
+    with pytest.raises(AdapterError) as raised:
+        with manager.session(require_document=True):
+            pass
+
+    assert raised.value.code is AdapterErrorCode.NO_ACTIVE_DOCUMENT
+    assert raised.value.retryable is False
+    assert pythoncom.events == ["initialize", "uninitialize"]
+    assert "private" not in caplog.text
+
+
+@pytest.mark.parametrize("count", [2, "0", None, False])
+def test_document_failure_stays_an_operation_failure_without_an_empty_count(
+    count: object,
+) -> None:
+    """Only an explicit integer zero count may downgrade a COM failure to no-document."""
+    manager, pythoncom, _ = make_manager(
+        application_without_documents(RuntimeError("document read failed"), count=count)
+    )
+
+    with pytest.raises(AdapterError) as raised:
+        with manager.session(require_document=True):
+            pass
+
+    assert raised.value.code is AdapterErrorCode.AUTOCAD_OPERATION_FAILED
+    assert pythoncom.events == ["initialize", "uninitialize"]
+
+
+def test_busy_document_failure_is_not_masked_by_an_empty_count() -> None:
+    """A busy server must stay retryable even when the Documents count reads zero."""
+    manager, _, _ = make_manager(application_without_documents(RuntimeError("server busy")))
+
+    with pytest.raises(AdapterError) as raised:
+        with manager.session(require_document=True):
+            pass
+
+    assert raised.value.code is AdapterErrorCode.COM_BUSY
+    assert raised.value.retryable is True
+
+
+def test_consumer_adapter_error_propagates_as_the_same_instance() -> None:
+    """contextlib attaches a traceback to the propagated error; identity must survive."""
+    manager, pythoncom, _ = make_manager(application())
+    error = AdapterError(
+        AdapterErrorCode.ENTITY_NOT_FOUND, "Entity was not found", details={"object_id": 1}
+    )
+
+    with pytest.raises(AdapterError) as raised:
+        with manager.session(require_document=False):
+            raise error
+
+    assert raised.value is error
+    assert raised.value.details == {"object_id": 1}
+    assert pythoncom.events == ["initialize", "uninitialize"]

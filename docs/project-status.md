@@ -64,6 +64,7 @@ selection are not real-AutoCAD evidence.
 
 - A real Windows installation and MCP startup with full AutoCAD
 - AutoCAD COM connection lifecycle and reconnection
+- The zero-open-drawings status path (`ActiveDocument` failure with `Documents.Count == 0` reported as no active document); covered only by injected objects
 - Any drawing mutation against a disposable DWG
 - Extrusion and revolution argument compatibility with AutoCAD COM
 - AutoCAD surface extraction, dimensioning, pattern optimization, legacy code-generation, or enterprise-oriented modules

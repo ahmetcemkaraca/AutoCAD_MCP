@@ -102,3 +102,21 @@ def test_public_protocol_exposes_only_read_only_adapter_methods() -> None:
     }
 
     assert method_names == {"status", "reconnect", "list_entities", "get_entity_info"}
+
+
+def test_adapter_error_keeps_interpreter_exception_bookkeeping_writable() -> None:
+    """Sealing public fields must not break add_note, chaining, or traceback handling."""
+    error = AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+
+    error.add_note("cleanup also failed")
+    error.__traceback__ = None
+    error.__cause__ = None
+    error.__suppress_context__ = True
+
+    assert error.__notes__ == ["cleanup also failed"]
+    with pytest.raises(AttributeError):
+        error.public_message = "changed"
+    with pytest.raises(AttributeError):
+        error.retryable = True
+    assert error.code is AdapterErrorCode.NO_ACTIVE_DOCUMENT
+    assert error.retryable is False

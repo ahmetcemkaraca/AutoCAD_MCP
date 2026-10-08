@@ -459,3 +459,32 @@ def test_empty_one_shot_model_space_supports_empty_list_and_not_found_detail() -
     with pytest.raises(AdapterError) as raised:
         adapter.get_entity_info(7)
     assert raised.value.code is AdapterErrorCode.ENTITY_NOT_FOUND
+
+
+def test_status_reports_no_document_when_documents_collection_is_empty() -> None:
+    """A connected application with zero drawings is a status, not an operation failure."""
+
+    class EmptyApplication:
+        Name = "AutoCAD"
+        Version = "24.3"
+        Documents = SimpleNamespace(Count=0)
+
+        @property
+        def ActiveDocument(self) -> object:  # noqa: N802
+            raise RuntimeError("no document is active")
+
+    manager, pythoncom = manager_for(EmptyApplication())
+    adapter = WindowsAutoCADAdapter(manager)
+
+    status = adapter.status()
+
+    assert status.connected is True
+    assert status.active_document is None
+    assert status.read_only is None
+    assert status.capabilities.available == frozenset({AdapterCapability.CONNECTION})
+
+    with pytest.raises(AdapterError) as raised:
+        adapter.list_entities()
+
+    assert raised.value.code is AdapterErrorCode.NO_ACTIVE_DOCUMENT
+    assert pythoncom.events == ["initialize", "uninitialize", "initialize", "uninitialize"]

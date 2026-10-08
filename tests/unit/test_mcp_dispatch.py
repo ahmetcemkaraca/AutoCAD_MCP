@@ -162,7 +162,7 @@ def test_unavailable_status_reports_the_running_server_and_capabilities() -> Non
     assert response.error.details == {
         "mcp_server": "running",
         "autocad_connected": False,
-        "tools_available": 4,
+        "tools_available": 5,
         "transport": "stdio",
     }
 

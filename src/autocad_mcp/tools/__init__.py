@@ -1,1 +1,1 @@
-"""Pure tool handlers consumed by the canonical MCP dispatcher."""
+"""Constrained MCP tool boundaries; registration remains in the canonical server."""

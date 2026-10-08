@@ -43,6 +43,10 @@
     {
       "name": "generate_constrained_code",
       "description": "Generate reviewed source text from bounded literal recipes; never execute it."
+    },
+    {
+      "name": "unfold_surface",
+      "description": "Unfold a supplied bounded triangular mesh into an independently verified 2D layout. Uses explicit seams and units; does not read or modify AutoCAD."
     }
   ],
   "resources": [

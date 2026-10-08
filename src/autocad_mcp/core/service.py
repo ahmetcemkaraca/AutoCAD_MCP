@@ -6,6 +6,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from autocad_mcp.tools.constrained_code_generation import generate_constrained_code
+from autocad_mcp.tools.surface_unfolding import handle_unfold_surface
 
 from .models import (
     BasicToolInput,
@@ -55,6 +56,8 @@ async def dispatch_tool(
     try:
         if name == ToolName.GENERATE_CONSTRAINED_CODE:
             return generate_constrained_code(arguments)
+        if name == ToolName.UNFOLD_SURFACE:
+            return await handle_unfold_surface(arguments)
         return await service.invoke(parse_tool_input(name, arguments))
     except InvalidToolArguments:
         return ToolFailure(ToolError(ErrorCode.INVALID_ARGUMENT, "Invalid tool arguments"))

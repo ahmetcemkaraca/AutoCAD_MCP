@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "classification_basis": "Independent mathematical mesh input facts; no solver outputs.",
+  "cases": [
+    {
+      "name": "planar-grid",
+      "path": "cases/planar-grid.json",
+      "accepted": true,
+      "mathematical_reason": "Two oriented unit-square triangles share only their diagonal; dual graph is one edge.",
+      "sha256": "451a2d884435918867eb1ceeb3bee75308da13fbe2b1baff948cb4d90cb88690"
+    },
+    {
+      "name": "planar-islands",
+      "path": "cases/planar-islands.json",
+      "accepted": true,
+      "mathematical_reason": "Cutting the shared diagonal yields two singleton face islands in one connected source mesh.",
+      "sha256": "cfa020d7a5e6a45749ddfaf5be4ba7365f56971b9cf51f12d2727f1ab53f2ad1"
+    },
+    {
+      "name": "cylinder-prism",
+      "path": "cases/cylinder-prism.json",
+      "accepted": true,
+      "mathematical_reason": "Four-sided open prism strip has a dual cycle cut by one vertical seam.",
+      "sha256": "03115e1367e041a12521ab2c2ae9e1e150235840665b11e4a91d8160152d45d9"
+    },
+    {
+      "name": "frustum",
+      "path": "cases/frustum.json",
+      "accepted": true,
+      "mathematical_reason": "Four-sided frustum lateral strip is embedded; one vertical seam opens the dual cycle.",
+      "sha256": "4598921fc0d82d6f806ce97c3b68ff0ed942ce76a29b09d1c7c4a6444edae4e5"
+    },
+    {
+      "name": "cone",
+      "path": "cases/cone.json",
+      "accepted": true,
+      "mathematical_reason": "Four cone side triangles meet in a manifold apex; one radial seam opens the dual cycle.",
+      "sha256": "60f056c27f8dd8525aafbc42d768eebba3e981d5577dfca197ac70aaa6182c04"
+    },
+    {
+      "name": "branched-strip",
+      "path": "cases/branched-strip.json",
+      "accepted": true,
+      "mathematical_reason": "Central triangle with three outward neighbors has a star-shaped dual tree.",
+      "sha256": "193da917b89ad7ff178523bfcf5a3fdba697df2de0eacb0f13562ee3ec7fe0c3"
+    },
+    {
+      "name": "tiny-triangle",
+      "path": "cases/tiny-triangle.json",
+      "accepted": true,
+      "mathematical_reason": "Nonzero orthogonal edges at tiny finite scale retain positive exact area.",
+      "sha256": "e71cb4631eab2beb4e4d278d9a6227ff9c53ec2ed81bebfdcea88fdf559d476f"
+    },
+    {
+      "name": "large-triangle",
+      "path": "cases/large-triangle.json",
+      "accepted": true,
+      "mathematical_reason": "Nonzero orthogonal edges at large finite scale retain positive exact area.",
+      "sha256": "9c6a8e52e4a482089b06214ae8461698567a08f360c2dee2c73496c7c64d25c3"
+    },
+    {
+      "name": "near-degenerate",
+      "path": "cases/near-degenerate.json",
+      "accepted": true,
+      "mathematical_reason": "Extremely thin finite triangle still has mathematically nonzero area; numerical acceptance remains verifier-owned.",
+      "sha256": "aea08d1689562e9c436aaf1ecaf6a1b7b9210f35c61ab39367720476c93d509b"
+    },
+    {
+      "name": "reversed-face",
+      "path": "cases/reversed-face.json",
+      "accepted": false,
+      "mathematical_reason": "Both faces traverse their shared edge in the same direction, violating consistent winding.",
+      "sha256": "162b540362933423e296cfc69b46271661e972fe27da4cdb421bf5a4ac19dfe1"
+    },
+    {
+      "name": "duplicate-face",
+      "path": "cases/duplicate-face.json",
+      "accepted": false,
+      "mathematical_reason": "Reversed vertex order still denotes the identical geometric triangle.",
+      "sha256": "2d6f2c3625b725276cffa0c77aa027623d5ee41fd71a4de8f75b6e5310dddd94"
+    },
+    {
+      "name": "nonmanifold-edge",
+      "path": "cases/nonmanifold-edge.json",
+      "accepted": false,
+      "mathematical_reason": "Three faces incident to edge (0,1) violate two-manifold incidence.",
+      "sha256": "e1b31a078c7b1605c9211137dc1e0a8166c79ad9aa1131f2f4b4ae68fcd21444"
+    },
+    {
+      "name": "bowtie-vertex",
+      "path": "cases/bowtie-vertex.json",
+      "accepted": false,
+      "mathematical_reason": "The link of vertex zero has two disconnected components.",
+      "sha256": "c992b2038a5c4b3403a89d823396da21c9d76e8fb96dd53873f13ff3e4d5bd37"
+    },
+    {
+      "name": "degenerate",
+      "path": "cases/degenerate.json",
+      "accepted": false,
+      "mathematical_reason": "All three points are collinear; exact cross product is zero.",
+      "sha256": "09215b27ed4c19cbc314af2ea1078363db3f51fe2ab2fcdd819ab74b731f29d2"
+    },
+    {
+      "name": "coplanar-intersection",
+      "path": "cases/coplanar-intersection.json",
+      "accepted": false,
+      "mathematical_reason": "Consistent shared-edge winding but both faces occupy the same half-plane and overlap in positive area.",
+      "sha256": "4a7c49d356de5f0c96fb563c7eb4a045df82fb9fdc474513e75e308c1d3747d4"
+    },
+    {
+      "name": "disconnected",
+      "path": "cases/disconnected.json",
+      "accepted": false,
+      "mathematical_reason": "Two separate triangular disks form a disconnected source mesh.",
+      "sha256": "9d08644398baf67e1e268ce1187fde0cafb68ccb1f76e6812630fa9b9d498933"
+    },
+    {
+      "name": "uncut-cycle",
+      "path": "cases/uncut-cycle.json",
+      "accepted": false,
+      "mathematical_reason": "Uncut prism lateral strip has a cyclic dual graph.",
+      "sha256": "3faece5bc6f480631a2ff72fd4df662416de90c2e9140dadc58b10139485e63e"
+    },
+    {
+      "name": "unsupported-curved-surface",
+      "path": "cases/unsupported-curved-surface.json",
+      "accepted": false,
+      "mathematical_reason": "Version one accepts only explicit triangular meshes, never a NURBS description.",
+      "sha256": "f2e0777edbf50cb8dcfb98ffece1f04088f31942bf65d47ce9addda7f6a8a8bc"
+    },
+    {
+      "name": "exact-max-torus",
+      "path": "cases/exact-max-torus.json",
+      "accepted": true,
+      "mathematical_reason": "Periodic embedded 40 by 50 triangulated torus has 2000 vertices, 4000 faces and 6000 edges; all edges are cut.",
+      "sha256": "634871864f8793b185fed940f21168b5506c8b8c92e5e496e40767e5a043db6a"
+    }
+  ],
+  "result_vector": {
+    "path": "worst-case-result.json",
+    "sha256": "3ed33380aecd475adc520d6815e7bb2742fed35f5d5dd10b4eb0ddc3e718d195",
+    "canonical_bytes": 3310978,
+    "note": "Serialization stress vector, not a numerically accepted layout. Fixed bounds: 1000 pairwise issues, 2 face IDs per issue, 64 Unicode code points per code, 256 per message, 16 warnings of 256 code points, 64 code points per solver/verifier version. Island IDs are deterministic ASCII island-{root_face_id}, at most 23 bytes. Free text uses four-byte UTF-8 code points."
+  }
+}

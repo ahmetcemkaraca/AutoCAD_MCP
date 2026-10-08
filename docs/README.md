@@ -12,6 +12,7 @@ This index defines the current AutoCAD MCP documentation surface. Files below [`
 - [Windows AutoCAD 2026 smoke guide](windows-testing-guide.md): first guarded real-device handoff
 - [Compatibility](compatibility.md): targeted, verified, and excluded platforms and releases
 - [Constrained code generation](advanced/constrained-code-generation-decision.md): literal recipe usage, output-only limits, and portable security evidence
+- [Surface unfolding](advanced/surface-unfolding-decision.md): caller-supplied mesh support, independent numerical gates and bounded MCP evidence
 
 ## Maintainer documents
 

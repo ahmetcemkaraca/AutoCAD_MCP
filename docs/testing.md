@@ -1,5 +1,16 @@
 # Testing
 
+## Surface-unfolding integration
+
+Run `uv run pytest tests/contract/test_surface_unfolding_tool.py tests/contract/test_surface_unfolding_integration.py tests/contract/test_surface_unfolding_stdio.py tests/contract/test_no_execution_tools.py tests/contract/test_server_tool_catalog.py tests/contract/test_stdio_server.py -q`.
+These tests cover direct closed schemas, the actual shared-budget service,
+structured failures, no partial interrupted output, real stdio cancellation,
+responsive concurrent C calls and 4 MiB SDK-body boundaries. Controlled boundary
+and frozen stress vectors test serialization only; they are not numerically
+accepted physical layouts. Request effect guards permit standard thread dispatch
+and AST-only C parsing, while denying file/process/network/COM/drawing effects.
+Existing C wire digests and the 65,536-byte gate stay pinned.
+
 ## Constrained code-generation contracts
 
 Run `uv run pytest tests/unit/advanced/codegen tests/contract/test_constrained_code_generation_tool.py tests/contract/test_no_execution_tools.py tests/contract/test_server_tool_catalog.py tests/contract/test_stdio_server.py -q`.

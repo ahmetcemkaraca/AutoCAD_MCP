@@ -44,6 +44,13 @@ feature returns a structured unsupported-capability result when the connected
 release lacks a required member; it does not assume that every API behaves
 identically across AutoCAD 2021-2026.
 
+When reading `ActiveDocument` fails while no drawing is open, the adapter
+reports a no-document state only if the `Documents` collection explicitly
+reports the integer count zero. A busy server stays `COM_BUSY`, and any other
+failure keeps its `AUTOCAD_OPERATION_FAILED` classification. This mapping is
+covered by injected-object tests on Linux; the real AutoCAD behavior of
+`ActiveDocument` with zero open drawings is not yet verified.
+
 ## Promoting a compatibility scope to verified
 
 Verification is feature-specific; a passing narrow scope does not promote an entire AutoCAD release. The first read-only Stable-core scope records:

@@ -81,11 +81,34 @@ def _com_error(error: Exception, code: AdapterErrorCode) -> AdapterError:
     return AdapterError(code, message, retryable=retryable)
 
 
-def _document_and_model_space(application: object) -> tuple[object, object | None]:
+def _no_open_documents(application: object) -> bool:
+    """Return True only when the ``Documents`` collection explicitly reports zero drawings."""
     try:
-        document = cast(object, cast(Any, application).ActiveDocument)
+        count = cast(Any, application).Documents.Count
+    except Exception:
+        return False
+    return type(count) is int and count == 0
+
+
+def active_document(application: object) -> object | None:
+    """Read ``ActiveDocument``; an explicitly empty ``Documents`` collection yields None.
+
+    AutoCAD raises from ``ActiveDocument`` while no drawing is open. That state is only
+    reported as no-document when ``Documents.Count`` is the integer zero; any other
+    failure keeps its public classification so a COM fault is never hidden.
+    """
+    try:
+        return cast(object, cast(Any, application).ActiveDocument)
+    except AdapterError:
+        raise
     except Exception as error:
+        if not _is_busy(error) and _no_open_documents(application):
+            return None
         raise _com_error(error, AdapterErrorCode.AUTOCAD_OPERATION_FAILED) from error
+
+
+def _document_and_model_space(application: object) -> tuple[object, object | None]:
+    document = active_document(application)
     if document is None:
         raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
     try:
@@ -142,17 +165,7 @@ class WindowsSessionManager:
             model_space: object | None = None
             if require_document:
                 document, model_space = _document_and_model_space(application)
-            try:
-                yield AutoCADSession(com, application, document, model_space)
-            except AdapterError as error:
-                # AdapterError is deliberately immutable; contextlib cannot attach a
-                # traceback to the instance that entered the context.
-                raise AdapterError(
-                    error.code,
-                    error.public_message,
-                    retryable=error.retryable,
-                    details=error.details,
-                ) from error
+            yield AutoCADSession(com, application, document, model_space)
         except BaseException as error:
             primary_error = error
             raise

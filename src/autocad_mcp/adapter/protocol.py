@@ -116,8 +116,18 @@ class AdapterErrorCode(StrEnum):
     AUTOCAD_OPERATION_FAILED = "AUTOCAD_OPERATION_FAILED"
 
 
+_EXCEPTION_BOOKKEEPING = frozenset(
+    {"__traceback__", "__cause__", "__context__", "__suppress_context__", "__notes__"}
+)
+
+
 class AdapterError(Exception):
-    """A stable, redacted error from an adapter operation."""
+    """A stable, redacted error from an adapter operation.
+
+    The public fields are sealed after construction; the interpreter's own exception
+    bookkeeping (traceback, chaining, notes) stays writable so ``contextlib``,
+    ``add_note`` and test frameworks can handle the instance normally.
+    """
 
     code: AdapterErrorCode
     public_message: str
@@ -140,7 +150,7 @@ class AdapterError(Exception):
         object.__setattr__(self, "_sealed", True)
 
     def __setattr__(self, name: str, value: object) -> None:
-        if getattr(self, "_sealed", False):
+        if name not in _EXCEPTION_BOOKKEEPING and getattr(self, "_sealed", False):
             raise AttributeError("AdapterError is immutable")
         object.__setattr__(self, name, value)
 

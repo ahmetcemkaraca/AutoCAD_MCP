@@ -37,6 +37,23 @@ class FakeAutoCADAdapter:
         """Return the immutable record of adapter operations."""
         return self._calls
 
+    def _record(self, operation: str, argument: object = None) -> None:
+        """Record one operation and raise a pending injected error exactly once."""
+        self._calls += ((operation, argument),)
+        error, self._next_error = self._next_error, None
+        if error is not None:
+            raise error
+
+    def _require_document(self) -> None:
+        if not self._connected:
+            raise AdapterError(
+                AdapterErrorCode.AUTOCAD_UNAVAILABLE,
+                "Full AutoCAD is unavailable",
+                retryable=True,
+            )
+        if self._document_name is None:
+            raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+
     def _connection_info(self) -> ConnectionInfo:
         if not self._connected:
             return ConnectionInfo(False, None, None, None, None, None, AdapterCapabilityReport())
@@ -61,55 +78,25 @@ class FakeAutoCADAdapter:
         )
 
     def status(self) -> ConnectionInfo:
-        self._calls += (("status", None),)
-        error = self._next_error
-        self._next_error = None
-        if error is not None:
-            raise error
+        self._record("status")
         return self._connection_info()
 
     def reconnect(self) -> ConnectionInfo:
-        self._calls += (("reconnect", None),)
-        error = self._next_error
-        self._next_error = None
-        if error is not None:
-            raise error
+        self._record("reconnect")
         self._connected = True
         return self._connection_info()
 
     def list_entities(self) -> tuple[EntitySummary, ...]:
-        self._calls += (("list_entities", None),)
-        error = self._next_error
-        self._next_error = None
-        if error is not None:
-            raise error
-        if not self._connected:
-            raise AdapterError(
-                AdapterErrorCode.AUTOCAD_UNAVAILABLE,
-                "Full AutoCAD is unavailable",
-                retryable=True,
-            )
-        if self._document_name is None:
-            raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+        self._record("list_entities")
+        self._require_document()
         return tuple(
             EntitySummary(entity.object_id, entity.handle, entity.object_name, entity.layer)
             for entity in self._entities
         )
 
     def get_entity_info(self, object_id: int) -> EntityDetails:
-        self._calls += (("get_entity_info", object_id),)
-        error = self._next_error
-        self._next_error = None
-        if error is not None:
-            raise error
-        if not self._connected:
-            raise AdapterError(
-                AdapterErrorCode.AUTOCAD_UNAVAILABLE,
-                "Full AutoCAD is unavailable",
-                retryable=True,
-            )
-        if self._document_name is None:
-            raise AdapterError(AdapterErrorCode.NO_ACTIVE_DOCUMENT, "No active document")
+        self._record("get_entity_info", object_id)
+        self._require_document()
         for entity in self._entities:
             if entity.object_id == object_id:
                 return entity

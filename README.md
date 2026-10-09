@@ -1,5 +1,7 @@
 # AutoCAD MCP
 
+> **⚠️ This repository is archived.** Development continues in the organization repository: **[ACKaraca/AutoCAD_MCP](https://github.com/ACKaraca/AutoCAD_MCP)**. Please open issues and pull requests there.
+
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/)
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)](https://www.microsoft.com/windows)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
